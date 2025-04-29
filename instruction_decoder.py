@@ -33,13 +33,18 @@ def main():
                 ["BH", "DI"],
             ]
             # first register is these bits
-            register_operand = (byte2 & 0b00111000) >> 2
-            register = reg_name_lower_and_word[register_operand][int(word_16_bit_set)]
+            reg_field_operand = (byte2 & 0b00111000) >> 2
+            register = reg_name_lower_and_word[reg_field_operand][int(word_16_bit_set)]
 
             # if mode is 11 it is register to register and we have a second register as the second operand
-            register_operand2 = byte2 & 0b00000111
+            r_m_field_operand = byte2 & 0b00000111
 
-            print("move instruction")
+            source_dest = [reg_field_operand, r_m_field_operand]
+            if direction_set:
+                source_dest = list(reversed(source_dest))
+            source, dest = source_dest
+
+            print(f"MOV {dest}, {source}")
 
 
 if __name__ == "__main__":
