@@ -2,7 +2,8 @@
 
 
 def main():
-    inp_file = "asm/single_register_mov.asm"
+    inp_file = "asm/assembled/single_register_mov"
+    instructions = []
     with open(inp_file, "rb") as file:
         binary = file.read()
         byte1 = binary[0]
@@ -45,7 +46,12 @@ def main():
                 source_dest = list(reversed(source_dest))
             source, dest = source_dest
 
-            print(f"MOV {dest}, {source}")
+            instructions.append(f"MOV {dest}, {source}")
+
+    answer_output_file = "asm/my_disassembler_output/single_register_mov.asm"
+    with open(answer_output_file, "w") as file:
+        file.write("bits 16\n\n")
+        file.write("\n".join(instructions))
 
 
 if __name__ == "__main__":
