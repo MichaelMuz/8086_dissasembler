@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+import os
 
-def main():
-    inp_file = "asm/assembled/single_register_mov"
+
+def parse_file_and_get_dissasembled_instructions(inp_file_name):
+    print(f"input binary file name: {inp_file_name}")
     instructions = []
-    with open(inp_file, "rb") as file:
+    with open(inp_file_name, "rb") as file:
         binary = file.read()
         byte1 = binary[0]
         byte2 = binary[1]
@@ -14,7 +16,7 @@ def main():
 
         # bit 8 tells us if we use the 16 bit register or just lower 8 bits
         word_16_bit_set = bool(byte1 & 0b00000001)
-        if byte1 == 0b11111100:
+        if byte1 == 0b10001000:
             # in byte 2 first 2 bits are mode bits tell us what kind of move
             # 11 tells us register to register
             mode_bits = byte2 & 0b11000000
@@ -47,11 +49,30 @@ def main():
             source, dest = source_dest
 
             instructions.append(f"MOV {dest}, {source}")
+        else:
 
-    answer_output_file = "asm/my_disassembler_output/single_register_mov.asm"
-    with open(answer_output_file, "w") as file:
-        file.write("bits 16\n\n")
-        file.write("\n".join(instructions))
+            raise ValueError(
+                f"Didn't expect to get here, given input was: {" ".join([f"{b:08b}" for b in binary])}"
+            )
+    print(f"{instructions = }")
+    return instructions
+
+
+def main():
+    input_directory = "./asm/assembled/"
+    output_directory = "./asm/my_disassembler_output/"
+    # files_to_do = os.listdir(input_directory)
+    files_to_do = ["single_register_mov"]
+    for file_name in files_to_do:
+        full_input_file_path = os.path.join(input_directory, file_name)
+        instructions = parse_file_and_get_dissasembled_instructions(
+            full_input_file_path
+        )
+
+        ouput_full_file_path = os.path.join(output_directory, file_name)
+        with open(ouput_full_file_path, "w") as file_name:
+            file_name.write("bits 16\n\n")
+            file_name.write("\n".join(instructions))
 
 
 if __name__ == "__main__":
