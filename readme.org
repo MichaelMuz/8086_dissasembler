@@ -1,0 +1,23 @@
+# Document Title
+8086 reference guide:
+https://edge.edx.org/c4x/BITSPilani/EEE231/asset/8086_family_Users_Manual_1_.pdf
+
+to assemble any of the asm files
+#+begin_src shell
+nasm asm/single_register_mov
+#+end_src
+
+we are writing a dissasembler, given a binary get the asm from it
+
+given a binary, generate asm code
+I am going binary -> asm code
+
+given asm -> nasm -> binary -> my_prog -> confirm my asm is same as given asm -> nasm -> confirm my dissasembled and reassembled binary is same as original binary
+
+#+begin_src shell
+mish@fedora:~/code/20muzm01/perf_aware/asm$ xxd single_register_mov
+00000000: 89d9                                     ..
+
+mish@fedora:~/code/20muzm01/perf_aware/asm$ xxd -b single_register_mov
+00000000: 10001001 11011001                                      ..
+#+end_src
