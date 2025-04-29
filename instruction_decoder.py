@@ -33,11 +33,12 @@ def main():
                 ["BH", "DI"],
             ]
             # first register is these bits
-            reg_field_operand = (byte2 & 0b00111000) >> 2
-            register = reg_name_lower_and_word[reg_field_operand][int(word_16_bit_set)]
+            reg_field_val = (byte2 & 0b00111000) >> 2
+            reg_field_operand = reg_name_lower_and_word[reg_field_val][word_16_bit_set]
 
             # if mode is 11 it is register to register and we have a second register as the second operand
-            r_m_field_operand = byte2 & 0b00000111
+            r_m_field_val = byte2 & 0b00000111
+            r_m_field_operand = reg_name_lower_and_word[r_m_field_val][word_16_bit_set]
 
             source_dest = [reg_field_operand, r_m_field_operand]
             if direction_set:
