@@ -16,7 +16,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
 
         # bit 8 tells us if we use the 16 bit register or just lower 8 bits
         word_16_bit_set = bool(byte1 & 0b00000001)
-        if byte1 == 0b10001000:
+        if (byte1 & 0b10001000) == 0b10001000:
             # in byte 2 first 2 bits are mode bits tell us what kind of move
             # 11 tells us register to register
             mode_bits = byte2 & 0b11000000
@@ -69,7 +69,7 @@ def main():
             full_input_file_path
         )
 
-        ouput_full_file_path = os.path.join(output_directory, file_name)
+        ouput_full_file_path = os.path.join(output_directory, f"{file_name}.asm")
         with open(ouput_full_file_path, "w") as file_name:
             file_name.write("bits 16\n\n")
             file_name.write("\n".join(instructions))
