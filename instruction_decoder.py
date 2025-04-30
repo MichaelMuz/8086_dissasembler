@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import itertools
+import os
 
 
 def parse_file_and_get_dissasembled_instructions(inp_file_name):
