@@ -5,7 +5,6 @@ import itertools
 
 
 def parse_file_and_get_dissasembled_instructions(inp_file_name):
-    print(f"input binary file name: {inp_file_name}")
     instructions = []
     with open(inp_file_name, "rb") as file:
         binary = file.read()
@@ -51,13 +50,12 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                     source_dest = list(reversed(source_dest))
                 source, dest = source_dest
 
-                instructions.append(f"MOV {dest}, {source}")
+                instructions.append(f"mov {dest}, {source}")
             else:
 
                 raise ValueError(
                     f"Didn't expect to get here, given input was: {" ".join([f"{b:08b}" for b in binary])}"
                 )
-    print(f"{instructions = }")
     return instructions
 
 
