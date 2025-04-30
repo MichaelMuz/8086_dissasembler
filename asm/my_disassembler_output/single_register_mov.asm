@@ -1,3 +1,3 @@
 bits 16
 
-MOV CX, BX
+MOV cx, bx
