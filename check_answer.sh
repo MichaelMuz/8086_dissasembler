@@ -4,6 +4,7 @@ filter_comments_and_blanks() {
     grep -v -e "^\s*;" -e "^\s*$" "$1"
 }
 
+./assemble.sh
 python instruction_decoder.py
 
 for file in ./asm/disassembled/*.asm; do
