@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
 
-import itertools
 import os
+
+
+def safe_next(it):
+    try:
+        return next(it)
+    except StopIteration:
+        return StopIteration
 
 
 def parse_file_and_get_dissasembled_instructions(inp_file_name):
     with open(inp_file_name, "rb") as file:
         file_contents: bytes = file.read()
 
+    # print(f"fc: {[f"{fc:x}" for fc in file_contents] = }")
     binary = iter(file_contents)
-    latest_byte = None
     instructions = []
-    while latest_byte is not StopIteration:
-        byte1 = next(binary)
+    while (byte1 := safe_next(binary)) is not StopIteration:
+        # print(f"byte1 = {byte1:x}")
+        assert isinstance(byte1, int)
+
+        # register/memory to/from register
         if (byte1 & 0b10001000) == 0b10001000:
             # bit 7 indicated direction of the move, 0 means source is reg field, 1 means destination in reg field
             direction_bit = bool(byte1 & 0b00000010)
@@ -20,7 +29,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
             word_bit_set = bool(byte1 & 0b00000001)
 
             byte2 = next(binary)
-            mode_bits = byte2 & 0b11000000 >> 6
+            mode_bits = (byte2 & 0b11000000) >> 6
 
             r_m_bits = byte2 & 0b00000111
 
@@ -83,7 +92,14 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                     + (f" + {displacement}" if displacement > 0 else "")
                 )
 
+        # immediate to register/memory
+        # elif byte1 == 0b1011:
+        #     mode_bits =
+
         else:
+            left = [f"{b:x}" for b in binary]
+            print(f"left: {left}")
+            print(f"{instructions = }")
 
             raise ValueError(
                 f"Didn't expect to get here, given input was: {" ".join([f"{b:08b}" for b in binary])}"
@@ -94,8 +110,9 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
 def main():
     input_directory = "./asm/assembled/"
     output_directory = "./asm/my_disassembler_output/"
-    files_to_do = os.listdir(input_directory)
-    # files_to_do = ["single_register_mov"]
+    # files_to_do = os.listdir(input_directory)
+    # files_to_do = ["single_register_mov", "many_register_mov"]
+    files_to_do = ["listing_0039_more_movs"]
     for file_name in files_to_do:
         full_input_file_path = os.path.join(input_directory, file_name)
         instructions = parse_file_and_get_dissasembled_instructions(
