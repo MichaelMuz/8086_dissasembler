@@ -10,6 +10,14 @@ def safe_next(it):
         return StopIteration
 
 
+def convert_to_signed(x, num_bytes):
+    twos_compliment_bit_value = 1 << (num_bytes * 8 - 1)
+    if x & twos_compliment_bit_value == 0:
+        return x
+    unsigned_bit_pattern = x & (twos_compliment_bit_value - 1)
+    return int(unsigned_bit_pattern) - int(twos_compliment_bit_value)
+
+
 def parse_file_and_get_dissasembled_instructions(inp_file_name):
     with open(inp_file_name, "rb") as file:
         file_contents: bytes = file.read()
