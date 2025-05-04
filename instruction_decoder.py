@@ -11,6 +11,11 @@ def safe_next(it):
 
 
 def convert_to_signed(x, num_bytes):
+    """
+    We don't really need to do this because the way we display the number in decimal doesn't matter
+    the bytes are the same if we display 0b1001 as -7 or 9.
+    This is only here because it is just nice to see it match, as a human
+    """
     twos_compliment_bit_value = 1 << (num_bytes * 8 - 1)
     if x & twos_compliment_bit_value == 0:
         return x
@@ -175,6 +180,18 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
 
                 instructions.append(f"mov {dest}, {source}")
 
+        # memory to/from accumulator
+        elif (byte1 & 0b10100000) == 0b10100000:
+            mem = next(binary)
+            word_bit_set = word_bit_set = bool(byte1 & 0b00000001)
+            from_accum = (byte1 & 0b00000010) >> 1
+            if word_bit_set:
+                mem += next(binary) << 8
+            source_dest = [f"[{mem}]", "ax"]
+            if from_accum:
+                source_dest = reversed(source_dest)
+            source, dest = source_dest
+            instructions.append(f"mov {dest}, {source}")
         else:
             left = [f"{b:x}" for b in binary]
             print(f"left: {left}")
