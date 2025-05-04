@@ -109,6 +109,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                         source = (
                             data_byte_for_top_of_reg << 8
                         ) + data_byte_for_bottom_of_reg
+                    source = convert_to_signed(source, 1 + int(word_bit_set))
 
                 instructions.append(f"mov {dest}, {source}")
             elif is_immediate_to_reg:
@@ -119,19 +120,33 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
 
                 displacement = 0
                 # 8 bit displacement
-                if mode_bits & 0b01:
+                print(f"{mode_bits = }")
+                print(f"{r_m_bits = }")
+                if mode_bits & 0b11:
+                    print(f"8 bit displacement")
                     low_disp_byte = next(binary)
                     displacement += low_disp_byte
 
-                # when mode is 0 no displacement unless r/m field is 11
+                # when mode is 0 no displacement unless r/m field is 110
                 # when mode is 10 then 16 bit displacement
-                if mode_bits & 0b10 or (mode_bits == 0 and r_m_bits == 0b00):
+                is_2_bytes = False
+                if (mode_bits & 0b10) == 0b10 or (mode_bits == 0 and r_m_bits == 0b110):
+                    is_2_bytes = True
+                    print(f"16 bit displacement")
                     high_disp_byte = next(binary)
+                    print(
+                        f"low byte: {displacement:08b}, high byte: {high_disp_byte:08b}"
+                    )
                     displacement += high_disp_byte << 8
 
+                if displacement > 0:
+                    print(f"{displacement = }")
                 full_memory_equation = " + ".join(equation) + (
-                    f" + {displacement}" if displacement > 0 else ""
+                    f" + {convert_to_signed(displacement, 1 + int(is_2_bytes))}"
+                    if displacement > 0
+                    else ""
                 )
+                full_memory_equation = f"[{full_memory_equation}]"
 
                 if is_immediate_move:
                     byte3 = next(binary)
@@ -168,6 +183,7 @@ def main():
         instructions = parse_file_and_get_dissasembled_instructions(
             full_input_file_path
         )
+        print(instructions)
 
         ouput_full_file_path = os.path.join(output_directory, f"{file_name}.asm")
         with open(ouput_full_file_path, "w") as file_name:
