@@ -205,9 +205,8 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
 def main():
     input_directory = "./asm/assembled/"
     output_directory = "./asm/my_disassembler_output/"
-    # files_to_do = os.listdir(input_directory)
-    # files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
-    files_to_do = ["listing_0040_challenge_movs"]
+    files_to_do = os.listdir(input_directory)
+    # files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs", "listing_0040_challenge_movs"]
     for file_name in files_to_do:
         full_input_file_path = os.path.join(input_directory, file_name)
         instructions = parse_file_and_get_dissasembled_instructions(
