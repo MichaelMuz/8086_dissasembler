@@ -27,13 +27,10 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
     with open(inp_file_name, "rb") as file:
         file_contents: bytes = file.read()
 
-    print(f"fc: {[f"{fc:x}" for fc in file_contents] = }")
     binary = iter(file_contents)
     instructions = []
     while (byte1 := safe_next(binary)) is not StopIteration:
         assert isinstance(byte1, int)
-        # print(f"current byte: {byte1:08b}")
-        print(f"current byte: {byte1:x}")
 
         is_immediate_move = (byte1 & 0b11000110) == 0b11000110
         is_immediate_to_reg = (byte1 & 0b10110000) == 0b10110000
@@ -86,7 +83,6 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 reg_field_val = byte1 & 0b00000111
 
             reg_field_operand = reg_name_lower_and_word[reg_field_val][word_bit_set]
-            print(f"operating of {reg_field_operand = }")
 
             if is_immediate_move:
                 assert (
@@ -125,11 +121,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
 
                 displacement = 0
                 # 8 bit displacement
-                print(f"{mode_bits = }")
-                print(f"{r_m_bits = }")
-                print(f"{direction_bit = }")
                 if (mode_bits & 0b11) or (mode_bits == 0 and r_m_bits == 0b110):
-                    print(f"8 bit displacement")
                     low_disp_byte = next(binary)
                     displacement += low_disp_byte
 
@@ -138,15 +130,8 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 is_2_bytes = False
                 if (mode_bits & 0b10) == 0b10 or (mode_bits == 0 and r_m_bits == 0b110):
                     is_2_bytes = True
-                    print(f"16 bit displacement")
                     high_disp_byte = next(binary)
-                    print(
-                        f"low byte: {displacement:08b}, high byte: {high_disp_byte:08b}"
-                    )
                     displacement += high_disp_byte << 8
-
-                if displacement > 0:
-                    print(f"{displacement = }")
 
                 signed_displacement = convert_to_signed(
                     displacement, 1 + int(is_2_bytes)
@@ -171,7 +156,6 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                     source = byte3
                     if word_bit_set:
                         byte4 = next(binary)
-                        print(f"byte3 = {byte3:08b}, byte4 = {byte4:08b}")
                         source = (byte4 << 8) + byte3
                     verbage = "word" if word_bit_set else "byte"
                     source = (
@@ -194,8 +178,6 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
             instructions.append(f"mov {dest}, {source}")
         else:
             left = [f"{b:x}" for b in binary]
-            print(f"left: {left}")
-            print(f"{instructions = }")
 
             error_msg = f"Didn't expect to get here, current input was: {byte1:08b}"
             raise ValueError(error_msg)
@@ -212,7 +194,6 @@ def main():
         instructions = parse_file_and_get_dissasembled_instructions(
             full_input_file_path
         )
-        print(instructions)
 
         ouput_full_file_path = os.path.join(output_directory, f"{file_name}.asm")
         with open(ouput_full_file_path, "w") as file_name:
