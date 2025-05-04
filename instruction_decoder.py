@@ -14,15 +14,24 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
     with open(inp_file_name, "rb") as file:
         file_contents: bytes = file.read()
 
-    # print(f"fc: {[f"{fc:x}" for fc in file_contents] = }")
+    print(f"fc: {[f"{fc:x}" for fc in file_contents] = }")
     binary = iter(file_contents)
     instructions = []
     while (byte1 := safe_next(binary)) is not StopIteration:
-        # print(f"byte1 = {byte1:x}")
         assert isinstance(byte1, int)
+        # print(f"current byte: {byte1:08b}")
+        print(f"current byte: {byte1:x}")
+
+        is_immediate_move = (byte1 & 0b11000110) == 0b11000110
+        is_immediate_to_reg = (byte1 & 0b10110000) == 0b10110000
 
         # register/memory to/from register
-        if (byte1 & 0b10001000) == 0b10001000:
+        if (
+            (byte1 & 0b10001000) == 0b10001000
+            or is_immediate_move
+            or is_immediate_to_reg
+        ):
+
             # bit 7 indicated direction of the move, 0 means source is reg field, 1 means destination in reg field
             direction_bit = bool(byte1 & 0b00000010)
             # bit 8 tells us if we use the 16 bit register or just lower 8 bits
@@ -45,23 +54,33 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 ["bx"],
             ]
 
+            reg_name_lower_and_word = [
+                # [lower_register_name, word_full_register_name]
+                ["al", "ax"],
+                ["cl", "cx"],
+                ["dl", "dx"],
+                ["bl", "bx"],
+                ["ah", "sp"],
+                ["ch", "bp"],
+                ["dh", "si"],
+                ["bh", "di"],
+            ]
+
+            # register is these bits
+            reg_field_val = (byte2 & 0b00111000) >> 3
+            if is_immediate_to_reg:
+                word_bit_set = (byte1 & 0b00001000) >> 3
+                reg_field_val = byte1 & 0b00000111
+
+            reg_field_operand = reg_name_lower_and_word[reg_field_val][word_bit_set]
+
+            if is_immediate_move:
+                assert (
+                    reg_field_val == 0
+                ), "immediate mov expected to have 0 in reg field"
+
             # if mode is 11 it is register to register and we have a second register as the second operand
             if mode_bits == 0b11:
-                reg_name_lower_and_word = [
-                    # [lower_register_name, word_full_register_name]
-                    ["al", "ax"],
-                    ["cl", "cx"],
-                    ["dl", "dx"],
-                    ["bl", "bx"],
-                    ["ah", "sp"],
-                    ["ch", "bp"],
-                    ["dh", "si"],
-                    ["bh", "di"],
-                ]
-                # first register is these bits
-                reg_field_val = (byte2 & 0b00111000) >> 3
-                reg_field_operand = reg_name_lower_and_word[reg_field_val][word_bit_set]
-
                 # if mode is 11 it is register to register and we have a second register as the second operand
                 r_m_field_operand = reg_name_lower_and_word[r_m_bits][word_bit_set]
 
@@ -69,6 +88,18 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 if direction_bit:
                     source_dest = list(reversed(source_dest))
                 source, dest = source_dest
+
+                if is_immediate_move or is_immediate_to_reg:
+                    data_byte_for_bottom_of_reg = (
+                        byte2 if is_immediate_to_reg else next(binary)
+                    )
+                    source = data_byte_for_bottom_of_reg
+                    if word_bit_set:
+                        data_byte_for_top_of_reg = next(binary)
+                        source = (
+                            data_byte_for_top_of_reg << 8
+                        ) + data_byte_for_bottom_of_reg
+                    dest = r_m_field_operand
 
                 instructions.append(f"mov {dest}, {source}")
 
@@ -87,23 +118,35 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                     high_disp_byte = next(binary)
                     displacement += high_disp_byte << 8
 
-                instructions.append(
-                    " + ".join(equation)
-                    + (f" + {displacement}" if displacement > 0 else "")
+                full_memory_equation = " + ".join(equation) + (
+                    f" + {displacement}" if displacement > 0 else ""
                 )
 
-        # immediate to register/memory
-        # elif byte1 == 0b1011:
-        #     mode_bits =
+                if is_immediate_move or is_immediate_to_reg:
+                    data_byte_for_bottom_of_reg = (
+                        byte2 if is_immediate_to_reg else next(binary)
+                    )
+                    reg_field_val = data_byte_for_bottom_of_reg
+                    if word_bit_set:
+                        data_byte_for_top_of_reg = next(binary)
+                        reg_field_val = (
+                            data_byte_for_top_of_reg << 8
+                        ) + data_byte_for_bottom_of_reg
+
+                source_dest = [reg_field_operand, full_memory_equation]
+                if direction_bit:
+                    source_dest = list(reversed(source_dest))
+                source, dest = source_dest
+
+                instructions.append(f"mov {dest}, {source}")
 
         else:
             left = [f"{b:x}" for b in binary]
             print(f"left: {left}")
             print(f"{instructions = }")
 
-            raise ValueError(
-                f"Didn't expect to get here, given input was: {" ".join([f"{b:08b}" for b in binary])}"
-            )
+            error_msg = f"Didn't expect to get here, current input was: {byte1:08b}"
+            raise ValueError(error_msg)
     return instructions
 
 
@@ -111,8 +154,8 @@ def main():
     input_directory = "./asm/assembled/"
     output_directory = "./asm/my_disassembler_output/"
     # files_to_do = os.listdir(input_directory)
-    # files_to_do = ["single_register_mov", "many_register_mov"]
-    files_to_do = ["listing_0039_more_movs"]
+    files_to_do = ["single_register_mov", "many_register_mov"]
+    # files_to_do = ["listing_0039_more_movs"]
     for file_name in files_to_do:
         full_input_file_path = os.path.join(input_directory, file_name)
         instructions = parse_file_and_get_dissasembled_instructions(
