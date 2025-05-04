@@ -73,6 +73,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 reg_field_val = byte1 & 0b00000111
 
             reg_field_operand = reg_name_lower_and_word[reg_field_val][word_bit_set]
+            print(f"operating of {reg_field_operand = }")
 
             if is_immediate_move:
                 assert (
@@ -80,7 +81,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 ), "immediate mov expected to have 0 in reg field"
 
             # if mode is 11 it is register to register and we have a second register as the second operand
-            if mode_bits == 0b11:
+            if mode_bits == 0b11 or is_immediate_to_reg:
                 # if mode is 11 it is register to register and we have a second register as the second operand
                 r_m_field_operand = reg_name_lower_and_word[r_m_bits][word_bit_set]
 
@@ -90,6 +91,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 source, dest = source_dest
 
                 if is_immediate_move or is_immediate_to_reg:
+                    dest = reg_field_operand
                     data_byte_for_bottom_of_reg = (
                         byte2 if is_immediate_to_reg else next(binary)
                     )
@@ -99,9 +101,10 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                         source = (
                             data_byte_for_top_of_reg << 8
                         ) + data_byte_for_bottom_of_reg
-                    dest = r_m_field_operand
 
                 instructions.append(f"mov {dest}, {source}")
+            elif is_immediate_to_reg:
+                raise ValueError("immediate to reg not caught in reg to reg!")
 
             else:
                 equation = r_m_to_effective_addr_calc[r_m_bits]
@@ -122,16 +125,12 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                     f" + {displacement}" if displacement > 0 else ""
                 )
 
-                if is_immediate_move or is_immediate_to_reg:
-                    data_byte_for_bottom_of_reg = (
-                        byte2 if is_immediate_to_reg else next(binary)
-                    )
-                    reg_field_val = data_byte_for_bottom_of_reg
+                if is_immediate_move:
+                    byte3 = next(binary)
+                    reg_field_val = byte3
                     if word_bit_set:
-                        data_byte_for_top_of_reg = next(binary)
-                        reg_field_val = (
-                            data_byte_for_top_of_reg << 8
-                        ) + data_byte_for_bottom_of_reg
+                        byte4 = next(binary)
+                        reg_field_val = (byte3 << 8) + byte4
 
                 source_dest = [reg_field_operand, full_memory_equation]
                 if direction_bit:
