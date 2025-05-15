@@ -52,7 +52,7 @@ class Register:
     ]
 
     def __init__(self, num, first_reg_bit_num, word_bit_set) -> None:
-        self.reg_value = (num >> first_reg_bit_num) & 0b111
+        self.value = (num >> first_reg_bit_num) & 0b111
         self.register = self.REG_NAME_LOWER_AND_WORD[self.reg_value][word_bit_set]
 
 
@@ -89,6 +89,14 @@ def convert_to_signed(x, num_bytes):
         return x
     unsigned_bit_pattern = x & (twos_compliment_bit_value - 1)
     return int(unsigned_bit_pattern) - int(twos_compliment_bit_value)
+
+
+class Instruction:
+    def __init__(self, source, dest, direction_bit_set) -> None:
+        src_dst = [source, dest]
+        if direction_bit_set:
+            src_dst = reversed(src_dst)
+        self.source, self.dest = src_dst
 
 
 def parse_file_and_get_dissasembled_instructions(inp_file_name):
@@ -129,17 +137,15 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 assert reg.value == 0, "immediate mov expected to have 0 in reg field"
 
             # if mode is 11 it is register to register and we have a second register as the second operand
-            if mode == 0b11 or is_immediate_to_reg:
+            if mode == Mode.REGISTER_MODE or is_immediate_to_reg:
                 # if mode is 11 it is register to register and we have a second register as the second operand
-                r_m_field_operand = reg_name_lower_and_word[rm][word_bit_set]
+                second_reg = Register(rm.value, 0, word_bit_set)
 
-                source_dest = [reg_field_operand, r_m_field_operand]
-                if direction_bit:
-                    source_dest = list(reversed(source_dest))
-                source, dest = source_dest
+                Instruction(reg, second_reg, direction_bit)
 
                 if is_immediate_move or is_immediate_to_reg:
-                    dest = reg_field_operand
+
+                    Instruction(reg, reg, False)
                     data_byte_for_bottom_of_reg = (
                         byte2 if is_immediate_to_reg else next(binary)
                     )
