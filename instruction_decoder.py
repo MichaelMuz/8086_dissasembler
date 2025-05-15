@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from dataclasses import dataclass
+import enum
 import os
 
 
@@ -8,6 +10,72 @@ def safe_next(it):
         return next(it)
     except StopIteration:
         return StopIteration
+
+
+def is_bit_set(num, bit_num):
+    return bool((num >> bit_num) & 0b1)
+
+
+class Mode(enum.Enum):
+    NO_DISPLACEMENT_MODE = enum.auto()
+    BYTE_DISPLACEMENT_MODE = enum.auto()
+    WORD_DISPLACEMENT_MODE = enum.auto()
+    REGISTER_MODE = enum.auto()
+
+
+def get_mode(num, first_mode_bit_num, rm):
+    all_modes = [
+        Mode.NO_DISPLACEMENT_MODE,
+        Mode.BYTE_DISPLACEMENT_MODE,
+        Mode.WORD_DISPLACEMENT_MODE,
+        Mode.REGISTER_MODE,
+    ]
+
+    mode = all_modes[(num >> first_mode_bit_num) & 0b11]
+    if mode is Mode.NO_DISPLACEMENT_MODE and rm.value == 0b110:
+        mode = Mode.WORD_DISPLACEMENT_MODE
+
+    return mode
+
+
+class Register:
+    REG_NAME_LOWER_AND_WORD = [
+        # [lower_register_name, word_full_register_name]
+        ["al", "ax"],
+        ["cl", "cx"],
+        ["dl", "dx"],
+        ["bl", "bx"],
+        ["ah", "sp"],
+        ["ch", "bp"],
+        ["dh", "si"],
+        ["bh", "di"],
+    ]
+
+    def __init__(self, num, first_reg_bit_num, word_bit_set) -> None:
+        self.reg_value = (num >> first_reg_bit_num) & 0b111
+        self.register = self.REG_NAME_LOWER_AND_WORD[self.reg_value][word_bit_set]
+
+
+class RM:
+    r_m_to_effective_addr_calc = [
+        # if there are two things in the list, the equation these bits code for are those added
+        ["bx", "si"],
+        ["bx", "di"],
+        ["bp", "si"],
+        ["bp", "di"],
+        ["si"],
+        ["di"],
+        ["bp"],
+        ["bx"],
+    ]
+
+    def __init__(self, num, first_rm_bit_num) -> None:
+        self.value = (num >> first_rm_bit_num) & 0b111
+        self.effective_addr_regs = self.r_m_to_effective_addr_calc[self.value]
+
+
+def do_bits_match(num, expected):
+    return (num & expected) == expected
 
 
 def convert_to_signed(x, num_bytes):
@@ -32,67 +100,38 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
     while (byte1 := safe_next(binary)) is not StopIteration:
         assert isinstance(byte1, int)
 
-        is_immediate_move = (byte1 & 0b11000110) == 0b11000110
-        is_immediate_to_reg = (byte1 & 0b10110000) == 0b10110000
+        is_regmem_tofrom_regmem = do_bits_match(byte1, 0b10001000)
+        is_immediate_move = do_bits_match(byte1, 0b11000110)
+        is_immediate_to_reg = do_bits_match(byte1, 0b10110000)
 
         # register/memory to/from register
-        if (
-            (byte1 & 0b10001000) == 0b10001000
-            or is_immediate_move
-            or is_immediate_to_reg
-        ):
+        if is_regmem_tofrom_regmem or is_immediate_move or is_immediate_to_reg:
 
             # bit 7 indicated direction of the move, 0 means source is reg field, 1 means destination in reg field
-            direction_bit = bool(byte1 & 0b00000010)
-            # bit 8 tells us if we use the 16 bit register or just lower 8 bits
-            word_bit_set = bool(byte1 & 0b00000001)
+            direction_bit = is_bit_set(byte1, 1)
 
             byte2 = next(binary)
-            mode_bits = (byte2 & 0b11000000) >> 6
+            rm = RM(byte2, 0)
+            mode = get_mode(byte2, 6, rm)
 
-            r_m_bits = byte2 & 0b00000111
-
-            r_m_to_effective_addr_calc = [
-                # if there are two things in the list, the equation these bits code for are those added
-                ["bx", "si"],
-                ["bx", "di"],
-                ["bp", "si"],
-                ["bp", "di"],
-                ["si"],
-                ["di"],
-                ["bp"],
-                ["bx"],
-            ]
-
-            reg_name_lower_and_word = [
-                # [lower_register_name, word_full_register_name]
-                ["al", "ax"],
-                ["cl", "cx"],
-                ["dl", "dx"],
-                ["bl", "bx"],
-                ["ah", "sp"],
-                ["ch", "bp"],
-                ["dh", "si"],
-                ["bh", "di"],
-            ]
-
-            # register is these bits
-            reg_field_val = (byte2 & 0b00111000) >> 3
+            byte_with_reg_info = byte2
+            reg_field_start = 3
+            word_bit = 0
             if is_immediate_to_reg:
-                word_bit_set = (byte1 & 0b00001000) >> 3
-                reg_field_val = byte1 & 0b00000111
+                byte_with_reg_info = byte1
+                word_bit = 3
+                reg_field_start = 0
 
-            reg_field_operand = reg_name_lower_and_word[reg_field_val][word_bit_set]
+            word_bit_set = is_bit_set(byte1, word_bit)
+            reg = Register(byte_with_reg_info, reg_field_start, word_bit_set)
 
             if is_immediate_move:
-                assert (
-                    reg_field_val == 0
-                ), "immediate mov expected to have 0 in reg field"
+                assert reg.value == 0, "immediate mov expected to have 0 in reg field"
 
             # if mode is 11 it is register to register and we have a second register as the second operand
-            if mode_bits == 0b11 or is_immediate_to_reg:
+            if mode == 0b11 or is_immediate_to_reg:
                 # if mode is 11 it is register to register and we have a second register as the second operand
-                r_m_field_operand = reg_name_lower_and_word[r_m_bits][word_bit_set]
+                r_m_field_operand = reg_name_lower_and_word[rm][word_bit_set]
 
                 source_dest = [reg_field_operand, r_m_field_operand]
                 if direction_bit:
@@ -117,18 +156,18 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                 raise ValueError("immediate to reg not caught in reg to reg!")
 
             else:
-                equation = r_m_to_effective_addr_calc[r_m_bits]
+                equation = r_m_to_effective_addr_calc[rm]
 
                 displacement = 0
                 # 8 bit displacement
-                if (mode_bits & 0b11) or (mode_bits == 0 and r_m_bits == 0b110):
+                if (mode & 0b11) or (mode == 0 and rm == 0b110):
                     low_disp_byte = next(binary)
                     displacement += low_disp_byte
 
                 # when mode is 0 no displacement unless r/m field is 110
                 # when mode is 10 then 16 bit displacement
                 is_2_bytes = False
-                if (mode_bits & 0b10) == 0b10 or (mode_bits == 0 and r_m_bits == 0b110):
+                if (mode & 0b10) == 0b10 or (mode == 0 and rm == 0b110):
                     is_2_bytes = True
                     high_disp_byte = next(binary)
                     displacement += high_disp_byte << 8
@@ -142,7 +181,7 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
                     full_memory_equation += f" {sign} {abs(signed_displacement)}"
                 full_memory_equation = f"[{full_memory_equation}]"
 
-                if mode_bits == 0 and r_m_bits == 0b110:
+                if mode == 0 and rm == 0b110:
                     full_memory_equation = f"[{signed_displacement}]"
 
                 source_dest = [reg_field_operand, full_memory_equation]
