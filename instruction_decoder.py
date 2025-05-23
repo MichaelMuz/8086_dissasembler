@@ -136,28 +136,21 @@ def parse_file_and_get_dissasembled_instructions(inp_file_name):
             if is_immediate_move:
                 assert reg.value == 0, "immediate mov expected to have 0 in reg field"
 
-            # if mode is 11 it is register to register and we have a second register as the second operand
             if mode == Mode.REGISTER_MODE or is_immediate_to_reg:
-                # if mode is 11 it is register to register and we have a second register as the second operand
-                second_reg = Register(rm.value, 0, word_bit_set)
-
-                Instruction(reg, second_reg, direction_bit)
+                second_operand = Register(rm.value, 0, word_bit_set)
 
                 if is_immediate_move or is_immediate_to_reg:
 
-                    Instruction(reg, reg, False)
                     data_byte_for_bottom_of_reg = (
                         byte2 if is_immediate_to_reg else next(binary)
                     )
-                    source = data_byte_for_bottom_of_reg
+                    num = data_byte_for_bottom_of_reg
                     if word_bit_set:
-                        data_byte_for_top_of_reg = next(binary)
-                        source = (
-                            data_byte_for_top_of_reg << 8
-                        ) + data_byte_for_bottom_of_reg
-                    source = convert_to_signed(source, 1 + int(word_bit_set))
+                        num += next(binary) << 8
+                    second_operand = num
+                inst = Instruction(reg, second_operand, direction_bit)
 
-                instructions.append(f"mov {dest}, {source}")
+                instructions.append(inst)
             elif is_immediate_to_reg:
                 raise ValueError("immediate to reg not caught in reg to reg!")
 

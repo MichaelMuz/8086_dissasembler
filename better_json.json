@@ -1,0 +1,15 @@
+{
+    "instructions": [
+        {
+            "mnemonic": "mov",
+            "variations": [
+                {"format": "100010 d w, mod reg rm, disp-lo, disp-hi", "implied_values": {}},
+                {"format": "1100011 w, mod 000 rm, data, data-if-w=1","implied_values": {"d": 1}},
+                {"format": "1011 w reg, data, data-if-w=1", "implied_values": {}},
+                {"format": "1010000 w, addr-lo, addr-hi", "implied_values": {}},
+                {"format": "1010001 w, addr-lo, addr-hi", "implied_values": {}},
+                {"format": "10001110, mod 0 SR rm, disp-lo, disp-hi", "implied_values": {}}
+            ]
+        }
+    ]
+}
