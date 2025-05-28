@@ -13,22 +13,6 @@ def safe_next(it):
         return StopIteration
 
 
-# @dataclass
-# class Literal:
-#     byte: int
-
-
-# class Field:
-#     byte_num: int
-#     start_bit: int
-#     field_size: int
-
-
-# class InstructionAnatomy:
-#     identifier: Literal
-#     parts: list[Field]
-
-
 field_type_bit_len: dict[str | int, int] = {
     "d": 1,
     "w": 1,
