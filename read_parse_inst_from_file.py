@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+import functools
 import json
 import os
 import re
+from typing import Iterator
 
 
 def safe_next(it):
@@ -83,21 +85,86 @@ def get_parsable_instructions() -> list[ParsableInstruction]:
     return parsable_instructions
 
 
-def disassemble(first_byte: int, parsable_instruction: ParsableInstruction):
+def get_from_so_far_dict_and_implied(
+    key: str, so_far_dict: dict[str, int], parsable_instruction: ParsableInstruction
+):
+    val = parsable_instruction.implied_values.get(key, None) or so_far_dict.get(
+        "mod", None
+    )
+    return val
+
+
+def is_instruction_needed(
+    parsable_instruction: ParsableInstruction,
+    instruction_part: str,
+    instruction_dict_so_far: dict[str, int],
+) -> bool:
+    this_check_val = functools.partial(
+        get_from_so_far_dict_and_implied,
+        so_far_dict=instruction_dict_so_far,
+        parsable_instruction=parsable_instruction,
+    )
+    if (
+        instruction_part not in parsable_instruction.implied_values
+        and instruction_part in {"d", "w", "mod", "reg", "rm"}
+    ):
+        return True
+    elif instruction_part == "data-if-w=1":
+        return bool(this_check_val("w"))
+    elif instruction_part.startswith("disp"):
+        mod_val = this_check_val("mod")
+        if mod_val == 0:
+            return False
+        elif mod_val == 1:
+            return True
+        elif mod_val == 0b10:
+            return instruction_part.endswith("-hi")
+        elif mod_val == 0b11:
+            return (
+                get_from_so_far_dict_and_implied(
+                    "rm", instruction_dict_so_far, parsable_instruction
+                )
+                == 0b110
+            )
+        else:
+            raise ValueError(f"mod has an unexpected value of {mod_val}")
+    else:
+        raise ValueError(f"don't know how to check if {instruction_part} is needed")
+
+
+def disassemble(
+    first_byte: int,
+    inst_pull_iter: Iterator[int],
+    parsable_instruction: ParsableInstruction,
+):
     current_byte = first_byte
     inst_parts_iter = iter(parsable_instruction.instructions)
-    bits_left = 8 - int.bit_length(next(inst_parts_iter))
+
+    instruction_literal = next(inst_parts_iter)
+    assert isinstance(instruction_literal, int)
+    bits_left = 8 - int.bit_length(instruction_literal)
+
     instruction_part_to_value: dict = {"mnemonic": parsable_instruction.mnemonic}
     for instruction_part in inst_parts_iter:
         print(f"{instruction_part = }")
-        assert bits_left >= 0
+
+        assert isinstance(instruction_part, str)
+        if not is_instruction_needed(
+            parsable_instruction, instruction_part, instruction_part_to_value
+        ):
+            continue
+
         if bits_left == 0:
+            current_byte = next(inst_pull_iter)
             bits_left = 8
+        assert bits_left > 0
+
         inst_part_size = field_type_bit_len[instruction_part]
         start_bit = bits_left - inst_part_size
+
         mask = (2**inst_part_size - 1) << start_bit
-        print(f"comparing with {current_byte:0b}")
         field_value = (current_byte & mask) >> start_bit
+
         instruction_part_to_value[instruction_part] = field_value
         bits_left -= inst_part_size
 
@@ -131,8 +198,11 @@ def parse_instructions():
                     parsable_instruction_template = parsable_instruction
                     break
             assert parsable_instruction_template is not None
-            disasembled_inst = disassemble(byte1, parsable_instruction_template)
+            disasembled_inst = disassemble(
+                byte1, one_byte_at_a_time, parsable_instruction_template
+            )
             disasembled_insts.append(disasembled_inst)
+        print(f"{disasembled_insts = }")
 
 
 if __name__ == "__main__":
