@@ -1,6 +1,0 @@
-100010 d w, mod reg rm, disp-lo, disp-hi
-1100011 w, mod 000 rm, data, data-if-w=1
-1011 w reg, data, data-if-w=1
-1010000 w, addr-lo, addr-hi
-1010001 w, addr-lo, addr-hi
-10001110, mod 0 SR rm, disp-lo, disp-hi
