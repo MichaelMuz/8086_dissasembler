@@ -51,12 +51,9 @@ class ParsableInstruction:
     implied_values: dict[str, str | int]
 
 
-def get_parsable_instructions() -> list[ParsableInstruction]:
+def get_parsable_instructions(json_data_from_file: dict) -> list[ParsableInstruction]:
     parsable_instructions = []
-    with open("asm_config.json", "r") as file:
-        data = json.load(file)
-
-    for mnemonic_group in data["instructions"]:
+    for mnemonic_group in json_data_from_file["instructions"]:
         mnemonic = mnemonic_group["mnemonic"]
         variations = mnemonic_group["variations"]
         for variation in variations:
@@ -136,7 +133,7 @@ def disassemble(
     first_byte: int,
     inst_pull_iter: Iterator[int],
     parsable_instruction: ParsableInstruction,
-):
+) -> dict[str, int | str]:
     current_byte = first_byte
     inst_parts_iter = iter(parsable_instruction.instructions)
 
@@ -172,8 +169,38 @@ def disassemble(
     return instruction_part_to_value
 
 
-def parse_instructions():
-    parsable_instructions = get_parsable_instructions()
+def parse_instructions(
+    parsable_instructions: list[ParsableInstruction], one_byte_at_a_time: Iterator[int]
+) -> list[dict[str, int | str]]:
+    disasembled_insts = []
+    while (byte1 := safe_next(one_byte_at_a_time)) is not StopIteration:
+        assert isinstance(byte1, int)
+        parsable_instruction_template = None
+        for parsable_instruction in parsable_instructions:
+            identifier_literal = parsable_instruction.instructions[0]
+            assert isinstance(identifier_literal, int)
+
+            properly_shifted_literal = identifier_literal << (
+                8 - int.bit_length(identifier_literal)
+            )
+            if (byte1 & properly_shifted_literal) == properly_shifted_literal:
+                parsable_instruction_template = parsable_instruction
+                break
+        assert parsable_instruction_template is not None
+        disasembled_inst = disassemble(
+            byte1, one_byte_at_a_time, parsable_instruction_template
+        )
+        disasembled_insts.append(disasembled_inst)
+    print(f"{disasembled_insts = }")
+    return disasembled_insts
+
+
+def main():
+    # get instructions that we know are possible
+
+    with open("asm_config.json", "r") as file:
+        json_data_from_file = json.load(file)
+    parsable_instructions = get_parsable_instructions(json_data_from_file)
 
     input_directory = "./asm/assembled/"
     files_to_do = ["single_register_mov"]
@@ -182,28 +209,11 @@ def parse_instructions():
         with open(full_input_file_path, "rb") as file:
             file_contents: bytes = file.read()
         one_byte_at_a_time = iter(file_contents)
-
-        disasembled_insts = []
-        while (byte1 := safe_next(one_byte_at_a_time)) is not StopIteration:
-            assert isinstance(byte1, int)
-            parsable_instruction_template = None
-            for parsable_instruction in parsable_instructions:
-                identifier_literal = parsable_instruction.instructions[0]
-                assert isinstance(identifier_literal, int)
-
-                properly_shifted_literal = identifier_literal << (
-                    8 - int.bit_length(identifier_literal)
-                )
-                if (byte1 & properly_shifted_literal) == properly_shifted_literal:
-                    parsable_instruction_template = parsable_instruction
-                    break
-            assert parsable_instruction_template is not None
-            disasembled_inst = disassemble(
-                byte1, one_byte_at_a_time, parsable_instruction_template
-            )
-            disasembled_insts.append(disasembled_inst)
-        print(f"{disasembled_insts = }")
+        file_parsed_results = parse_instructions(
+            parsable_instructions, one_byte_at_a_time
+        )
+        print(f"for file {file_name}: \n{file_parsed_results}")
 
 
 if __name__ == "__main__":
-    parse_instructions()
+    main()
