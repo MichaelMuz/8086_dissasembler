@@ -53,7 +53,7 @@ class ParsableInstruction:
 
 def get_parsable_instructions() -> list[ParsableInstruction]:
     parsable_instructions = []
-    with open("better_json.json", "r") as file:
+    with open("asm_config.json", "r") as file:
         data = json.load(file)
 
     for mnemonic_group in data["instructions"]:
