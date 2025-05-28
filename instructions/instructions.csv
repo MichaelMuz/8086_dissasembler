@@ -1,0 +1,165 @@
+# 8086 Instruction Encodings
+
+## DATA TRANSFER
+```csv
+Instruction,Operation,OpCode,ModByte,Addressing
+MOV,Register/memory to/from register,10001 0 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+MOV,Immediate to register/memory,1100011 w,mod 0 0 0 r/m,(DISP-LO) (DISP-HI),data,data if w = 1
+MOV,Immediate to register,1011 w reg,data,data if w = 1
+MOV,Memory to accumulator,1010000 w,addr-lo,addr-hi
+MOV,Accumulator to memory,1010001 w,addr-lo,addr-hi
+MOV,Register/memory to segment register,10001110,mod 0 SR r/m,(DISP-LO) (DISP-HI)
+MOV,Segment register to register/memory,10001100,mod 0 SR r/m,(DISP-LO) (DISP-HI)
+PUSH,Register/memory,11111111,mod 1 1 0 r/m,(DISP-LO) (DISP-HI)
+PUSH,Register,01010 reg
+PUSH,Segment register,000 reg 110
+POP,Register/memory,10001111,mod 0 0 0 r/m,(DISP-LO) (DISP-HI)
+POP,Register,01011 reg
+POP,Segment register,000 reg 111
+XCHG,Register/memory with register,1000011 w,mod reg r/m,(DISP-LO) (DISP-HI)
+XCHG,Register with accumulator,10010 reg
+IN,Fixed port,1110010 w,DATA-8
+IN,Variable port,1110110 w
+OUT,Fixed port,1110011 w,DATA-8
+OUT,Variable port,1110111 w
+XLAT,Translate byte to AL,11010111
+LEA,Load EA to register,10001101,mod reg r/m,(DISP-LO) (DISP-HI)
+LDS,Load pointer to DS,11000101,mod reg r/m,(DISP-LO) (DISP-HI)
+LES,Load pointer to ES,11000100,mod reg r/m,(DISP-LO) (DISP-HI)
+LAHF,Load AH with flags,10011111
+SAHF,Store AH into flags,10011110
+PUSHF,Push flags,10011100
+POPF,Pop flags,10011101
+```
+
+## ARITHMETIC
+```csv
+Instruction,Operation,OpCode,ModByte,Addressing
+ADD,Reg/memory with register to either,000000 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+ADD,Immediate to register/memory,100000 s w,mod 0 0 0 r/m,(DISP-LO) (DISP-HI),data,data if s:w=01
+ADD,Immediate to accumulator,0000010 w,data,data if w=1
+ADC,Reg/memory with register to either,000100 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+ADC,Immediate to register/memory,100000 s w,mod 0 1 0 r/m,(DISP-LO) (DISP-HI),data,data if s:w=01
+ADC,Immediate to accumulator,0001010 w,data,data if w=1
+INC,Register/memory,1111111 w,mod 0 0 0 r/m,(DISP-LO) (DISP-HI)
+INC,Register,01000 reg
+AAA,ASCII adjust for add,00110111
+DAA,Decimal adjust for add,00100111
+SUB,Reg/memory and register to either,001010 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+SUB,Immediate from register/memory,100000 s w,mod 1 0 1 r/m,(DISP-LO) (DISP-HI),data,data if s:w=01
+SUB,Immediate from accumulator,0010110 w,data,data if w=1
+SBB,Reg/memory and register to either,000110 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+SBB,Immediate from register/memory,100000 s w,mod 0 1 1 r/m,(DISP-LO) (DISP-HI),data,data if s:w=01
+SBB,Immediate from accumulator,0001110 w,data,data if w=1
+DEC,Register/memory,1111111 w,mod 0 0 1 r/m,(DISP-LO) (DISP-HI)
+DEC,Register,01001 reg
+NEG,Change sign,1111011 w,mod 0 1 1 r/m,(DISP-LO) (DISP-HI)
+CMP,Register/memory and register,001110 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+CMP,Immediate with register/memory,100000 s w,mod 1 1 1 r/m,(DISP-LO) (DISP-HI),data,data if s:w=1
+CMP,Immediate with accumulator,0011110 w,data
+AAS,ASCII adjust for subtract,00111111
+DAS,Decimal adjust for subtract,00101111
+MUL,Multiply (unsigned),1111011 w,mod 1 0 0 r/m,(DISP-LO) (DISP-HI)
+IMUL,Integer multiply (signed),1111011 w,mod 1 0 1 r/m,(DISP-LO) (DISP-HI)
+AAM,ASCII adjust for multiply,11010100,00001010
+DIV,Divide (unsigned),1111011 w,mod 1 1 0 r/m,(DISP-LO) (DISP-HI)
+IDIV,Integer divide (signed),1111011 w,mod 1 1 1 r/m,(DISP-LO) (DISP-HI)
+AAD,ASCII adjust for divide,11010101,00001010
+CBW,Convert byte to word,10011000
+CWD,Convert word to double word,10011001
+```
+
+## LOGIC
+```csv
+Instruction,Operation,OpCode,ModByte,Addressing
+NOT,Invert,1111011 w,mod 0 1 0 r/m,(DISP-LO) (DISP-HI)
+SHL/SAL,Shift logical/arithmetic left,1101000 v w,mod 1 0 0 r/m,(DISP-LO) (DISP-HI)
+SHR,Shift logical right,1101000 v w,mod 1 0 1 r/m,(DISP-LO) (DISP-HI)
+SAR,Shift arithmetic right,1101000 v w,mod 1 1 1 r/m,(DISP-LO) (DISP-HI)
+ROL,Rotate left,1101000 v w,mod 0 0 0 r/m,(DISP-LO) (DISP-HI)
+ROR,Rotate right,1101000 v w,mod 0 0 1 r/m,(DISP-LO) (DISP-HI)
+RCL,Rotate through carry flag left,1101000 v w,mod 0 1 0 r/m,(DISP-LO) (DISP-HI)
+RCR,Rotate through carry right,1101000 v w,mod 0 1 1 r/m,(DISP-LO) (DISP-HI)
+AND,Reg/memory with register to either,001000 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+AND,Immediate to register/memory,1000000 w,mod 1 0 0 r/m,(DISP-LO) (DISP-HI),data,data if w=1
+AND,Immediate to accumulator,0010010 w,data,data if w=1
+TEST,Register/memory and register,1000010 w,mod reg r/m,(DISP-LO) (DISP-HI)
+TEST,Immediate data and register/memory,1111011 w,mod 0 0 0 r/m,(DISP-LO) (DISP-HI),data,data if w=1
+TEST,Immediate data and accumulator,1010100 w,data
+OR,Reg/memory and register to either,000010 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+OR,Immediate to register/memory,1000000 w,mod 0 0 1 r/m,(DISP-LO) (DISP-HI),data,data if w=1
+OR,Immediate to accumulator,0000110 w,data,data if w=1
+XOR,Reg/memory and register to either,001100 d w,mod reg r/m,(DISP-LO) (DISP-HI)
+XOR,Immediate to register/memory,0011010 w,data,(DISP-LO) (DISP-HI),data,data if w=1
+XOR,Immediate to accumulator,0011010 w,data,data if w=1
+```
+
+## STRING MANIPULATION
+```csv
+Instruction,Operation,OpCode
+REP,Repeat,1111001 z
+MOVS,Move byte/word,1010010 w
+CMPS,Compare byte/word,1010011 w
+SCAS,Scan byte/word,1010111 w
+LODS,Load byte/wd to AL/AX,1010110 w
+STDS,Stor byte/wd from AL/A,1010101 w
+```
+
+## CONTROL TRANSFER
+```csv
+Instruction,Operation,OpCode,ModByte,Addressing
+CALL,Direct within segment,11101000,IP-INC-LO,IP-INC-HI
+CALL,Indirect within segment,11111111,mod 0 1 0 r/m,(DISP-LO) (DISP-HI)
+CALL,Direct intersegment,10011010,IP-lo,IP-hi,CS-lo,CS-hi
+CALL,Indirect intersegment,11111111,mod 0 1 1 r/m,(DISP-LO) (DISP-HI)
+JMP,Direct within segment,11101001,IP-INC-LO,IP-INC-HI
+JMP,Direct within segment-short,11101011,IP-INC8
+JMP,Indirect within segment,11111111,mod 1 0 0 r/m,(DISP-LO) (DISP-HI)
+JMP,Direct intersegment,11101010,IP-lo,IP-hi,CS-lo,CS-hi
+JMP,Indirect intersegment,11111111,mod 1 0 1 r/m,(DISP-LO) (DISP-HI)
+RET,Within segment,11000011
+RET,Within seg adding immed to SP,11000010,data-lo,data-hi
+RET,Intersegment,11001011
+RET,Intersegment adding immediate to SP,11001010,data-lo,data-hi
+JE/JZ,Jump on equal/zero,01110100,IP-INC8
+JL/JNGE,Jump on less/not greater or equal,01111100,IP-INC8
+JLE/JNG,Jump on less or equal/not greater,01111110,IP-INC8
+JB/JNAE,Jump on below/not above or equal,01110010,IP-INC8
+JBE/JNA,Jump on below or equal/not above,01110110,IP-INC8
+JP/JPE,Jump on parity/parity even,01111010,IP-INC8
+JO,Jump on overflow,01110000,IP-INC8
+JS,Jump on sign,01111000,IP-INC8
+JNE/JNZ,Jump on not equal/not zero,01110101,IP-INC8
+JNL/JGE,Jump on not less/greater or equal,01111101,IP-INC8
+JNLE/JG,Jump on not less or equal/greater,01111111,IP-INC8
+JNB/JAE,Jump on not below/above or equal,01110011,IP-INC8
+JNBE/JA,Jump on not below or equal/above,01110111,IP-INC8
+JNP/JPO,Jump on not par/par odd,01111011,IP-INC8
+JNO,Jump on not overflow,01110001,IP-INC8
+JNS,Jump on not sign,01111001,IP-INC8
+LOOP,Loop CX times,11100010,IP-INC8
+LOOPZ/LOOPE,Loop while zero/equal,11100001,IP-INC8
+LOOPNZ/LOOPNE,Loop while not zero/equal,11100000,IP-INC8
+JCXZ,Jump on CX zero,11100011,IP-INC8
+INT,Type specified,11001101,DATA-8
+INT,Type 3,11001100
+INTO,Interrupt on overflow,11001110
+IRET,Interrupt return,11001111
+```
+
+## PROCESSOR CONTROL
+```csv
+Instruction,Operation,OpCode,ModByte,Addressing
+CLC,Clear carry,11111000
+CMC,Complement carry,11110101
+STC,Set carry,11111001
+CLD,Clear direction,11111100
+STD,Set direction,11111101
+CLI,Clear interrupt,11111010
+STI,Set interrupt,11111011
+HLT,Halt,11110100
+WAIT,Wait,10011011
+ESC,Escape (to external device),1101 1 x x x,mod y y y r/m,(DISP-LO) (DISP-HI)
+LOCK,Bus lock prefix,11110000
+SEGMENT,Override prefix,001 reg 110
+```
