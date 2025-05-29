@@ -232,39 +232,60 @@ RM_TO_EFFECTIVE_ADDR_CALC = [
 ]
 
 
-def get_disassembled_string(parsed_instruction: dict) -> str:
-    mnemonic = parsed_instruction["mnemonic"]
-    source = None
-    dest = None
-    match mnemonic:
-        case "mov":
-            reg_val = parsed_instruction["reg"]
-            w_val = parsed_instruction["w"]
-            source = get_reg(reg_val, w_val)
-            mod_val = parsed_instruction.get("mod")
-            rm_val = parsed_instruction.get("rm")
-            mode = get_mode(mod_val, rm_val)
-            if mode == Mode.REGISTER_MODE:
-                assert rm_val is not None
-                dest = get_reg(rm_val, w_val)
-            else:
-                assert rm_val is not None
-                equation = list(*RM_TO_EFFECTIVE_ADDR_CALC[rm_val])
-                displacement = 0
-                if (
-                    mode == Mode.BYTE_DISPLACEMENT_MODE
-                    or mode == Mode.WORD_DISPLACEMENT_MODE
-                ):
-                    displacement += parsed_instruction["disp-lo"]
-                if mode == Mode.WORD_DISPLACEMENT_MODE:
-                    displacement += parsed_instruction["disp-hi"] << 8
+# def combine_bytes(
+#     parsed_instruction: dict[str, int], low: str, high: str
+# ) -> int | None:
+#     if low not in parsed_instruction:
+#         return None
 
-                if displacement > 0:
-                    equation.append(displacement)
-                str_equation = " + ".join(equation)
-                dest = f"{str_equation}"
-        case x:
-            raise ValueError(f"Unexpected mnemonic {x}")
+#     total = parsed_instruction[low]
+#     high_val = parsed_instruction.get(high, 0)
+#     if high != 0:
+#         total += high_val << 8
+#     return total
+
+
+def combine_bytes(low: int, high: int) -> int | None:
+    if high != 0:
+        return (high << 8) + low
+    return low
+
+
+def get_disassembled_string(parsed_instruction: dict) -> str:
+    # when we are here we assume we only have keys that correspond to values that are relevent
+    # for example we shouldn't have disp-hi if we didn't need it for this instruction
+    mnemonic = parsed_instruction["mnemonic"]
+    w_val = parsed_instruction["w"]
+
+    mod_val = parsed_instruction["mod"]
+    rm_val = parsed_instruction["rm"]
+
+    mode = get_mode(mod_val, rm_val)
+
+    dest = None
+    source = None
+
+    if "reg" in parsed_instruction:
+        source = get_reg(parsed_instruction["reg"], w_val)
+    else:
+        immediate_data = combine_bytes(  # the immediate in the data is source
+            parsed_instruction["data-lo"], parsed_instruction.get("data-hi", 0)
+        )
+        source = immediate_data
+
+    match mode:
+        case Mode.REGISTER_MODE:
+            dest = get_reg(rm_val, w_val)
+        case _:
+            assert rm_val is not None
+            equation = list(*RM_TO_EFFECTIVE_ADDR_CALC[rm_val])
+            disp = combine_bytes(
+                parsed_instruction["disp-lo"], parsed_instruction.get("disp-hi", 0)
+            )
+            if disp > 0:
+                equation.append(disp)
+            str_equation = " + ".join(equation)
+            dest = f"{str_equation}"
 
     assert source is not None
     assert dest is not None
@@ -282,7 +303,8 @@ def main():
     parsable_instructions = get_parsable_instructions(json_data_from_file)
 
     input_directory = "./asm/assembled/"
-    files_to_do = ["single_register_mov"]
+    # files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
+    files_to_do = ["listing_0039_more_movs"]
     for file_name in files_to_do:
         full_input_file_path = os.path.join(input_directory, file_name)
         with open(full_input_file_path, "rb") as file:
@@ -294,7 +316,7 @@ def main():
             parsable_instructions, one_byte_at_a_time
         )
         # get the string representation of each instruction
-        disassembly = list(map(get_disassembled_string, parsed_instructions))
+        disassembly = "\n".join(map(get_disassembled_string, parsed_instructions))
         print(disassembly)
 
 
