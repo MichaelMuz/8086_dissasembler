@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import enum
 import functools
 import json
 import os
@@ -75,6 +76,28 @@ def get_from_so_far_dict_and_implied(
     return val
 
 
+class Mode(enum.Enum):
+    NO_DISPLACEMENT_MODE = enum.auto()
+    BYTE_DISPLACEMENT_MODE = enum.auto()
+    WORD_DISPLACEMENT_MODE = enum.auto()
+    REGISTER_MODE = enum.auto()
+
+
+def get_mode(mod_val, rm_val):
+    all_modes = [
+        Mode.NO_DISPLACEMENT_MODE,
+        Mode.BYTE_DISPLACEMENT_MODE,
+        Mode.WORD_DISPLACEMENT_MODE,
+        Mode.REGISTER_MODE,
+    ]
+
+    mode = all_modes[mod_val]
+    if mode is Mode.NO_DISPLACEMENT_MODE and rm_val.value == 0b110:
+        mode = Mode.WORD_DISPLACEMENT_MODE
+
+    return mode
+
+
 def is_instruction_needed(
     parsable_instruction: ParsableInstruction,
     instruction_part: str,
@@ -94,21 +117,12 @@ def is_instruction_needed(
         return bool(this_check_val("w"))
     elif instruction_part.startswith("disp"):
         mod_val = this_check_val("mod")
-        if mod_val == 0:
-            return False
-        elif mod_val == 1:
-            return True
-        elif mod_val == 0b10:
-            return instruction_part.endswith("-hi")
-        elif mod_val == 0b11:
-            return (
-                get_from_so_far_dict_and_implied(
-                    "rm", instruction_dict_so_far, parsable_instruction
-                )
-                == 0b110
-            )
-        else:
-            raise ValueError(f"mod has an unexpected value of {mod_val}")
+        rm_val = this_check_val("rm")
+        mode = get_mode(mod_val, rm_val)
+        answer = mode == Mode.BYTE_DISPLACEMENT_MODE
+        if instruction_part.endswith("-hi"):
+            answer = answer or mode == Mode.WORD_DISPLACEMENT_MODE
+        return answer
     else:
         raise ValueError(f"don't know how to check if {instruction_part} is needed")
 
@@ -150,7 +164,16 @@ def disassemble(
         bits_left -= inst_part_size
 
     print(f"returning from disasemble")
-    return instruction_part_to_value
+    assert (
+        len(
+            set(instruction_part_to_value).intersection(
+                parsable_instruction.implied_values
+            )
+        )
+        == 0
+    ), f"{instruction_part_to_value = } {parsable_instruction.implied_values = }"
+
+    return {**instruction_part_to_value, **parsable_instruction.implied_values}
 
 
 def parse_instructions(
@@ -179,11 +202,83 @@ def parse_instructions(
     return disasembled_insts
 
 
-def main():
-    # get instructions that we know are possible
+REG_NAME_LOWER_AND_WORD = [
+    # [lower_register_name, word_full_register_name]
+    ["al", "ax"],
+    ["cl", "cx"],
+    ["dl", "dx"],
+    ["bl", "bx"],
+    ["ah", "sp"],
+    ["ch", "bp"],
+    ["dh", "si"],
+    ["bh", "di"],
+]
 
+
+def get_reg(reg_val: int, w: bool):
+    return REG_NAME_LOWER_AND_WORD[reg_val][w]
+
+
+RM_TO_EFFECTIVE_ADDR_CALC = [
+    # if there are two things in the list, the equation these bits code for are those added
+    ["bx", "si"],
+    ["bx", "di"],
+    ["bp", "si"],
+    ["bp", "di"],
+    ["si"],
+    ["di"],
+    ["bp"],
+    ["bx"],
+]
+
+
+def get_disassembled_string(parsed_instruction: dict) -> str:
+    mnemonic = parsed_instruction["mnemonic"]
+    source = None
+    dest = None
+    match mnemonic:
+        case "mov":
+            reg_val = parsed_instruction["reg"]
+            w_val = parsed_instruction["w"]
+            source = get_reg(reg_val, w_val)
+            mod_val = parsed_instruction.get("mod")
+            rm_val = parsed_instruction.get("rm")
+            mode = get_mode(mod_val, rm_val)
+            if mode == Mode.REGISTER_MODE:
+                assert rm_val is not None
+                dest = get_reg(rm_val, w_val)
+            else:
+                assert rm_val is not None
+                equation = list(*RM_TO_EFFECTIVE_ADDR_CALC[rm_val])
+                displacement = 0
+                if (
+                    mode == Mode.BYTE_DISPLACEMENT_MODE
+                    or mode == Mode.WORD_DISPLACEMENT_MODE
+                ):
+                    displacement += parsed_instruction["disp-lo"]
+                if mode == Mode.WORD_DISPLACEMENT_MODE:
+                    displacement += parsed_instruction["disp-hi"] << 8
+
+                if displacement > 0:
+                    equation.append(displacement)
+                str_equation = " + ".join(equation)
+                dest = f"{str_equation}"
+        case x:
+            raise ValueError(f"Unexpected mnemonic {x}")
+
+    assert source is not None
+    assert dest is not None
+
+    if parsed_instruction["d"]:
+        source, dest = dest, source
+
+    return f"{mnemonic} {dest}, {source}"
+
+
+def main():
     with open("asm_config.json", "r") as file:
         json_data_from_file = json.load(file)
+    # get list of possible instructions and how to parse them
     parsable_instructions = get_parsable_instructions(json_data_from_file)
 
     input_directory = "./asm/assembled/"
@@ -193,10 +288,14 @@ def main():
         with open(full_input_file_path, "rb") as file:
             file_contents: bytes = file.read()
         one_byte_at_a_time = iter(file_contents)
-        file_parsed_results = parse_instructions(
+
+        # get the value for each field as per the possible instructions
+        parsed_instructions = parse_instructions(
             parsable_instructions, one_byte_at_a_time
         )
-        print(f"for file {file_name}: \n{file_parsed_results}")
+        # get the string representation of each instruction
+        disassembly = list(map(get_disassembled_string, parsed_instructions))
+        print(disassembly)
 
 
 if __name__ == "__main__":
