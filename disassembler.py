@@ -318,12 +318,33 @@ def get_disassembled_string(parsed_instruction: dict) -> str:
     return f"{mnemonic} {dest}, {source}"
 
 
-def main():
-    with open("asm_config.json", "r") as file:
-        json_data_from_file = json.load(file)
-    # get list of possible instructions and how to parse them
-    parsable_instructions = get_parsable_instructions(json_data_from_file)
+PARSABLE_INSTRUCTION_FILE = "asm_config.json"
 
+
+def get_parsable_instructions_from_file():
+    with open(PARSABLE_INSTRUCTION_FILE, "r") as file:
+        json_data_from_file = json.load(file)
+    parsable_instructions = get_parsable_instructions(json_data_from_file)
+    return parsable_instructions
+
+
+def disassemble_binary_to_string(
+    parsable_instructions: list[ParsableInstruction], file_contents: bytes
+) -> str:
+    one_byte_at_a_time = iter(file_contents)
+
+    # get the value for each field as per the possible instructions
+    parsed_instructions = parse_instructions(parsable_instructions, one_byte_at_a_time)
+    # get the string representation of each instruction
+    disassembly = "\n".join(
+        ["bits 16", *map(get_disassembled_string, parsed_instructions)]
+    )
+    return disassembly
+
+
+def main():
+    # get list of possible instructions and how to parse them
+    parsable_instructions = get_parsable_instructions_from_file()
     input_directory = "./asm/assembled/"
     # files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
     files_to_do = ["listing_0039_more_movs"]
@@ -331,15 +352,9 @@ def main():
         full_input_file_path = os.path.join(input_directory, file_name)
         with open(full_input_file_path, "rb") as file:
             file_contents: bytes = file.read()
-        one_byte_at_a_time = iter(file_contents)
-
-        # get the value for each field as per the possible instructions
-        parsed_instructions = parse_instructions(
-            parsable_instructions, one_byte_at_a_time
+        disassembled = disassemble_binary_to_string(
+            parsable_instructions, file_contents
         )
-        # get the string representation of each instruction
-        disassembly = "\n".join(map(get_disassembled_string, parsed_instructions))
-        print(disassembly)
 
 
 if __name__ == "__main__":
