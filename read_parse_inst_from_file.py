@@ -30,8 +30,22 @@ field_type_bit_len: dict[str | int, int] = {
 
 
 @dataclass
+class InstructionLiteral:
+    literal: int
+    size: int
+
+    def is_match(self, other_int: int):
+        assert int.bit_length(other_int) <= 8
+        other_int_down_shifted = other_int >> (8 - self.size)
+        if (self.literal & other_int_down_shifted) == self.literal:
+            return True
+        return False
+
+
+@dataclass
 class ParsableInstruction:
     mnemonic: str
+    identifier_literal: InstructionLiteral
     instructions: list[str | int]
     implied_values: dict[str, str | int]
 
@@ -54,15 +68,25 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[ParsableInstruc
                             assert mat.end() > 0
                             assert mat.end() < 9
                             current_start_bit += mat.end()
-                            instruction_parts.append(int(x, 2))
+                            instruction_parts.append(
+                                InstructionLiteral(int(x, 2), mat.end())
+                            )
                         case x:
                             current_start_bit += field_type_bit_len[x]
                             instruction_parts.append(x)
 
                 assert current_start_bit == 8
-            assert isinstance(instruction_parts[0], int)
+            identifier_literal, rest_of_instruction = (
+                instruction_parts[0],
+                instruction_parts[1:],
+            )
             parsable_instructions.append(
-                ParsableInstruction(mnemonic, instruction_parts, implied_values)
+                ParsableInstruction(
+                    mnemonic,
+                    identifier_literal,
+                    rest_of_instruction,
+                    implied_values,
+                )
             )
     return parsable_instructions
 
@@ -83,7 +107,7 @@ class Mode(enum.Enum):
     REGISTER_MODE = enum.auto()
 
 
-def get_mode(mod_val, rm_val):
+def get_mode(mod_val: int, rm_val: int):
     all_modes = [
         Mode.NO_DISPLACEMENT_MODE,
         Mode.BYTE_DISPLACEMENT_MODE,
@@ -92,7 +116,7 @@ def get_mode(mod_val, rm_val):
     ]
 
     mode = all_modes[mod_val]
-    if mode is Mode.NO_DISPLACEMENT_MODE and rm_val.value == 0b110:
+    if mode is Mode.NO_DISPLACEMENT_MODE and rm_val == 0b110:
         mode = Mode.WORD_DISPLACEMENT_MODE
 
     return mode
@@ -110,7 +134,7 @@ def is_instruction_needed(
     )
     if (
         instruction_part not in parsable_instruction.implied_values
-        and instruction_part in {"d", "w", "mod", "reg", "rm"}
+        and instruction_part in {"d", "w", "mod", "reg", "rm", "data"}
     ):
         return True
     elif instruction_part == "data-if-w=1":
@@ -135,9 +159,7 @@ def disassemble(
     current_byte = first_byte
     inst_parts_iter = iter(parsable_instruction.instructions)
 
-    instruction_literal = next(inst_parts_iter)
-    assert isinstance(instruction_literal, int)
-    bits_left = 8 - int.bit_length(instruction_literal)
+    bits_left = 8 - parsable_instruction.identifier_literal.size
 
     instruction_part_to_value: dict = {"mnemonic": parsable_instruction.mnemonic}
     for instruction_part in inst_parts_iter:
@@ -184,16 +206,16 @@ def parse_instructions(
         assert isinstance(byte1, int)
         parsable_instruction_template = None
         for parsable_instruction in parsable_instructions:
-            identifier_literal = parsable_instruction.instructions[0]
-            assert isinstance(identifier_literal, int)
-
-            properly_shifted_literal = identifier_literal << (
-                8 - int.bit_length(identifier_literal)
-            )
-            if (byte1 & properly_shifted_literal) == properly_shifted_literal:
+            if parsable_instruction.identifier_literal.is_match(byte1):
                 parsable_instruction_template = parsable_instruction
                 break
-        assert parsable_instruction_template is not None
+        all_inst = [
+            f"{ins.identifier_literal.literal:0b}" for ins in parsable_instructions
+        ]
+        assert (
+            parsable_instruction_template is not None
+        ), f"didn't catch what {parsable_instruction.identifier_literal.literal:0b} is {all_inst = }"
+        print(f"it is {parsable_instruction.identifier_literal.literal:0b}")
         disasembled_inst = disassemble(
             byte1, one_byte_at_a_time, parsable_instruction_template
         )
