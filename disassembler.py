@@ -145,10 +145,17 @@ def is_instruction_needed(
         mod_val = this_check_val("mod")
         rm_val = this_check_val("rm")
         mode = get_mode(mod_val, rm_val)
-        answer = mode == Mode.BYTE_DISPLACEMENT_MODE
-        if instruction_part.endswith("-hi"):
-            answer = answer or mode == Mode.WORD_DISPLACEMENT_MODE
-        return answer
+        print(f"displacement mode: {mode}")
+        is_lo = instruction_part.endswith("-lo")
+        is_hi = instruction_part.endswith("-hi")
+        assert (
+            is_lo or is_hi
+        ), f"cannot have disp that isn't -hi or -lo: {instruction_part}"
+
+        needed = (mode == Mode.WORD_DISPLACEMENT_MODE) or (
+            mode == Mode.BYTE_DISPLACEMENT_MODE and is_lo
+        )
+        return needed
     else:
         raise ValueError(f"don't know how to check if {instruction_part} is needed")
 
@@ -313,14 +320,16 @@ def get_disassembled_string(parsed_instruction: dict) -> str:
     if mode is Mode.REGISTER_MODE:
         dest = get_reg(dest_val, word_val)
     else:
-        equation = list(*RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
-        disp = combine_bytes(
-            parsed_instruction["disp-lo"], parsed_instruction.get("disp-hi", 0)
-        )
-        if disp is not None and disp > 0:
-            equation.append(disp)
+        equation = list(RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
+
+        if "disp-lo" in parsed_instruction:
+            disp = combine_bytes(
+                parsed_instruction["disp-lo"], parsed_instruction.get("disp-hi", 0)
+            )
+            if disp != 0:
+                equation.append(str(disp))
         str_equation = " + ".join(equation)
-        dest = f"{str_equation}"
+        dest = f"[{str_equation}]"
 
     assert source is not None
     assert dest is not None
