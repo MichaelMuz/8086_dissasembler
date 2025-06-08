@@ -4,7 +4,8 @@
             "mnemonic": "mov",
             "variations": [
                 {
-                    "description": "Register/Memory To/From Register""format": "100010 d w, mod reg rm, disp-lo, disp-hi",
+                    "description": "Register/Memory To/From Register",
+                    "format": "100010 d w, mod reg rm, disp-lo, disp-hi",
                     "implied_values": {}
                 },
                 {
@@ -17,7 +18,10 @@
                 {
                     "description": "Immediate to Register",
                     "format": "1011 w reg, data, data-if-w=1",
-                    "implied_values": {}
+                    "implied_values": {
+                        "d": 0,
+                        "mod": 3
+                    }
                 },
                 {
                     "description": "Memory to Accumulator",

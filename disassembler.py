@@ -35,9 +35,11 @@ class InstructionLiteral:
     size: int
 
     def is_match(self, other_int: int):
+        print(f"other int: {other_int:08b}")
         assert int.bit_length(other_int) <= 8
         other_int_down_shifted = other_int >> (8 - self.size)
-        if (self.literal & other_int_down_shifted) == self.literal:
+        print(f"comparing me: {self.literal:08b}, to: {other_int_down_shifted:08b}")
+        if other_int_down_shifted == self.literal:
             return True
         return False
 
@@ -95,7 +97,7 @@ def get_from_so_far_dict_and_implied(
     key: str, so_far_dict: dict[str, int], parsable_instruction: ParsableInstruction
 ):
     val = parsable_instruction.implied_values.get(key, None) or so_far_dict.get(
-        "mod", None
+        key, None
     )
     return val
 
@@ -107,7 +109,7 @@ class Mode(enum.Enum):
     REGISTER_MODE = enum.auto()
 
 
-def get_mode(mod_val: int, rm_val: int):
+def get_mode(mod_val: int, rm_val: int | None):
     all_modes = [
         Mode.NO_DISPLACEMENT_MODE,
         Mode.BYTE_DISPLACEMENT_MODE,
@@ -164,11 +166,13 @@ def disassemble(
     instruction_part_to_value: dict = {"mnemonic": parsable_instruction.mnemonic}
     for instruction_part in inst_parts_iter:
         print(f"{instruction_part = }")
+        print(f"{instruction_part_to_value = }")
 
         assert isinstance(instruction_part, str)
         if not is_instruction_needed(
             parsable_instruction, instruction_part, instruction_part_to_value
         ):
+            print("not needed")
             continue
 
         if bits_left == 0:
@@ -203,6 +207,7 @@ def parse_instructions(
 ) -> list[dict[str, int | str]]:
     disasembled_insts = []
     while (byte1 := safe_next(one_byte_at_a_time)) is not StopIteration:
+        print(f"byte1: {byte1:08b}")
         assert isinstance(byte1, int)
         parsable_instruction_template = None
         for parsable_instruction in parsable_instructions:
@@ -215,7 +220,9 @@ def parse_instructions(
         assert (
             parsable_instruction_template is not None
         ), f"didn't catch what {parsable_instruction.identifier_literal.literal:0b} is {all_inst = }"
-        print(f"it is {parsable_instruction.identifier_literal.literal:0b}")
+        print(
+            f"it is {parsable_instruction.identifier_literal.literal:0b} for {byte1:0b}"
+        )
         disasembled_inst = disassemble(
             byte1, one_byte_at_a_time, parsable_instruction_template
         )
@@ -276,43 +283,49 @@ def combine_bytes(low: int, high: int) -> int | None:
 def get_disassembled_string(parsed_instruction: dict) -> str:
     # when we are here we assume we only have keys that correspond to values that are relevent
     # for example we shouldn't have disp-hi if we didn't need it for this instruction
+
+    # everything has these
     mnemonic = parsed_instruction["mnemonic"]
-    w_val = parsed_instruction["w"]
-
+    word_val = parsed_instruction["w"]
+    direction = parsed_instruction["d"]
     mod_val = parsed_instruction["mod"]
-    rm_val = parsed_instruction["rm"]
 
-    mode = get_mode(mod_val, rm_val)
+    mode = get_mode(mod_val, parsed_instruction.get("rm"))
 
-    dest = None
     source = None
+    dest_val = None
+    if "data" in parsed_instruction:
+        # can't have data, reg, and rm in one instruction
+        has_reg = "reg" in parsed_instruction
+        has_rm = "rm" in parsed_instruction
+        assert not (has_reg and has_rm)
+        assert has_reg or has_rm
 
-    if "reg" in parsed_instruction:
-        source = get_reg(parsed_instruction["reg"], w_val)
-    else:
-        immediate_data = combine_bytes(  # the immediate in the data is source
-            parsed_instruction["data-lo"], parsed_instruction.get("data-hi", 0)
+        dest_val = parsed_instruction.get("reg", parsed_instruction.get("rm"))
+        assert dest_val is not None
+        source = combine_bytes(  # the immediate in the data is source
+            parsed_instruction["data"], parsed_instruction.get("data-if-w=1", 0)
         )
-        source = immediate_data
+    else:
+        dest_val = parsed_instruction["rm"]
+        source = get_reg(parsed_instruction["reg"], word_val)
 
-    match mode:
-        case Mode.REGISTER_MODE:
-            dest = get_reg(rm_val, w_val)
-        case _:
-            assert rm_val is not None
-            equation = list(*RM_TO_EFFECTIVE_ADDR_CALC[rm_val])
-            disp = combine_bytes(
-                parsed_instruction["disp-lo"], parsed_instruction.get("disp-hi", 0)
-            )
-            if disp > 0:
-                equation.append(disp)
-            str_equation = " + ".join(equation)
-            dest = f"{str_equation}"
+    if mode is Mode.REGISTER_MODE:
+        dest = get_reg(dest_val, word_val)
+    else:
+        equation = list(*RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
+        disp = combine_bytes(
+            parsed_instruction["disp-lo"], parsed_instruction.get("disp-hi", 0)
+        )
+        if disp is not None and disp > 0:
+            equation.append(disp)
+        str_equation = " + ".join(equation)
+        dest = f"{str_equation}"
 
     assert source is not None
     assert dest is not None
 
-    if parsed_instruction["d"]:
+    if direction:
         source, dest = dest, source
 
     return f"{mnemonic} {dest}, {source}"
