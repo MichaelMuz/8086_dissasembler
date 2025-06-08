@@ -7,13 +7,6 @@ import re
 from typing import Iterator
 
 
-def safe_next(it):
-    try:
-        return next(it)
-    except StopIteration:
-        return StopIteration
-
-
 field_type_bit_len: dict[str | int, int] = {
     "d": 1,
     "w": 1,
@@ -213,7 +206,7 @@ def parse_instructions(
     parsable_instructions: list[ParsableInstruction], one_byte_at_a_time: Iterator[int]
 ) -> list[dict[str, int | str]]:
     disasembled_insts = []
-    while (byte1 := safe_next(one_byte_at_a_time)) is not StopIteration:
+    while (byte1 := next(one_byte_at_a_time, None)) is not None:
         print(f"byte1: {byte1:08b}")
         assert isinstance(byte1, int)
         parsable_instruction_template = None
@@ -368,6 +361,7 @@ def main():
     # get list of possible instructions and how to parse them
     parsable_instructions = get_parsable_instructions_from_file()
     input_directory = "./asm/assembled/"
+    output_directory = "./asm/disassembled/"
     # files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
     files_to_do = ["listing_0039_more_movs"]
     for file_name in files_to_do:
@@ -377,6 +371,9 @@ def main():
         disassembled = disassemble_binary_to_string(
             parsable_instructions, file_contents
         )
+        full_output_file_path = os.path.join(output_directory, file_name)
+        with open(full_output_file_path, "w") as f:
+            f.write(disassembled)
 
 
 if __name__ == "__main__":
