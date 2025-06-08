@@ -1,0 +1,39 @@
+{
+    "instructions": [
+        {
+            "mnemonic": "mov",
+            "variations": [
+                {
+                    "description": "Register/Memory To/From Register",
+                    "format": "100010 d w, mod reg rm, disp-lo, disp-hi",
+                    "implied_values": {}
+                },
+                {
+                    "description": "Immediate to Register/Memory",
+                    "format": "1100011 w, mod 000 rm, data, data-if-w=1",
+                    "implied_values": {
+                        "d": 1
+                    }
+                },
+                {
+                    "description": "Immediate to Register",
+                    "format": "1011 w reg, data, data-if-w=1",
+                    "implied_values": {
+                        "d": 0,
+                        "mod": 3
+                    }
+                },
+                {
+                    "description": "Memory to Accumulator",
+                    "format": "1010000 w, addr-lo, addr-hi",
+                    "implied_values": {}
+                },
+                {
+                    "description": "Accumulator to Memory",
+                    "format": "1010001 w, addr-lo, addr-hi",
+                    "implied_values": {}
+                }
+            ]
+        }
+    ]
+}
