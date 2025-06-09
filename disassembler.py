@@ -361,7 +361,7 @@ def main():
     # get list of possible instructions and how to parse them
     parsable_instructions = get_parsable_instructions_from_file()
     input_directory = "./asm/assembled/"
-    output_directory = "./asm/disassembled/"
+    output_directory = "./asm/my_disassembler_output/"
     files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
     for file_name in files_to_do:
         full_input_file_path = os.path.join(input_directory, file_name)
