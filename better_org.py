@@ -253,3 +253,16 @@ def disassemble(
         disassembled_instructions.append(disassembled_instruction)
 
     return disassembled_instructions
+
+
+def disassemble_binary_to_string(
+    possible_instructions: list[InstructionSchema], bytes_iter: bytes | Iterator[int]
+):
+    if isinstance(bytes_iter, bytes):
+        bytes_iter = iter(bytes_iter)
+
+    disassembled = disassemble(possible_instructions, bytes_iter)
+
+    disassembly_as_str = "\n".join(["bits 16", *map(str, disassembled)])
+
+    return disassembly_as_str
