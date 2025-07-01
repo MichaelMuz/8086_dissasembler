@@ -18,8 +18,12 @@ class LiteralField(SchemaField):
         super().__init__(bit_width=bit_width)
 
     def is_match(self, other_int: int):
+        print(f"other int: {other_int:08b}")
         assert int.bit_length(other_int) <= 8
         other_int_down_shifted = other_int >> (8 - self.bit_width)
+        print(
+            f"comparing me: {self.literal_value:08b}, to: {other_int_down_shifted:08b}"
+        )
         return other_int_down_shifted == self.literal_value
 
 
@@ -77,6 +81,7 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
                     else:
                         this_field = NamedField(this_inst_piece)
                     schema_fields.append(this_field)
+                    current_start_bit += this_field.bit_width
                 assert current_start_bit == 8
 
             identifier_literal, schema_fields = schema_fields[0], schema_fields[1:]
@@ -85,7 +90,7 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
             ), "First parsed field always expected to be literal"
 
             implied_values = []
-            for field_type, value in variation["implied_values"]:
+            for field_type, value in variation["implied_values"].items():
                 field = NamedField(field_type)
                 implied_values.append(ParsedNamedField(field, value))
 
@@ -103,6 +108,7 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
 class DisassembledInstruction:
     instruction_schema: InstructionSchema
     parsed_fields: list[ParsedNamedField]
+    string_rep: str
 
 
 class Mode(enum.Enum):
@@ -127,7 +133,35 @@ def get_mode(mod_val: int, rm_val: int | None):
     return mode
 
 
+def combine_bytes(low: ParsedNamedField, high: ParsedNamedField | None) -> int | None:
+    if high is not None:
+        return (high.parsed_value << 8) + low.parsed_value
+    return low.parsed_value
+
+
 class DisassembledInstructionBuilder:
+    REG_NAME_LOWER_AND_WORD = [
+        # [lower_register_name, word_full_register_name]
+        ["al", "ax"],
+        ["cl", "cx"],
+        ["dl", "dx"],
+        ["bl", "bx"],
+        ["ah", "sp"],
+        ["ch", "bp"],
+        ["dh", "si"],
+        ["bh", "di"],
+    ]
+    RM_TO_EFFECTIVE_ADDR_CALC = [
+        # if there are two things in the list, the equation these bits code for are those added
+        ["bx", "si"],
+        ["bx", "di"],
+        ["bp", "si"],
+        ["bp", "di"],
+        ["si"],
+        ["di"],
+        ["bp"],
+        ["bx"],
+    ]
     ALWAYS_NEEDED_FIELDS = {"d", "w", "mod", "reg", "rm", "data"}
 
     def __init__(self, instruction_schema: InstructionSchema):
@@ -158,9 +192,54 @@ class DisassembledInstructionBuilder:
         return self
 
     def build(self) -> DisassembledInstruction:
+        self.ensure_mode()
+        word_val = self.parsed_fields["w"].parsed_value
+        direction = self.parsed_fields["d"]
+
+        source = None
+        dest_val = None
+        if "data" in self.parsed_fields:
+            # can't have data, reg, and rm in one instruction
+            has_reg = "reg" in self.parsed_fields
+            has_rm = "rm" in self.parsed_fields
+            assert not (has_reg and has_rm)
+            assert has_reg or has_rm
+
+            dest_val = self.parsed_fields.get("reg", self.parsed_fields.get("rm"))
+            assert dest_val is not None
+            source = combine_bytes(  # the immediate in the data is source
+                self.parsed_fields["data"], self.parsed_fields.get("data-if-w=1")
+            )
+        else:
+            dest_val = self.parsed_fields["rm"]
+            source = self.REG_NAME_LOWER_AND_WORD[
+                self.parsed_fields["reg"].parsed_value
+            ][word_val]
+
+        if self.mode is Mode.REGISTER_MODE:
+            dest = self.REG_NAME_LOWER_AND_WORD[dest_val.parsed_value][word_val]
+        else:
+            equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val.parsed_value])
+
+            if "disp-lo" in self.parsed_fields:
+                disp = combine_bytes(
+                    self.parsed_fields["disp-lo"], self.parsed_fields.get("disp-hi")
+                )
+                if disp != 0:
+                    equation.append(str(disp))
+            str_equation = " + ".join(equation)
+            dest = f"[{str_equation}]"
+
+        assert source is not None
+        assert dest is not None
+
+        if bool(direction.parsed_value):
+            source, dest = dest, source
+
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
             parsed_fields=list(self.parsed_fields.values()),
+            string_rep=f"{self.instruction_schema.mnemonic} {dest}, {source}",
         )
 
     def ensure_mode(self):
@@ -207,13 +286,16 @@ def disassemble_instruction(
     disassembled_instruction_builder = DisassembledInstructionBuilder(
         instruction_schema
     )
-    for schema_field in instruction_schema.fields:
+    for schema_field in itertools.chain(
+        [instruction_schema.identifier_literal], instruction_schema.fields
+    ):
         # if isinstance(schema_field, LiteralField):
         #     disassembled_instruction_builder.with_literal_field(schema_field, current_byte)
         # elif isinstance(schema_field, NamedField):
         #     if not disassembled_instruction_builder.is_needed(schema_field):
         #         continue
 
+        print(f"{schema_field = }, {current_byte = }")
         if not disassembled_instruction_builder.is_needed(schema_field):
             continue
 
@@ -243,8 +325,10 @@ def disassemble(
     possible_instructions: list[InstructionSchema], byte_iter: Iterator[int]
 ) -> list[DisassembledInstruction]:
 
+    # print("disassembler seeing:\n" + " ".join([f"{by:08b}" for by in byte_iter]))
+    # print(f"will see: {next(byte_iter) = }")
     disassembled_instructions = []
-    while current_byte := next(byte_iter, None) is not None:
+    while (current_byte := next(byte_iter, None)) is not None:
 
         matching_schema = None
         for possible_instruction in possible_instructions:
@@ -263,13 +347,17 @@ def disassemble(
 
 def disassemble_binary_to_string(
     possible_instructions: list[InstructionSchema], bytes_iter: bytes | Iterator[int]
-):
+) -> str:
+    # print("disassembler seeing:\n" + " ".join([f"{by:08b}" for by in bytes_iter]))
     if isinstance(bytes_iter, bytes):
         bytes_iter = iter(bytes_iter)
 
     disassembled = disassemble(possible_instructions, bytes_iter)
 
-    disassembly_as_str = "\n".join(["bits 16", *map(str, disassembled)])
+    disassembly_as_str = "\n".join(
+        ["bits 16", *[dis.string_rep for dis in disassembled]]
+    )
+    print(f"returning {disassembly_as_str = }")
 
     return disassembly_as_str
 
