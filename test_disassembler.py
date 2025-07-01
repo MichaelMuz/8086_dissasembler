@@ -3,7 +3,7 @@ import os
 import subprocess
 from typing import override
 import unittest
-import disassembler as disasm
+import better_org as disasm
 
 TEMP_NASM_INPUT_FILE_LOCATION = "tmp/inst.asm"
 TEMP_NASM_OUTPUT_FILE_LOCATION = "tmp/bin.asm"

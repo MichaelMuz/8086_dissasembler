@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import enum
 import itertools
+import json
+import os
 import re
 from typing import Iterator, Self
 
@@ -136,6 +138,7 @@ class DisassembledInstructionBuilder:
         }
         self.implied_values = set(self.parsed_fields.keys())
         self.identifier_literal_added = False
+        self.mode = None
 
     # def with_literal_field(self, literal_field: LiteralField, current_byte: int) -> Self:
     #     assert literal_field.is_match(current_byte)
@@ -160,6 +163,13 @@ class DisassembledInstructionBuilder:
             parsed_fields=list(self.parsed_fields.values()),
         )
 
+    def ensure_mode(self):
+        mod_value = self.parsed_fields["mod"].parsed_value
+        rm_value = None
+        if "rm" in self.parsed_fields:
+            rm_value = self.parsed_fields["rm"].parsed_value
+        self.mode = get_mode(mod_value, rm_value)
+
     def is_needed(self, schema_field: SchemaField) -> bool:
         if isinstance(schema_field, LiteralField):
             return True
@@ -174,11 +184,7 @@ class DisassembledInstructionBuilder:
         elif schema_field.name == "data-if-w=1":
             return bool(self.parsed_fields["w"].parsed_value)
         elif schema_field.name.startswith("disp"):
-            mod_value = self.parsed_fields["mod"].parsed_value
-            rm_value = None
-            if "rm" in self.parsed_fields:
-                rm_value = self.parsed_fields["rm"].parsed_value
-            mode = get_mode(mod_value, rm_value)
+            self.ensure_mode()
 
             is_lo = schema_field.name.endswith("-lo")
             is_hi = schema_field.name.endswith("-hi")
@@ -186,8 +192,8 @@ class DisassembledInstructionBuilder:
                 is_lo or is_hi
             ), f"cannot have disp that isn't -hi or -lo: {schema_field.name}"
 
-            return (mode == Mode.WORD_DISPLACEMENT_MODE) or (
-                mode == Mode.BYTE_DISPLACEMENT_MODE and is_lo
+            return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
+                self.mode == Mode.BYTE_DISPLACEMENT_MODE and is_lo
             )
         else:
             raise ValueError(f"don't know how to check if {schema_field} is needed")
@@ -266,3 +272,32 @@ def disassemble_binary_to_string(
     disassembly_as_str = "\n".join(["bits 16", *map(str, disassembled)])
 
     return disassembly_as_str
+
+
+def get_parsable_instructions_from_file():
+    parsable_instruction_file = "asm_config.json"
+    with open(parsable_instruction_file, "r") as file:
+        json_data_from_file = json.load(file)
+    return get_parsable_instructions(json_data_from_file)
+
+
+def main():
+    # get list of possible instructions and how to parse them
+    parsable_instructions = get_parsable_instructions_from_file()
+    input_directory = "./asm/assembled/"
+    output_directory = "./asm/my_disassembler_output/"
+    files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
+    for file_name in files_to_do:
+        full_input_file_path = os.path.join(input_directory, file_name)
+        with open(full_input_file_path, "rb") as file:
+            file_contents: bytes = file.read()
+        disassembled = disassemble_binary_to_string(
+            parsable_instructions, file_contents
+        )
+        full_output_file_path = os.path.join(output_directory, file_name + ".asm")
+        with open(full_output_file_path, "w") as f:
+            f.write(disassembled)
+
+
+if __name__ == "__main__":
+    main()
