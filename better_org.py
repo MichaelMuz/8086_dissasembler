@@ -4,6 +4,7 @@ import itertools
 import json
 import os
 import re
+from shutil import ExecError
 from typing import Iterator, TypeAlias
 
 
@@ -267,10 +268,54 @@ class DisassembledInstructionBuilder:
         )
 
 
+class BitIterator:
+    BITS_PER_BYTE = 8
+
+    def __init__(self, b: bytes):
+        self.inst_bytes = b
+        self.iterator = iter(b)
+        self.curr_byte = None
+        self.byte_ind = -1
+        self.bit_ind = self.BITS_PER_BYTE
+
+    def _grab_byte(self):
+        self.curr_byte = next(self.iterator)
+        self.byte_ind += 1
+        self.bit_ind = 0
+
+    def next_bits(self, num_bits: int):
+        if num_bits > self.BITS_PER_BYTE:
+            raise ValueError("Our ISA does not have fields larger than a byte")
+        assert num_bits > 0
+
+        if self.bit_ind == self.BITS_PER_BYTE:
+            self._grab_byte
+        assert self.curr_byte is not None, "invariant"
+
+        bits_left = self.BITS_PER_BYTE - self.bit_ind
+        if num_bits > bits_left:
+            raise ValueError(
+                "Our ISA does not have fields that straddle byte boundaries"
+            )
+
+        mask = ((1 << num_bits) - 1) << self.bit_ind
+        field_value = (self.curr_byte & mask) >> self.bit_ind
+
+        self.bit_ind += num_bits
+        return field_value
+
+    def peek_whole_byte(self):
+        if self.bit_ind == self.BITS_PER_BYTE:
+            self._grab_byte()
+        elif self.bit_ind != 0:
+            raise ValueError("Tried to peek incomplete byte")
+        return self.curr_byte
+
+
 def disassemble_instruction(
-    instruction_schema: InstructionSchema, byte_iter: Iterator[int]
+    instruction_schema: InstructionSchema, bit_iter: BitIterator
 ) -> DisassembledInstruction:
-    current_byte = next(byte_iter)
+    current_byte = next(bit_iter)
     bits_left = 8
     disassembled_instruction_builder = DisassembledInstructionBuilder(
         instruction_schema
@@ -278,18 +323,12 @@ def disassemble_instruction(
     for schema_field in itertools.chain(
         [instruction_schema.identifier_literal], instruction_schema.fields
     ):
-        # if isinstance(schema_field, LiteralField):
-        #     disassembled_instruction_builder.with_literal_field(schema_field, current_byte)
-        # elif isinstance(schema_field, NamedField):
-        #     if not disassembled_instruction_builder.is_needed(schema_field):
-        #         continue
-
         print(f"{schema_field = }, {current_byte = }")
         if not disassembled_instruction_builder.is_needed(schema_field):
             continue
 
         if bits_left == 0:
-            current_byte = next(byte_iter)
+            current_byte = next(bit_iter)
             bits_left = 8
         assert bits_left > 0
 
@@ -303,13 +342,13 @@ def disassemble_instruction(
 
 
 def disassemble(
-    possible_instructions: list[InstructionSchema], byte_iter: Iterator[int]
+    possible_instructions: list[InstructionSchema], bit_iter: BitIterator
 ) -> list[DisassembledInstruction]:
 
     # print("disassembler seeing:\n" + " ".join([f"{by:08b}" for by in byte_iter]))
     # print(f"will see: {next(byte_iter) = }")
     disassembled_instructions = []
-    while (current_byte := next(byte_iter, None)) is not None:
+    while (current_byte := next(bit_iter, None)) is not None:
 
         matching_schema = None
         for possible_instruction in possible_instructions:
@@ -319,7 +358,7 @@ def disassemble(
         assert matching_schema is not None
 
         disassembled_instruction = disassemble_instruction(
-            matching_schema, itertools.chain([current_byte], byte_iter)
+            matching_schema, itertools.chain([current_byte], bit_iter)
         )
         disassembled_instructions.append(disassembled_instruction)
 
@@ -327,13 +366,10 @@ def disassemble(
 
 
 def disassemble_binary_to_string(
-    possible_instructions: list[InstructionSchema], bytes_iter: bytes | Iterator[int]
+    possible_instructions: list[InstructionSchema], b: bytes
 ) -> str:
-    # print("disassembler seeing:\n" + " ".join([f"{by:08b}" for by in bytes_iter]))
-    if isinstance(bytes_iter, bytes):
-        bytes_iter = iter(bytes_iter)
-
-    disassembled = disassemble(possible_instructions, bytes_iter)
+    bit_iter = BitIterator(b)
+    disassembled = disassemble(possible_instructions, bit_iter)
 
     disassembly_as_str = "\n".join(
         ["bits 16", *[dis.string_rep for dis in disassembled]]
