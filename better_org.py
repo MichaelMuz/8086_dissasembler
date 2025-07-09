@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 import re
-from typing import Iterator, Self
+from typing import Iterator, Self, TypeAlias
 
 
 @dataclass
@@ -27,30 +27,29 @@ class LiteralField(SchemaField):
         return other_int_down_shifted == self.literal_value
 
 
-class NamedField(SchemaField):
-    NAMED_FIELD_TYPE_TO_BIT_LEN: dict[str, int] = {
-        "d": 1,
-        "w": 1,
-        "reg": 3,
-        "mod": 2,
-        "rm": 3,
-        "disp-lo": 8,
-        "disp-hi": 8,
-        "addr-lo": 8,
-        "addr-hi": 8,
-        "data": 8,
-        "data-if-w=1": 8,
-    }
+class NamedField(SchemaField, enum.Enum):
+    D = ("d", 1)
+    W = ("w", 1)
+    REG = ("reg", 3)
+    MOD = ("mod", 2)
+    RM = ("rm", 3)
+    DISP_LO = ("disp-lo", 8)
+    DISP_HI = ("disp-hi", 8)
+    ADDR_LO = ("addr-lo", 8)
+    ADDR_HI = ("addr-hi", 8)
+    DATA = ("data", 8)
+    DATA_IF_W1 = ("data-if-w=1", 8)
 
-    def __init__(self, name: str):
-        self.name = name
-        super().__init__(bit_width=self.NAMED_FIELD_TYPE_TO_BIT_LEN[name])
+    def __new__(cls, field_name, bit_length):
+        obj = object.__new__(cls)
+        obj._value_ = field_name
+        return obj
+
+    def __init__(self, field_name, bit_length):
+        super().__init__(bit_length)
 
 
-@dataclass
-class ParsedNamedField:
-    named_field: NamedField
-    parsed_value: int
+ParsedNamedField: TypeAlias = dict[NamedField, int]
 
 
 @dataclass
@@ -58,7 +57,7 @@ class InstructionSchema:
     mnemonic: str
     identifier_literal: LiteralField
     fields: list[SchemaField]
-    implied_values: list[ParsedNamedField]
+    implied_values: ParsedNamedField
 
 
 def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSchema]:
@@ -89,10 +88,10 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
                 identifier_literal, LiteralField
             ), "First parsed field always expected to be literal"
 
-            implied_values = []
+            implied_values = {}
             for field_type, value in variation["implied_values"].items():
                 field = NamedField(field_type)
-                implied_values.append(ParsedNamedField(field, value))
+                implied_values[field] = value
 
             instruction_schema = InstructionSchema(
                 mnemonic=mnemonic,
@@ -107,7 +106,7 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
 @dataclass
 class DisassembledInstruction:
     instruction_schema: InstructionSchema
-    parsed_fields: list[ParsedNamedField]
+    parsed_fields: ParsedNamedField
     string_rep: str
 
 
@@ -133,10 +132,10 @@ def get_mode(mod_val: int, rm_val: int | None):
     return mode
 
 
-def combine_bytes(low: ParsedNamedField, high: ParsedNamedField | None) -> int | None:
+def combine_bytes(low: int, high: int | None) -> int | None:
     if high is not None:
-        return (high.parsed_value << 8) + low.parsed_value
-    return low.parsed_value
+        return (high << 8) + low
+    return low
 
 
 class DisassembledInstructionBuilder:
@@ -167,34 +166,28 @@ class DisassembledInstructionBuilder:
     def __init__(self, instruction_schema: InstructionSchema):
         self.instruction_schema = instruction_schema
         self.parsed_fields = {
-            implied_value.named_field.name: implied_value
-            for implied_value in instruction_schema.implied_values
+            named_field: implied_value
+            for named_field, implied_value in instruction_schema.implied_values.items()
         }
         self.implied_values = set(self.parsed_fields.keys())
         self.identifier_literal_added = False
         self.mode = None
 
-    # def with_literal_field(self, literal_field: LiteralField, current_byte: int) -> Self:
-    #     assert literal_field.is_match(current_byte)
-    #     self.identifier_literal_added = True
-    #     return self
-
-    def with_literal_field(
-        self, literal_field: LiteralField, parsed_value: int
-    ) -> Self:
-        assert literal_field.literal_value == parsed_value
-        self.identifier_literal_added = True
-        return self
-
-    def with_named_field(self, parsed_named_field: ParsedNamedField) -> Self:
-        assert self.identifier_literal_added, "Must add identifier literal first"
-        self.parsed_fields[parsed_named_field.named_field.name] = parsed_named_field
+    def with_field(self, schema_field: SchemaField, field_value):
+        if isinstance(schema_field, LiteralField):
+            assert schema_field.literal_value == field_value
+            self.identifier_literal_added = True
+        elif isinstance(schema_field, NamedField):
+            assert self.identifier_literal_added, "Must add identifier literal first"
+            self.parsed_fields[schema_field] = field_value
+        else:
+            raise TypeError("Unexpected subclass")
         return self
 
     def build(self) -> DisassembledInstruction:
         self.ensure_mode()
-        word_val = self.parsed_fields["w"].parsed_value
-        direction = self.parsed_fields["d"]
+        word_val = self.parsed_fields[NamedField.W]
+        direction = self.parsed_fields[NamedField.D]
 
         source = None
         dest_val = None
@@ -205,25 +198,29 @@ class DisassembledInstructionBuilder:
             assert not (has_reg and has_rm)
             assert has_reg or has_rm
 
-            dest_val = self.parsed_fields.get("reg", self.parsed_fields.get("rm"))
+            dest_val = self.parsed_fields.get(
+                NamedField.REG, self.parsed_fields.get(NamedField.RM)
+            )
             assert dest_val is not None
             source = combine_bytes(  # the immediate in the data is source
-                self.parsed_fields["data"], self.parsed_fields.get("data-if-w=1")
+                self.parsed_fields[NamedField.DATA],
+                self.parsed_fields.get(NamedField.DATA_IF_W1),
             )
         else:
-            dest_val = self.parsed_fields["rm"]
-            source = self.REG_NAME_LOWER_AND_WORD[
-                self.parsed_fields["reg"].parsed_value
-            ][word_val]
+            dest_val = self.parsed_fields[NamedField.RM]
+            source = self.REG_NAME_LOWER_AND_WORD[self.parsed_fields[NamedField.REG]][
+                word_val
+            ]
 
         if self.mode is Mode.REGISTER_MODE:
-            dest = self.REG_NAME_LOWER_AND_WORD[dest_val.parsed_value][word_val]
+            dest = self.REG_NAME_LOWER_AND_WORD[dest_val][word_val]
         else:
-            equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val.parsed_value])
+            equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
 
             if "disp-lo" in self.parsed_fields:
                 disp = combine_bytes(
-                    self.parsed_fields["disp-lo"], self.parsed_fields.get("disp-hi")
+                    self.parsed_fields[NamedField.DISP_LO],
+                    self.parsed_fields.get(NamedField.DISP_HI),
                 )
                 if disp != 0:
                     equation.append(str(disp))
@@ -233,20 +230,20 @@ class DisassembledInstructionBuilder:
         assert source is not None
         assert dest is not None
 
-        if bool(direction.parsed_value):
+        if bool(direction):
             source, dest = dest, source
 
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
-            parsed_fields=list(self.parsed_fields.values()),
+            parsed_fields=self.parsed_fields,
             string_rep=f"{self.instruction_schema.mnemonic} {dest}, {source}",
         )
 
     def ensure_mode(self):
-        mod_value = self.parsed_fields["mod"].parsed_value
+        mod_value = self.parsed_fields[NamedField.W]
         rm_value = None
         if "rm" in self.parsed_fields:
-            rm_value = self.parsed_fields["rm"].parsed_value
+            rm_value = self.parsed_fields[NamedField.RM]
         self.mode = get_mode(mod_value, rm_value)
 
     def is_needed(self, schema_field: SchemaField) -> bool:
@@ -261,7 +258,7 @@ class DisassembledInstructionBuilder:
         if schema_field.name in self.ALWAYS_NEEDED_FIELDS:
             return True
         elif schema_field.name == "data-if-w=1":
-            return bool(self.parsed_fields["w"].parsed_value)
+            return bool(self.parsed_fields[NamedField.W])
         elif schema_field.name.startswith("disp"):
             self.ensure_mode()
 
@@ -307,15 +304,7 @@ def disassemble_instruction(
         start_bit = bits_left - schema_field.bit_width
         mask = (2**schema_field.bit_width - 1) << start_bit
         field_value = (current_byte & mask) >> start_bit
-
-        if isinstance(schema_field, LiteralField):
-            disassembled_instruction_builder.with_literal_field(
-                schema_field, field_value
-            )
-        elif isinstance(schema_field, NamedField):
-            parsed_named_field = ParsedNamedField(schema_field, field_value)
-            disassembled_instruction_builder.with_named_field(parsed_named_field)
-
+        disassembled_instruction_builder.with_field(schema_field, field_value)
         bits_left -= schema_field.bit_width
 
     return disassembled_instruction_builder.build()
