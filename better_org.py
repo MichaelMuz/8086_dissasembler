@@ -169,9 +169,20 @@ class DisassembledInstructionBuilder:
             named_field: implied_value
             for named_field, implied_value in instruction_schema.implied_values.items()
         }
+
         self.implied_values = set(self.parsed_fields.keys())
+
         self.identifier_literal_added = False
         self.mode = None
+
+    def _get_mode(self) -> Mode:
+        if self.mode is None:
+            mod_value = self.parsed_fields[NamedField.MOD]
+            rm_value = None
+            if NamedField.RM in self.parsed_fields:
+                rm_value = self.parsed_fields[NamedField.RM]
+            self.mode = get_mode(mod_value, rm_value)
+        return self.mode
 
     def with_field(self, schema_field: SchemaField, field_value):
         if isinstance(schema_field, LiteralField):
@@ -184,19 +195,37 @@ class DisassembledInstructionBuilder:
             raise TypeError("Unexpected subclass")
         return self
 
+    def is_needed(self, schema_field: SchemaField) -> bool:
+        if isinstance(schema_field, LiteralField):
+            return True
+        else:
+            assert isinstance(schema_field, NamedField)
+        assert (
+            schema_field not in self.implied_values
+        ), f"Asking if {schema_field} is required but its value is already implied"
+
+        if schema_field in self.ALWAYS_NEEDED_FIELDS:
+            return True
+        elif schema_field == NamedField.DATA_IF_W1:
+            return bool(self.parsed_fields[NamedField.W])
+        elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
+            return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
+                self._get_mode() == Mode.BYTE_DISPLACEMENT_MODE
+                and (schema_field == NamedField.DISP_LO)
+            )
+        else:
+            raise ValueError(f"don't know how to check if {schema_field} is needed")
+
     def build(self) -> DisassembledInstruction:
-        self.ensure_mode()
         word_val = self.parsed_fields[NamedField.W]
         direction = self.parsed_fields[NamedField.D]
 
         source = None
         dest_val = None
         if NamedField.DATA in self.parsed_fields:
-            # can't have data, reg, and rm in one instruction
-            has_reg = NamedField.REG in self.parsed_fields
-            has_rm = NamedField.RM in self.parsed_fields
-            assert not (has_reg and has_rm)
-            assert has_reg or has_rm
+            assert (NamedField.REG in self.parsed_fields) ^ (
+                NamedField.RM in self.parsed_fields
+            ), "Must have exactly one of reg or rm, not both or neither"
 
             dest_val = self.parsed_fields.get(
                 NamedField.REG, self.parsed_fields.get(NamedField.RM)
@@ -227,52 +256,15 @@ class DisassembledInstructionBuilder:
             str_equation = " + ".join(equation)
             dest = f"[{str_equation}]"
 
-        assert source is not None
-        assert dest is not None
-
         if bool(direction):
             source, dest = dest, source
 
+        assert source is not None and dest is not None
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
             parsed_fields=self.parsed_fields,
             string_rep=f"{self.instruction_schema.mnemonic} {dest}, {source}",
         )
-
-    def ensure_mode(self):
-        mod_value = self.parsed_fields[NamedField.W]
-        rm_value = None
-        if NamedField.RM in self.parsed_fields:
-            rm_value = self.parsed_fields[NamedField.RM]
-        self.mode = get_mode(mod_value, rm_value)
-
-    def is_needed(self, schema_field: SchemaField) -> bool:
-        if isinstance(schema_field, LiteralField):
-            return True
-
-        assert isinstance(schema_field, NamedField)
-        assert (
-            schema_field not in self.implied_values
-        ), f"Asking if {schema_field} is required but its value is already implied"
-
-        if schema_field in self.ALWAYS_NEEDED_FIELDS:
-            return True
-        elif schema_field == NamedField.DATA_IF_W1:
-            return bool(self.parsed_fields[NamedField.W])
-        elif schema_field.value.startswith("disp"):
-            self.ensure_mode()
-
-            is_lo = schema_field.value.endswith("-lo")
-            is_hi = schema_field.value.endswith("-hi")
-            assert (
-                is_lo or is_hi
-            ), f"cannot have disp that isn't -hi or -lo: {schema_field.value}"
-
-            return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
-                self.mode == Mode.BYTE_DISPLACEMENT_MODE and is_lo
-            )
-        else:
-            raise ValueError(f"don't know how to check if {schema_field} is needed")
 
 
 def disassemble_instruction(
