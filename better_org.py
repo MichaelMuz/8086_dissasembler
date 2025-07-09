@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 import re
-from typing import Iterator, Self, TypeAlias
+from typing import Iterator, TypeAlias
 
 
 @dataclass
@@ -191,10 +191,10 @@ class DisassembledInstructionBuilder:
 
         source = None
         dest_val = None
-        if "data" in self.parsed_fields:
+        if NamedField.DATA in self.parsed_fields:
             # can't have data, reg, and rm in one instruction
-            has_reg = "reg" in self.parsed_fields
-            has_rm = "rm" in self.parsed_fields
+            has_reg = NamedField.REG in self.parsed_fields
+            has_rm = NamedField.RM in self.parsed_fields
             assert not (has_reg and has_rm)
             assert has_reg or has_rm
 
@@ -217,7 +217,7 @@ class DisassembledInstructionBuilder:
         else:
             equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
 
-            if "disp-lo" in self.parsed_fields:
+            if NamedField.DISP_LO in self.parsed_fields:
                 disp = combine_bytes(
                     self.parsed_fields[NamedField.DISP_LO],
                     self.parsed_fields.get(NamedField.DISP_HI),
@@ -242,7 +242,7 @@ class DisassembledInstructionBuilder:
     def ensure_mode(self):
         mod_value = self.parsed_fields[NamedField.W]
         rm_value = None
-        if "rm" in self.parsed_fields:
+        if NamedField.RM in self.parsed_fields:
             rm_value = self.parsed_fields[NamedField.RM]
         self.mode = get_mode(mod_value, rm_value)
 
@@ -252,21 +252,21 @@ class DisassembledInstructionBuilder:
 
         assert isinstance(schema_field, NamedField)
         assert (
-            schema_field.name not in self.implied_values
+            schema_field not in self.implied_values
         ), f"Asking if {schema_field} is required but its value is already implied"
 
-        if schema_field.name in self.ALWAYS_NEEDED_FIELDS:
+        if schema_field in self.ALWAYS_NEEDED_FIELDS:
             return True
-        elif schema_field.name == "data-if-w=1":
+        elif schema_field == NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
-        elif schema_field.name.startswith("disp"):
+        elif schema_field.value.startswith("disp"):
             self.ensure_mode()
 
-            is_lo = schema_field.name.endswith("-lo")
-            is_hi = schema_field.name.endswith("-hi")
+            is_lo = schema_field.value.endswith("-lo")
+            is_hi = schema_field.value.endswith("-hi")
             assert (
                 is_lo or is_hi
-            ), f"cannot have disp that isn't -hi or -lo: {schema_field.name}"
+            ), f"cannot have disp that isn't -hi or -lo: {schema_field.value}"
 
             return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
                 self.mode == Mode.BYTE_DISPLACEMENT_MODE and is_lo
