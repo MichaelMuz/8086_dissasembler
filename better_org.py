@@ -12,6 +12,8 @@ BITS_PER_BYTE = 8
 
 def get_sub_bits(to_ind: int, start_ind: int, num_bits: int):
     r_shifted = to_ind >> start_ind
+    mask = (1 << num_bits) - 1
+    return r_shifted & mask
 
 
 class LiteralField:
@@ -22,11 +24,13 @@ class LiteralField:
 
     def is_match(self, other_int: int):
         assert int.bit_length(other_int) <= 8
-        other_int_down_shifted = other_int >> (8 - self.bit_width)
-        logging.debug(
-            f"comparing me: {self.literal_value:08b}, to: {other_int_down_shifted:08b}. Before downshift: {other_int:08b}"
+        other_int_shifted = get_sub_bits(
+            other_int, BITS_PER_BYTE - self.bit_width, self.bit_width
         )
-        return other_int_down_shifted == self.literal_value
+        logging.debug(
+            f"comparing me: {self.literal_value:08b}, to: {other_int_shifted:08b}. Before downshift: {other_int:08b}"
+        )
+        return other_int_shifted == self.literal_value
 
 
 class NamedField(enum.Enum):
@@ -307,8 +311,7 @@ class BitIterator:
                 "Our ISA does not have fields that straddle byte boundaries"
             )
 
-        mask = ((1 << num_bits) - 1) << self.bit_ind
-        field_value = (self.curr_byte & mask) >> self.bit_ind
+        field_value = get_sub_bits(self.curr_byte, self.bit_ind, num_bits)
 
         self.bit_ind += num_bits
         return field_value
