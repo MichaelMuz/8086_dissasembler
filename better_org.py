@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 import enum
 import json
+import logging
 import os
 import re
 from typing import TypeAlias
+
+logging.basicConfig(level=logging.INFO)
 
 BITS_PER_BYTE = 8
 
@@ -21,11 +24,10 @@ class LiteralField(SchemaField):
         super().__init__(bit_width=bit_width)
 
     def is_match(self, other_int: int):
-        print(f"other int: {other_int:08b}")
         assert int.bit_length(other_int) <= 8
         other_int_down_shifted = other_int >> (8 - self.bit_width)
-        print(
-            f"comparing me: {self.literal_value:08b}, to: {other_int_down_shifted:08b}"
+        logging.debug(
+            f"comparing me: {self.literal_value:08b}, to: {other_int_down_shifted:08b}. Before downshift: {other_int:08b}"
         )
         return other_int_down_shifted == self.literal_value
 
@@ -331,9 +333,11 @@ def disassemble_instruction(
 
     for schema_field in instruction_schema.fields:
         if not disassembled_instruction_builder.is_needed(schema_field):
+            logging.debug(f"{schema_field = } not needed")
             continue
 
         field_value = bit_iter.next_bits(schema_field.bit_width)
+        logging.debug(f"{schema_field = } needed, has value {field_value = }")
         disassembled_instruction_builder.with_field(schema_field, field_value)
 
     return disassembled_instruction_builder.build()
@@ -364,6 +368,7 @@ def disassemble(
 def disassemble_binary_to_string(
     possible_instructions: list[InstructionSchema], b: bytes
 ) -> str:
+    logging.debug("disassembler seeing:\n" + " ".join([f"{by:08b}" for by in b]))
     bit_iter = BitIterator(b)
     disassembled = disassemble(possible_instructions, bit_iter)
 
