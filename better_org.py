@@ -10,16 +10,15 @@ from typing import TypeAlias
 BITS_PER_BYTE = 8
 
 
-@dataclass(frozen=True)
-class SchemaField:
-    bit_width: int
+def get_sub_bits(to_ind: int, start_ind: int, num_bits: int):
+    r_shifted = to_ind >> start_ind
 
 
-class LiteralField(SchemaField):
+class LiteralField:
     def __init__(self, literal_value: int, bit_width: int):
         self.literal_value = literal_value
         assert bit_width > 0 and bit_width < BITS_PER_BYTE
-        super().__init__(bit_width=bit_width)
+        self.bit_width = bit_width
 
     def is_match(self, other_int: int):
         assert int.bit_length(other_int) <= 8
@@ -30,7 +29,9 @@ class LiteralField(SchemaField):
         return other_int_down_shifted == self.literal_value
 
 
-class NamedField(SchemaField, enum.Enum):
+class NamedField(enum.Enum):
+    bit_width: int  # for type checker, this exists
+
     D = ("d", 1)
     W = ("w", 1)
     REG = ("reg", 3)
@@ -43,18 +44,14 @@ class NamedField(SchemaField, enum.Enum):
     DATA = ("data", 8)
     DATA_IF_W1 = ("data-if-w=1", 8)
 
-    def __new__(cls, field_name, bit_length):
+    def __new__(cls, field_name: str, bit_width: int):
         obj = object.__new__(cls)
         obj._value_ = field_name
+        obj.bit_width = bit_width
         return obj
 
-    def __init__(self, field_name, bit_length):
-        super().__init__(bit_length)
 
-    def __repr__(self):
-        return f"NamedField.{self.name}"
-
-
+SchemaField: TypeAlias = LiteralField | NamedField
 ParsedNamedField: TypeAlias = dict[NamedField, int]
 
 
@@ -122,6 +119,7 @@ class Mode(enum.Enum):
 
 
 def get_mode(mod_val: int, rm_val: int | None):
+    logging.debug(f"getting mode {mod_val = }, {rm_val = }")
     all_modes = [
         Mode.NO_DISPLACEMENT_MODE,
         Mode.BYTE_DISPLACEMENT_MODE,
@@ -190,9 +188,7 @@ class DisassembledInstructionBuilder:
     def _get_mode(self) -> Mode:
         if self.mode is None:
             mod_value = self.parsed_fields[NamedField.MOD]
-            rm_value = None
-            if NamedField.RM in self.parsed_fields:
-                rm_value = self.parsed_fields[NamedField.RM]
+            rm_value = self.parsed_fields.get(NamedField.RM)
             self.mode = get_mode(mod_value, rm_value)
         logging.debug(f"getting {self.mode = }")
         return self.mode
@@ -202,8 +198,6 @@ class DisassembledInstructionBuilder:
             assert schema_field.literal_value == field_value
         elif isinstance(schema_field, NamedField):
             self.parsed_fields[schema_field] = field_value
-        else:
-            raise TypeError("Unexpected subclass")
         return self
 
     def is_needed(self, schema_field: SchemaField) -> bool:
@@ -216,18 +210,10 @@ class DisassembledInstructionBuilder:
         ), f"Asking if {schema_field} is required but its value is already implied"
 
         if schema_field in self.ALWAYS_NEEDED_FIELDS:
-            print(f".............")
-            print(self.ALWAYS_NEEDED_FIELDS)
-            for field in self.ALWAYS_NEEDED_FIELDS:
-                logging.debug(f"  Comparing with {field}, type: {type(field)}")
-                logging.debug(f"  Equal? {schema_field == field}")
-                logging.debug(f"  Same identity? {schema_field is field}")
             return True
         elif schema_field == NamedField.DATA_IF_W1:
-            print(f"??????????")
             return bool(self.parsed_fields[NamedField.W])
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
-            print(f"!!!!!!!!!!!!!")
             return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
                 self._get_mode() == Mode.BYTE_DISPLACEMENT_MODE
                 and (schema_field == NamedField.DISP_LO)
@@ -287,7 +273,6 @@ class DisassembledInstructionBuilder:
 
 
 class BitIterator:
-
     def __init__(self, b: bytes):
         self.inst_bytes = b
         self.iterator = iter(b)
@@ -300,7 +285,8 @@ class BitIterator:
         self.byte_ind += 1
         self.bit_ind = 0
 
-        return self.curr_byte == None
+        logging.debug(f"grabbing byte, it was: {self.curr_byte}")
+        return self.curr_byte is None
 
     def next_bits(self, num_bits: int):
         logging.debug(f"request for: {num_bits = }")
@@ -363,6 +349,7 @@ def disassemble(
 
     disassembled_instructions = []
     while (current_byte := bit_iter.peek_whole_byte()) is not None:
+        logging.debug("starting new instruction")
 
         matching_schema = None
         for possible_instruction in possible_instructions:
