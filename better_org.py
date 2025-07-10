@@ -16,9 +16,8 @@ class SchemaField:
 
 
 class LiteralField(SchemaField):
-    def __init__(self, literal_value):
+    def __init__(self, literal_value: int, bit_width: int):
         self.literal_value = literal_value
-        bit_width = int.bit_length(literal_value)
         assert bit_width > 0 and bit_width < BITS_PER_BYTE
         super().__init__(bit_width=bit_width)
 
@@ -52,6 +51,9 @@ class NamedField(SchemaField, enum.Enum):
     def __init__(self, field_name, bit_length):
         super().__init__(bit_length)
 
+    def __repr__(self):
+        return f"NamedField.{self.name}"
+
 
 ParsedNamedField: TypeAlias = dict[NamedField, int]
 
@@ -78,7 +80,7 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
                 for this_inst_piece in this_byte.split(" "):
                     mat = re.match("[01]+", this_inst_piece)
                     if mat is not None:
-                        this_field = LiteralField(int(this_inst_piece, 2))
+                        this_field = LiteralField(int(this_inst_piece, 2), mat.end())
                     else:
                         this_field = NamedField(this_inst_piece)
                     schema_fields.append(this_field)
@@ -192,6 +194,7 @@ class DisassembledInstructionBuilder:
             if NamedField.RM in self.parsed_fields:
                 rm_value = self.parsed_fields[NamedField.RM]
             self.mode = get_mode(mod_value, rm_value)
+        logging.debug(f"getting {self.mode = }")
         return self.mode
 
     def with_field(self, schema_field: SchemaField, field_value: int):
@@ -213,10 +216,18 @@ class DisassembledInstructionBuilder:
         ), f"Asking if {schema_field} is required but its value is already implied"
 
         if schema_field in self.ALWAYS_NEEDED_FIELDS:
+            print(f".............")
+            print(self.ALWAYS_NEEDED_FIELDS)
+            for field in self.ALWAYS_NEEDED_FIELDS:
+                logging.debug(f"  Comparing with {field}, type: {type(field)}")
+                logging.debug(f"  Equal? {schema_field == field}")
+                logging.debug(f"  Same identity? {schema_field is field}")
             return True
         elif schema_field == NamedField.DATA_IF_W1:
+            print(f"??????????")
             return bool(self.parsed_fields[NamedField.W])
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
+            print(f"!!!!!!!!!!!!!")
             return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
                 self._get_mode() == Mode.BYTE_DISPLACEMENT_MODE
                 and (schema_field == NamedField.DISP_LO)
@@ -292,6 +303,7 @@ class BitIterator:
         return self.curr_byte == None
 
     def next_bits(self, num_bits: int):
+        logging.debug(f"request for: {num_bits = }")
         if num_bits > BITS_PER_BYTE:
             raise ValueError("Our ISA does not have fields larger than a byte")
         assert num_bits > 0
@@ -304,6 +316,7 @@ class BitIterator:
 
         bits_left = BITS_PER_BYTE - self.bit_ind
         if num_bits > bits_left:
+            logging.info(f"{self.bit_ind = }, {bits_left = }")
             raise ValueError(
                 "Our ISA does not have fields that straddle byte boundaries"
             )
@@ -323,11 +336,12 @@ class BitIterator:
 
 
 def disassemble_instruction(
-    instruction_schema: InstructionSchema, inst_literal: int, bit_iter: BitIterator
+    instruction_schema: InstructionSchema, bit_iter: BitIterator
 ) -> DisassembledInstruction:
 
     disassembled_instruction_builder = DisassembledInstructionBuilder(
-        instruction_schema, inst_literal
+        instruction_schema,
+        bit_iter.next_bits(instruction_schema.identifier_literal.bit_width),
     )
 
     for schema_field in instruction_schema.fields:
@@ -335,8 +349,9 @@ def disassemble_instruction(
             logging.debug(f"{schema_field = } not needed")
             continue
 
+        logging.debug(f"{schema_field = } needed")
         field_value = bit_iter.next_bits(schema_field.bit_width)
-        logging.debug(f"{schema_field = } needed, has value {field_value = }")
+        logging.debug(f"has value {field_value = }")
         disassembled_instruction_builder.with_field(schema_field, field_value)
 
     return disassembled_instruction_builder.build()
@@ -353,12 +368,13 @@ def disassemble(
         for possible_instruction in possible_instructions:
             if possible_instruction.identifier_literal.is_match(current_byte):
                 matching_schema = possible_instruction
+                logging.debug(
+                    f"found matching schema: {matching_schema.identifier_literal.literal_value}"
+                )
                 break
         assert matching_schema is not None
 
-        disassembled_instruction = disassemble_instruction(
-            matching_schema, current_byte, bit_iter
-        )
+        disassembled_instruction = disassemble_instruction(matching_schema, bit_iter)
         disassembled_instructions.append(disassembled_instruction)
 
     return disassembled_instructions
