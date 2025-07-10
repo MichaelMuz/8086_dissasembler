@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 import enum
-import itertools
 import json
 import os
 import re
-from shutil import ExecError
-from typing import Iterator, TypeAlias
+from typing import TypeAlias
+
+BITS_PER_BYTE = 8
 
 
 @dataclass
@@ -14,8 +14,10 @@ class SchemaField:
 
 
 class LiteralField(SchemaField):
-    def __init__(self, literal_value, bit_width):
+    def __init__(self, literal_value):
         self.literal_value = literal_value
+        bit_width = int.bit_length(literal_value)
+        assert bit_width > 0 and bit_width < BITS_PER_BYTE
         super().__init__(bit_width=bit_width)
 
     def is_match(self, other_int: int):
@@ -75,9 +77,7 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
                 for this_inst_piece in this_byte.split(" "):
                     mat = re.match("[01]+", this_inst_piece)
                     if mat is not None:
-                        assert mat.end() > 0
-                        assert mat.end() < 9
-                        this_field = LiteralField(int(this_inst_piece, 2), mat.end())
+                        this_field = LiteralField(int(this_inst_piece, 2))
                     else:
                         this_field = NamedField(this_inst_piece)
                     schema_fields.append(this_field)
@@ -164,7 +164,7 @@ class DisassembledInstructionBuilder:
     ]
     ALWAYS_NEEDED_FIELDS = {"d", "w", "mod", "reg", "rm", "data"}
 
-    def __init__(self, instruction_schema: InstructionSchema):
+    def __init__(self, instruction_schema: InstructionSchema, identifier_literal):
         self.instruction_schema = instruction_schema
         self.parsed_fields = {
             named_field: implied_value
@@ -173,7 +173,7 @@ class DisassembledInstructionBuilder:
 
         self.implied_values = set(self.parsed_fields.keys())
 
-        self.identifier_literal_added = False
+        self.identifier_literal = identifier_literal
         self.mode = None
 
     def _get_mode(self) -> Mode:
@@ -185,7 +185,7 @@ class DisassembledInstructionBuilder:
             self.mode = get_mode(mod_value, rm_value)
         return self.mode
 
-    def with_field(self, schema_field: SchemaField, field_value):
+    def with_field(self, schema_field: SchemaField, field_value: int):
         if isinstance(schema_field, LiteralField):
             assert schema_field.literal_value == field_value
             self.identifier_literal_added = True
@@ -269,30 +269,33 @@ class DisassembledInstructionBuilder:
 
 
 class BitIterator:
-    BITS_PER_BYTE = 8
 
     def __init__(self, b: bytes):
         self.inst_bytes = b
         self.iterator = iter(b)
         self.curr_byte = None
         self.byte_ind = -1
-        self.bit_ind = self.BITS_PER_BYTE
+        self.bit_ind = BITS_PER_BYTE
 
     def _grab_byte(self):
-        self.curr_byte = next(self.iterator)
+        self.curr_byte = next(self.iterator, None)
         self.byte_ind += 1
         self.bit_ind = 0
 
+        return self.curr_byte == None
+
     def next_bits(self, num_bits: int):
-        if num_bits > self.BITS_PER_BYTE:
+        if num_bits > BITS_PER_BYTE:
             raise ValueError("Our ISA does not have fields larger than a byte")
         assert num_bits > 0
 
-        if self.bit_ind == self.BITS_PER_BYTE:
-            self._grab_byte
+        if self.bit_ind == BITS_PER_BYTE:
+            ended = self._grab_byte
+            assert not ended, "Instruction stream ended in the middle of an instruction"
+
         assert self.curr_byte is not None, "invariant"
 
-        bits_left = self.BITS_PER_BYTE - self.bit_ind
+        bits_left = BITS_PER_BYTE - self.bit_ind
         if num_bits > bits_left:
             raise ValueError(
                 "Our ISA does not have fields that straddle byte boundaries"
@@ -305,7 +308,7 @@ class BitIterator:
         return field_value
 
     def peek_whole_byte(self):
-        if self.bit_ind == self.BITS_PER_BYTE:
+        if self.bit_ind == BITS_PER_BYTE:
             self._grab_byte()
         elif self.bit_ind != 0:
             raise ValueError("Tried to peek incomplete byte")
@@ -313,30 +316,19 @@ class BitIterator:
 
 
 def disassemble_instruction(
-    instruction_schema: InstructionSchema, bit_iter: BitIterator
+    instruction_schema: InstructionSchema, inst_literal: int, bit_iter: BitIterator
 ) -> DisassembledInstruction:
-    current_byte = next(bit_iter)
-    bits_left = 8
+
     disassembled_instruction_builder = DisassembledInstructionBuilder(
-        instruction_schema
+        instruction_schema, inst_literal
     )
-    for schema_field in itertools.chain(
-        [instruction_schema.identifier_literal], instruction_schema.fields
-    ):
-        print(f"{schema_field = }, {current_byte = }")
+
+    for schema_field in instruction_schema.fields:
         if not disassembled_instruction_builder.is_needed(schema_field):
             continue
 
-        if bits_left == 0:
-            current_byte = next(bit_iter)
-            bits_left = 8
-        assert bits_left > 0
-
-        start_bit = bits_left - schema_field.bit_width
-        mask = (2**schema_field.bit_width - 1) << start_bit
-        field_value = (current_byte & mask) >> start_bit
+        field_value = bit_iter.next_bits(schema_field.bit_width)
         disassembled_instruction_builder.with_field(schema_field, field_value)
-        bits_left -= schema_field.bit_width
 
     return disassembled_instruction_builder.build()
 
@@ -345,10 +337,8 @@ def disassemble(
     possible_instructions: list[InstructionSchema], bit_iter: BitIterator
 ) -> list[DisassembledInstruction]:
 
-    # print("disassembler seeing:\n" + " ".join([f"{by:08b}" for by in byte_iter]))
-    # print(f"will see: {next(byte_iter) = }")
     disassembled_instructions = []
-    while (current_byte := next(bit_iter, None)) is not None:
+    while (current_byte := bit_iter.peek_whole_byte()) is not None:
 
         matching_schema = None
         for possible_instruction in possible_instructions:
@@ -358,7 +348,7 @@ def disassemble(
         assert matching_schema is not None
 
         disassembled_instruction = disassemble_instruction(
-            matching_schema, itertools.chain([current_byte], bit_iter)
+            matching_schema, current_byte, bit_iter
         )
         disassembled_instructions.append(disassembled_instruction)
 
