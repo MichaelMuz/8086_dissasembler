@@ -1,9 +1,13 @@
 import itertools
+import logging
 import os
 import subprocess
 from typing import override
 import unittest
 import better_org as disasm
+
+logging.basicConfig(level=logging.INFO)
+test_logger = logging.getLogger("tests")
 
 TEMP_NASM_INPUT_FILE_LOCATION = "tmp/inst.asm"
 TEMP_NASM_OUTPUT_FILE_LOCATION = "tmp/bin.asm"
@@ -48,20 +52,20 @@ class TestDisassembler(unittest.TestCase):
         original_bin = get_bin_from_nasm(
             "\n".join(itertools.chain(["bits 16"], asm_instructions))
         )
-        print(get_bin_seen_error_str(original_bin))
+        test_logger.debug(get_bin_seen_error_str(original_bin))
         try:
             disassembled = disasm.disassemble_binary_to_string(
                 self.parsable_instructions, original_bin
             )
         except Exception as e:
-            print(get_bin_seen_error_str(original_bin))
+            test_logger.debug(get_bin_seen_error_str(original_bin))
             raise e
 
         try:
             bin_of_our_disassembly = get_bin_from_nasm(disassembled)
         except Exception as e:
-            print(get_bin_seen_error_str(original_bin))
-            print(f"our disassembly:\n{disassembled}")
+            test_logger.debug(get_bin_seen_error_str(original_bin))
+            test_logger.debug(f"our disassembly:\n{disassembled}")
             raise e
 
         self.assertEqual(

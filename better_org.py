@@ -6,7 +6,6 @@ import os
 import re
 from typing import TypeAlias
 
-logging.basicConfig(level=logging.INFO)
 
 BITS_PER_BYTE = 8
 
@@ -375,8 +374,6 @@ def disassemble_binary_to_string(
     disassembly_as_str = "\n".join(
         ["bits 16", *[dis.string_rep for dis in disassembled]]
     )
-    print(f"returning {disassembly_as_str = }")
-
     return disassembly_as_str
 
 
