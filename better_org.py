@@ -8,7 +8,7 @@ from typing import TypeAlias
 BITS_PER_BYTE = 8
 
 
-@dataclass
+@dataclass(frozen=True)
 class SchemaField:
     bit_width: int
 
@@ -162,7 +162,15 @@ class DisassembledInstructionBuilder:
         ["bp"],
         ["bx"],
     ]
-    ALWAYS_NEEDED_FIELDS = {"d", "w", "mod", "reg", "rm", "data"}
+    ALWAYS_NEEDED_FIELDS = {
+        # if we see this in an instruction schema, we must always parse it
+        NamedField.D,
+        NamedField.W,
+        NamedField.MOD,
+        NamedField.REG,
+        NamedField.RM,
+        NamedField.DATA,
+    }
 
     def __init__(self, instruction_schema: InstructionSchema, identifier_literal):
         self.instruction_schema = instruction_schema
@@ -188,9 +196,7 @@ class DisassembledInstructionBuilder:
     def with_field(self, schema_field: SchemaField, field_value: int):
         if isinstance(schema_field, LiteralField):
             assert schema_field.literal_value == field_value
-            self.identifier_literal_added = True
         elif isinstance(schema_field, NamedField):
-            assert self.identifier_literal_added, "Must add identifier literal first"
             self.parsed_fields[schema_field] = field_value
         else:
             raise TypeError("Unexpected subclass")
@@ -290,7 +296,7 @@ class BitIterator:
         assert num_bits > 0
 
         if self.bit_ind == BITS_PER_BYTE:
-            ended = self._grab_byte
+            ended = self._grab_byte()
             assert not ended, "Instruction stream ended in the middle of an instruction"
 
         assert self.curr_byte is not None, "invariant"
