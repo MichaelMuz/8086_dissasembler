@@ -255,7 +255,7 @@ class DisassembledInstructionBuilder:
                 word_val
             ]
 
-        if self.mode is Mode.REGISTER_MODE:
+        if self._get_mode() is Mode.REGISTER_MODE:
             dest = self.REG_NAME_LOWER_AND_WORD[dest_val][word_val]
         else:
             equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
@@ -274,6 +274,7 @@ class DisassembledInstructionBuilder:
             source, dest = dest, source
 
         assert source is not None and dest is not None
+        logging.debug(f"{self._get_mode() = }")
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
             parsed_fields=self.parsed_fields,
@@ -372,6 +373,9 @@ def disassemble(
         assert matching_schema is not None
 
         disassembled_instruction = disassemble_instruction(matching_schema, bit_iter)
+        logging.debug(
+            f"{disassembled_instruction.string_rep = }:\n{disassembled_instruction.parsed_fields = }"
+        )
         disassembled_instructions.append(disassembled_instruction)
 
     return disassembled_instructions

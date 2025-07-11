@@ -22,7 +22,8 @@ def get_bin_from_nasm(asm_instructions: str):
     with open(TEMP_NASM_INPUT_FILE_LOCATION, "w") as file:
         file.write(asm_instructions)
     subprocess.run(
-        ["nasm", TEMP_NASM_INPUT_FILE_LOCATION, "-o", TEMP_NASM_OUTPUT_FILE_LOCATION]
+        ["nasm", TEMP_NASM_INPUT_FILE_LOCATION, "-o", TEMP_NASM_OUTPUT_FILE_LOCATION],
+        capture_output=True,
     )
     with open(TEMP_NASM_OUTPUT_FILE_LOCATION, "rb") as file:
         binary: bytes = file.read()
@@ -57,6 +58,7 @@ class TestDisassembler(unittest.TestCase):
             disassembled = disasm.disassemble_binary_to_string(
                 self.parsable_instructions, original_bin
             )
+            logging.debug(f"disassembler output: \n{disassembled}")
         except Exception as e:
             test_logger.debug(get_bin_seen_error_str(original_bin))
             raise e
@@ -77,55 +79,55 @@ class TestMov(TestDisassembler):
     def test_reg_to_reg(self):
         self.help_test_given_asm("mov cx, bx")
 
-    # def test_many_reg_to_reg(self):
-    #     self.help_test_given_asm(
-    #         [
-    #             "mov cx, bx",
-    #             "mov ch, ah",
-    #             "mov dx, bx",
-    #             "mov bx, di",
-    #             "mov al, cl",
-    #             "mov ch, ch",
-    #             "mov bx, ax",
-    #             "mov bx, si",
-    #             "mov sp, di",
-    #             "mov bp, ax",
-    #             "mov si, bx",
-    #             "mov dh, al",
-    #         ]
-    #     )
+    def test_many_reg_to_reg(self):
+        self.help_test_given_asm(
+            [
+                "mov cx, bx",
+                "mov ch, ah",
+                "mov dx, bx",
+                "mov bx, di",
+                "mov al, cl",
+                "mov ch, ch",
+                "mov bx, ax",
+                "mov bx, si",
+                "mov sp, di",
+                "mov bp, ax",
+                "mov si, bx",
+                "mov dh, al",
+            ]
+        )
 
-    # def test_8bit_immediate_to_register(self):
-    #     self.help_test_given_asm("mov bh, 12")
+    def test_8bit_immediate_to_register(self):
+        self.help_test_given_asm("mov bh, 12")
 
-    # def test_many_8bit_immediate_to_register(self):
-    #     self.help_test_given_asm(["mov cl, 12", "mov ch, -12"])
+    def test_many_8bit_immediate_to_register(self):
+        self.help_test_given_asm(["mov cl, 12", "mov ch, -12"])
 
-    # def test_16bit_immediate_to_register(self):
-    #     self.help_test_given_asm("mov ax, 100")
+    def test_16bit_immediate_to_register(self):
+        self.help_test_given_asm("mov ax, 100")
 
-    # def test_many_16bit_immediate_to_register(self):
-    #     self.help_test_given_asm(
-    #         ["mov cx, 12", "mov cx, -12", "mov dx, 3948", "mov dx, -3948"]
-    #     )
+    def test_many_16bit_immediate_to_register(self):
+        self.help_test_given_asm(
+            ["mov cx, 12", "mov cx, -12", "mov dx, 3948", "mov dx, -3948"]
+        )
 
-    # def test_source_address_calculation_single_var(self):
-    #     self.help_test_given_asm("mov bh, [bp]")
+    def test_source_address_calculation_single_var(self):
+        self.help_test_given_asm("mov bh, [bp]")
 
-    # def test_source_address_calculation_double_var(self):
-    #     self.help_test_given_asm("mov bh, [bp]")
+    def test_source_address_calculation_double_var(self):
+        self.help_test_given_asm("mov bh, [bp]")
 
-    # def test_many_source_address_calculation(self):
-    #     self.help_test_given_asm(
-    #         [
-    #             "mov al, [bx + si]",
-    #             "mov bx, [bp + di]",
-    #             "mov dx, [bp]",
-    #         ]
-    #     )
+    def test_many_source_address_calculation(self):
+        self.help_test_given_asm(
+            [
+                "mov al, [bx + si]",
+                "mov bx, [bp + di]",
+                "mov dx, [bp]",
+            ]
+        )
 
-    # def test_source_address_with_8bit_displacement(self):
-    #     self.help_test_given_asm("mov ah, [bx + si + 4]")
+    def test_source_address_with_8bit_displacement(self):
+        self.help_test_given_asm("mov ah, [bx + si + 4]")
 
     # def test_source_address_with_16bit_displacement(self):
     #     self.help_test_given_asm("mov al, [bx + si + 4999]")
