@@ -16,6 +16,13 @@ def get_sub_bits(to_ind: int, start_ind: int, num_bits: int):
     return r_shifted & mask
 
 
+def get_sub_most_sig_bits(to_ind: int, msb_start_ind: int, num_bits: int):
+    max_ind = BITS_PER_BYTE - 1
+    end_ind = max_ind - msb_start_ind
+    start_ind = end_ind - num_bits + 1  # includes start
+    return get_sub_bits(to_ind, start_ind, num_bits)
+
+
 class LiteralField:
     def __init__(self, literal_value: int, bit_width: int):
         self.literal_value = literal_value
@@ -24,9 +31,7 @@ class LiteralField:
 
     def is_match(self, other_int: int):
         assert int.bit_length(other_int) <= 8
-        other_int_shifted = get_sub_bits(
-            other_int, BITS_PER_BYTE - self.bit_width, self.bit_width
-        )
+        other_int_shifted = other_int >> (BITS_PER_BYTE - self.bit_width)
         logging.debug(
             f"comparing me: {self.literal_value:08b}, to: {other_int_shifted:08b}. Before downshift: {other_int:08b}"
         )
@@ -282,12 +287,12 @@ class BitIterator:
         self.iterator = iter(b)
         self.curr_byte = None
         self.byte_ind = -1
-        self.bit_ind = BITS_PER_BYTE
+        self.msb_bit_ind = BITS_PER_BYTE
 
     def _grab_byte(self):
         self.curr_byte = next(self.iterator, None)
         self.byte_ind += 1
-        self.bit_ind = 0
+        self.msb_bit_ind = 0
 
         logging.debug(f"grabbing byte, it was: {self.curr_byte}")
         return self.curr_byte is None
@@ -298,28 +303,28 @@ class BitIterator:
             raise ValueError("Our ISA does not have fields larger than a byte")
         assert num_bits > 0
 
-        if self.bit_ind == BITS_PER_BYTE:
+        if self.msb_bit_ind == BITS_PER_BYTE:
             ended = self._grab_byte()
             assert not ended, "Instruction stream ended in the middle of an instruction"
 
         assert self.curr_byte is not None, "invariant"
 
-        bits_left = BITS_PER_BYTE - self.bit_ind
+        bits_left = BITS_PER_BYTE - self.msb_bit_ind
         if num_bits > bits_left:
-            logging.info(f"{self.bit_ind = }, {bits_left = }")
+            logging.info(f"{self.msb_bit_ind = }, {bits_left = }")
             raise ValueError(
                 "Our ISA does not have fields that straddle byte boundaries"
             )
 
-        field_value = get_sub_bits(self.curr_byte, self.bit_ind, num_bits)
+        field_value = get_sub_most_sig_bits(self.curr_byte, self.msb_bit_ind, num_bits)
 
-        self.bit_ind += num_bits
+        self.msb_bit_ind += num_bits
         return field_value
 
     def peek_whole_byte(self):
-        if self.bit_ind == BITS_PER_BYTE:
+        if self.msb_bit_ind == BITS_PER_BYTE:
             self._grab_byte()
-        elif self.bit_ind != 0:
+        elif self.msb_bit_ind != 0:
             raise ValueError("Tried to peek incomplete byte")
         return self.curr_byte
 
@@ -339,8 +344,10 @@ def disassemble_instruction(
             continue
 
         logging.debug(f"{schema_field = } needed")
+        logging.debug(f"curr byte: {bit_iter.curr_byte:08b} {bit_iter.msb_bit_ind = }")
         field_value = bit_iter.next_bits(schema_field.bit_width)
         logging.debug(f"has value {field_value = }")
+        logging.debug(f"curr byte: {bit_iter.curr_byte:08b} {bit_iter.msb_bit_ind = }")
         disassembled_instruction_builder.with_field(schema_field, field_value)
 
     return disassembled_instruction_builder.build()
