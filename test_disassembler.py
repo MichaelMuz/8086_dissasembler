@@ -129,10 +129,10 @@ class TestMov(TestDisassembler):
     def test_source_address_with_8bit_displacement(self):
         self.help_test_given_asm("mov ah, [bx + si + 4]")
 
-    # def test_source_address_with_16bit_displacement(self):
-    #     self.help_test_given_asm("mov al, [bx + si + 4999]")
+    def test_source_address_with_16bit_displacement(self):
+        self.help_test_given_asm("mov al, [bx + si + 4999]")
 
-    # def test_dest_address_calculation(self):
-    #     self.help_test_given_asm(
-    #         ["mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch"]
-    #     )
+    def test_dest_address_calculation(self):
+        self.help_test_given_asm(
+            ["mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch"]
+        )
