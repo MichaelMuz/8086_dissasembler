@@ -223,7 +223,7 @@ class DisassembledInstructionBuilder:
         elif schema_field == NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
-            return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
+            return (self._get_mode() == Mode.WORD_DISPLACEMENT_MODE) or (
                 self._get_mode() == Mode.BYTE_DISPLACEMENT_MODE
                 and (schema_field == NamedField.DISP_LO)
             )
