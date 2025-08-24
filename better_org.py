@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import enum
+from functools import cached_property
 import json
 import logging
 import os
@@ -190,17 +191,15 @@ class DisassembledInstructionBuilder:
         }
 
         self.implied_values = set(self.parsed_fields.keys())
-
         self.identifier_literal = identifier_literal
-        self.mode = None
 
-    def _get_mode(self) -> Mode:
-        if self.mode is None:
-            mod_value = self.parsed_fields[NamedField.MOD]
-            rm_value = self.parsed_fields.get(NamedField.RM)
-            self.mode = get_mode(mod_value, rm_value)
-        logging.debug(f"getting {self.mode = }")
-        return self.mode
+    @cached_property
+    def mode(self) -> Mode:
+        mod_value = self.parsed_fields[NamedField.MOD]
+        rm_value = self.parsed_fields.get(NamedField.RM)
+        mode = get_mode(mod_value, rm_value)
+        logging.debug(f"locked in mode as {mode = }")
+        return mode
 
     def with_field(self, schema_field: SchemaField, field_value: int):
         if isinstance(schema_field, LiteralField):
@@ -223,8 +222,8 @@ class DisassembledInstructionBuilder:
         elif schema_field == NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
-            return (self._get_mode() == Mode.WORD_DISPLACEMENT_MODE) or (
-                self._get_mode() == Mode.BYTE_DISPLACEMENT_MODE
+            return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
+                self.mode == Mode.BYTE_DISPLACEMENT_MODE
                 and (schema_field == NamedField.DISP_LO)
             )
         else:
@@ -255,7 +254,7 @@ class DisassembledInstructionBuilder:
                 word_val
             ]
 
-        if self._get_mode() is Mode.REGISTER_MODE:
+        if self.mode is Mode.REGISTER_MODE:
             dest = self.REG_NAME_LOWER_AND_WORD[dest_val][word_val]
         else:
             equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
@@ -274,7 +273,7 @@ class DisassembledInstructionBuilder:
             source, dest = dest, source
 
         assert source is not None and dest is not None
-        logging.debug(f"{self._get_mode() = }")
+        logging.debug(f"{self.mode = }")
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
             parsed_fields=self.parsed_fields,
