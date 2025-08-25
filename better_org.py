@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import re
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 
 BITS_PER_BYTE = 8
@@ -144,10 +144,29 @@ def get_mode(mod_val: int, rm_val: int | None):
     return mode
 
 
-def combine_bytes(low: int, high: int | None) -> int | None:
+def combine_bytes(low: int, high: int | None) -> int:
     if high is not None:
         return (high << 8) + low
     return low
+
+
+@dataclass(frozen=True)
+class ImmediateOperand:
+    value: int
+
+
+@dataclass(frozen=True)
+class RegisterOperand:
+    register_index: int
+
+
+@dataclass(frozen=True)
+class MemoryOperand:
+    memory_base: int
+    displacement: int
+
+
+Operand: TypeAlias = ImmediateOperand | RegisterOperand | MemoryOperand
 
 
 class DisassembledInstructionBuilder:
@@ -229,56 +248,117 @@ class DisassembledInstructionBuilder:
         else:
             raise ValueError(f"don't know how to check if {schema_field} is needed")
 
+    def _format_operand(self, operand: Operand, word_val) -> str:
+        match operand:
+            case RegisterOperand():
+                return self.REG_NAME_LOWER_AND_WORD[operand.register_index][word_val]
+            case MemoryOperand():
+                equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[operand.memory_base])
+                if operand.displacement and operand.displacement > 0:
+                    equation.append(str(operand.displacement))
+                return f"[{' + '.join(equation)}]"
+            case ImmediateOperand():
+                return str(operand.value)
+
     def build(self) -> DisassembledInstruction:
         word_val = self.parsed_fields[NamedField.W]
         direction = self.parsed_fields[NamedField.D]
 
-        source = None
-        dest_val = None
+        disp = None
+        if NamedField.DISP_LO in self.parsed_fields:
+            disp = combine_bytes(
+                self.parsed_fields[NamedField.DISP_LO],
+                self.parsed_fields.get(NamedField.DISP_HI),
+            )
+
+        data_operand = None
         if NamedField.DATA in self.parsed_fields:
-            assert (NamedField.REG in self.parsed_fields) ^ (
-                NamedField.RM in self.parsed_fields
-            ), "Must have exactly one of reg or rm, not both or neither"
-
-            dest_val = self.parsed_fields.get(
-                NamedField.REG, self.parsed_fields.get(NamedField.RM)
-            )
-            assert dest_val is not None
-            source = combine_bytes(  # the immediate in the data is source
-                self.parsed_fields[NamedField.DATA],
-                self.parsed_fields.get(NamedField.DATA_IF_W1),
-            )
-        else:
-            dest_val = self.parsed_fields[NamedField.RM]
-            source = self.REG_NAME_LOWER_AND_WORD[self.parsed_fields[NamedField.REG]][
-                word_val
-            ]
-
-        if self.mode is Mode.REGISTER_MODE:
-            dest = self.REG_NAME_LOWER_AND_WORD[dest_val][word_val]
-        else:
-            equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
-
-            if NamedField.DISP_LO in self.parsed_fields:
-                disp = combine_bytes(
-                    self.parsed_fields[NamedField.DISP_LO],
-                    self.parsed_fields.get(NamedField.DISP_HI),
+            data_operand = ImmediateOperand(
+                value=combine_bytes(
+                    self.parsed_fields[NamedField.DATA],
+                    self.parsed_fields.get(NamedField.DATA_IF_W1),
                 )
-                if disp != 0:
-                    equation.append(str(disp))
-            str_equation = " + ".join(equation)
-            dest = f"[{str_equation}]"
+            )
+
+        reg_operand = None
+        if NamedField.REG in self.parsed_fields:
+            reg_operand = RegisterOperand(
+                register_index=self.parsed_fields[NamedField.REG]
+            )
+
+        rm_operand = None
+        if NamedField.RM in self.parsed_fields:
+            reg_or_mem_base = self.parsed_fields[NamedField.RM]
+            if self.mode == Mode.REGISTER_MODE:
+                rm_operand = RegisterOperand(register_index=reg_or_mem_base)
+            else:
+                rm_operand = MemoryOperand(
+                    memory_base=reg_or_mem_base,
+                    displacement=disp or 0,
+                )
+
+        assert not (data_operand and reg_operand and rm_operand), "Too many operands"
+
+        if data_operand:
+            # Immediate instruction: register/memory + immediate
+            operands = [reg_operand or rm_operand, data_operand]
+        else:
+            # Register/memory instruction: rm + reg
+            operands = [rm_operand, reg_operand]
 
         if bool(direction):
-            source, dest = dest, source
+            operands.reverse()
 
-        assert source is not None and dest is not None
-        logging.debug(f"{self.mode = }")
+        assert None not in operands, "Cannot have null source or dest"
+        source, dest = (self._format_operand(op, word_val) for op in operands)
+
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
             parsed_fields=self.parsed_fields,
             string_rep=f"{self.instruction_schema.mnemonic} {dest}, {source}",
         )
+
+        # source = None
+        # dest_val = None
+        # if NamedField.DATA in self.parsed_fields:
+        #     assert (NamedField.REG in self.parsed_fields) ^ (
+        #         NamedField.RM in self.parsed_fields
+        #     ), "Must have exactly one of reg or rm, not both or neither"
+
+        #     dest_val = self.parsed_fields.get(
+        #         NamedField.REG, self.parsed_fields.get(NamedField.RM)
+        #     )
+        #     assert dest_val is not None
+        #     source = combine_bytes(  # the immediate in the data is source
+        #         self.parsed_fields[NamedField.DATA],
+        #         self.parsed_fields.get(NamedField.DATA_IF_W1),
+        #     )
+        # else:
+        #     dest_val = self.parsed_fields[NamedField.RM]
+        #     source = self.REG_NAME_LOWER_AND_WORD[self.parsed_fields[NamedField.REG]][
+        #         word_val
+        #     ]
+
+        # if self.mode is Mode.REGISTER_MODE:
+        #     dest = self.REG_NAME_LOWER_AND_WORD[dest_val][word_val]
+        # else:
+        #     equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
+
+        #     if NamedField.DISP_LO in self.parsed_fields:
+        #         disp = combine_bytes(
+        #             self.parsed_fields[NamedField.DISP_LO],
+        #             self.parsed_fields.get(NamedField.DISP_HI),
+        #         )
+        #         if disp != 0:
+        #             equation.append(str(disp))
+        #     str_equation = " + ".join(equation)
+        #     dest = f"[{str_equation}]"
+
+        # if bool(direction):
+        #     source, dest = dest, source
+
+        # assert source is not None and dest is not None
+        # logging.debug(f"{self.mode = }")
 
 
 class BitIterator:
