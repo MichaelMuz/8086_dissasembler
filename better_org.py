@@ -299,12 +299,10 @@ class DisassembledInstructionBuilder:
 
         assert not (data_operand and reg_operand and rm_operand), "Too many operands"
 
-        if data_operand:
-            # Immediate instruction: register/memory + immediate
-            operands = [reg_operand or rm_operand, data_operand]
+        if data_operand is not None:
+            operands = [data_operand, reg_operand or rm_operand]
         else:
-            # Register/memory instruction: rm + reg
-            operands = [rm_operand, reg_operand]
+            operands = [reg_operand, rm_operand]
 
         if bool(direction):
             operands.reverse()
