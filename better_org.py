@@ -114,13 +114,6 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
     return instruction_schemas
 
 
-@dataclass
-class DisassembledInstruction:
-    instruction_schema: InstructionSchema
-    parsed_fields: ParsedNamedField
-    string_rep: str
-
-
 class Mode(enum.Enum):
     NO_DISPLACEMENT_MODE = enum.auto()
     BYTE_DISPLACEMENT_MODE = enum.auto()
@@ -167,6 +160,16 @@ class MemoryOperand:
 
 
 Operand: TypeAlias = ImmediateOperand | RegisterOperand | MemoryOperand
+
+
+@dataclass(frozen=True)
+class DisassembledInstruction:
+    mnemonic: str
+    dest: str
+    source: str
+
+    def __str__(self) -> str:
+        return f"{self.mnemonic} {self.dest}, {self.source}"
 
 
 class DisassembledInstructionBuilder:
@@ -331,9 +334,7 @@ class DisassembledInstructionBuilder:
         source, dest = (self._format_operand(op) for op in operands)
 
         return DisassembledInstruction(
-            instruction_schema=self.instruction_schema,
-            parsed_fields=self.parsed_fields,
-            string_rep=f"{self.instruction_schema.mnemonic} {dest}, {source}",
+            mnemonic=self.instruction_schema.mnemonic, source=source, dest=dest
         )
 
 
@@ -428,9 +429,7 @@ def disassemble(
         assert matching_schema is not None
 
         disassembled_instruction = disassemble_instruction(matching_schema, bit_iter)
-        logging.debug(
-            f"{disassembled_instruction.string_rep = }:\n{disassembled_instruction.parsed_fields = }"
-        )
+        logging.debug(f"{disassembled_instruction= }:\n{disassembled_instruction = }")
         disassembled_instructions.append(disassembled_instruction)
 
     return disassembled_instructions
@@ -443,9 +442,7 @@ def disassemble_binary_to_string(
     bit_iter = BitIterator(b)
     disassembled = disassemble(possible_instructions, bit_iter)
 
-    disassembly_as_str = "\n".join(
-        ["bits 16", *[dis.string_rep for dis in disassembled]]
-    )
+    disassembly_as_str = "\n".join(["bits 16", *map(str, disassembled)])
     return disassembly_as_str
 
 
