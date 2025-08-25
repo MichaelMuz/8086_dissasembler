@@ -37,6 +37,16 @@ def get_bin_seen_error_str(bin: bytes) -> str:
 
 class TestDisassembler(unittest.TestCase):
     @override
+    def tearDown(self) -> None:
+        for temp_file in [
+            TEMP_NASM_INPUT_FILE_LOCATION,
+            TEMP_NASM_OUTPUT_FILE_LOCATION,
+        ]:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        return super().tearDown()
+
+    @override
     def setUp(self) -> None:
         self.parsable_instructions = disasm.get_parsable_instructions_from_config()
         return super().setUp()
