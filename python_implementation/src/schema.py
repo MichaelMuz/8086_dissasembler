@@ -1,3 +1,12 @@
+from dataclasses import dataclass
+import enum
+import json
+import logging
+import re
+from typing import TypeAlias
+from python_implementation.src.utils import BITS_PER_BYTE
+
+
 class LiteralField:
     def __init__(self, literal_value: int, bit_width: int):
         self.literal_value = literal_value

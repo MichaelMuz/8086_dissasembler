@@ -1,11 +1,16 @@
 from dataclasses import dataclass
 import enum
 from functools import cached_property
-import json
 import logging
-import os
-import re
 from typing import TypeAlias
+
+from python_implementation.src.schema import (
+    InstructionSchema,
+    LiteralField,
+    NamedField,
+    SchemaField,
+)
+from python_implementation.src.utils import combine_bytes
 
 
 class Mode(enum.Enum):

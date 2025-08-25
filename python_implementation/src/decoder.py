@@ -1,3 +1,12 @@
+import logging
+from python_implementation.src.builder import (
+    DisassembledInstruction,
+    DisassembledInstructionBuilder,
+)
+from python_implementation.src.schema import InstructionSchema
+from python_implementation.src.utils import BITS_PER_BYTE, get_sub_most_sig_bits
+
+
 class BitIterator:
     def __init__(self, b: bytes):
         self.inst_bytes = b
