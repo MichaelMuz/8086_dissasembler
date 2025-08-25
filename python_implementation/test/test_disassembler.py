@@ -1,9 +1,11 @@
 import itertools
 import logging
 import os
+import shutil
 import subprocess
-from typing import override
 import unittest
+from typing import override
+
 from ..src import disassembler as disasm
 
 logging.basicConfig(level=logging.DEBUG)
@@ -11,11 +13,6 @@ test_logger = logging.getLogger("tests")
 
 TEMP_NASM_INPUT_FILE_LOCATION = "tmp/inst.asm"
 TEMP_NASM_OUTPUT_FILE_LOCATION = "tmp/bin.asm"
-
-if not os.path.exists(
-    nasm_temp_file_dir := TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
-):
-    os.makedirs(nasm_temp_file_dir)
 
 
 def get_bin_from_nasm(asm_instructions: str):
@@ -38,17 +35,20 @@ def get_bin_seen_error_str(bin: bytes) -> str:
 class TestDisassembler(unittest.TestCase):
     @override
     def tearDown(self) -> None:
-        for temp_file in [
-            TEMP_NASM_INPUT_FILE_LOCATION,
-            TEMP_NASM_OUTPUT_FILE_LOCATION,
-        ]:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
+        nasm_temp_file_dir = TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
+        if os.path.exists(nasm_temp_file_dir):
+            shutil.rmtree(nasm_temp_file_dir)
+
         return super().tearDown()
 
     @override
     def setUp(self) -> None:
+        nasm_temp_file_dir = TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
+        if not os.path.exists(nasm_temp_file_dir):
+            os.makedirs(nasm_temp_file_dir)
+
         self.parsable_instructions = disasm.get_parsable_instructions_from_config()
+
         return super().setUp()
 
     def help_test_given_asm(self, asm_instructions: list[str] | str):
