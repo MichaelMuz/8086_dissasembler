@@ -4,7 +4,7 @@ import os
 import subprocess
 from typing import override
 import unittest
-import better_org as disasm
+from ..src import disassembler as disasm
 
 logging.basicConfig(level=logging.DEBUG)
 test_logger = logging.getLogger("tests")
