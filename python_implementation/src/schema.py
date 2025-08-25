@@ -102,7 +102,7 @@ PARSABLE_INSTRUCTION_FILE = "asm_config.json"
 
 
 def get_parsable_instructions_from_config():
-    config_path = Path(__file__).parent / ".." / PARSABLE_INSTRUCTION_FILE
+    config_path = Path(__file__).parent / ".." / ".." / PARSABLE_INSTRUCTION_FILE
     with open(config_path, "r") as file:
         json_data_from_file = json.load(file)
     return get_parsable_instructions(json_data_from_file)
