@@ -38,7 +38,7 @@ def get_bin_seen_error_str(bin: bytes) -> str:
 class TestDisassembler(unittest.TestCase):
     @override
     def setUp(self) -> None:
-        self.parsable_instructions = disasm.get_parsable_instructions_from_file()
+        self.parsable_instructions = disasm.get_parsable_instructions_from_config()
         return super().setUp()
 
     def help_test_given_asm(self, asm_instructions: list[str] | str):

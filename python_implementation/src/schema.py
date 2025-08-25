@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import enum
 import json
 import logging
+from pathlib import Path
 import re
 from typing import TypeAlias
 from python_implementation.src.utils import BITS_PER_BYTE
@@ -97,8 +98,11 @@ def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSche
     return instruction_schemas
 
 
-def get_parsable_instructions_from_file():
-    parsable_instruction_file = "asm_config.json"
-    with open(parsable_instruction_file, "r") as file:
+PARSABLE_INSTRUCTION_FILE = "asm_config.json"
+
+
+def get_parsable_instructions_from_config():
+    config_path = Path(__file__).parent / PARSABLE_INSTRUCTION_FILE
+    with open(config_path, "r") as file:
         json_data_from_file = json.load(file)
     return get_parsable_instructions(json_data_from_file)

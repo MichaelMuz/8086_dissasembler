@@ -1,11 +1,11 @@
 import os
 
 from python_implementation.src.decoder import disassemble_binary_to_string
-from python_implementation.src.schema import get_parsable_instructions_from_file
+from python_implementation.src.schema import get_parsable_instructions_from_config
 
 
 def main():
-    parsable_instructions = get_parsable_instructions_from_file()
+    parsable_instructions = get_parsable_instructions_from_config()
     input_directory = "./asm/assembled/"
     output_directory = "./asm/my_disassembler_output/"
     files_to_do = ["single_register_mov", "many_register_mov", "listing_0039_more_movs"]
