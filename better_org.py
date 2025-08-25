@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import re
-from typing import Literal, TypeAlias
+from typing import TypeAlias
 
 
 BITS_PER_BYTE = 8
@@ -212,14 +212,6 @@ class DisassembledInstructionBuilder:
         self.implied_values = set(self.parsed_fields.keys())
         self.identifier_literal = identifier_literal
 
-    @cached_property
-    def mode(self) -> Mode:
-        mod_value = self.parsed_fields[NamedField.MOD]
-        rm_value = self.parsed_fields.get(NamedField.RM)
-        mode = get_mode(mod_value, rm_value)
-        logging.debug(f"locked in mode as {mode = }")
-        return mode
-
     def with_field(self, schema_field: SchemaField, field_value: int):
         if isinstance(schema_field, LiteralField):
             assert schema_field.literal_value == field_value
@@ -248,10 +240,72 @@ class DisassembledInstructionBuilder:
         else:
             raise ValueError(f"don't know how to check if {schema_field} is needed")
 
-    def _format_operand(self, operand: Operand, word_val) -> str:
+    @cached_property
+    def mode(self) -> Mode:
+        """This one is special because it is used in checking if a field is needed"""
+        mod_value = self.parsed_fields[NamedField.MOD]
+        rm_value = self.parsed_fields.get(NamedField.RM)
+        mode = get_mode(mod_value, rm_value)
+        logging.debug(f"locked in mode as {mode = }")
+        return mode
+
+    @cached_property
+    def word(self):
+        return self.parsed_fields[NamedField.W]
+
+    @cached_property
+    def direction(self):
+        return self.parsed_fields[NamedField.D]
+
+    @cached_property
+    def displacement(self):
+        disp = None
+        if NamedField.DISP_LO in self.parsed_fields:
+            disp = combine_bytes(
+                self.parsed_fields[NamedField.DISP_LO],
+                self.parsed_fields.get(NamedField.DISP_HI),
+            )
+            return disp
+
+    @cached_property
+    def data_operand(self):
+        data_operand = None
+        if NamedField.DATA in self.parsed_fields:
+            data_operand = ImmediateOperand(
+                value=combine_bytes(
+                    self.parsed_fields[NamedField.DATA],
+                    self.parsed_fields.get(NamedField.DATA_IF_W1),
+                )
+            )
+        return data_operand
+
+    @cached_property
+    def register_operand(self):
+        reg_operand = None
+        if NamedField.REG in self.parsed_fields:
+            reg_operand = RegisterOperand(
+                register_index=self.parsed_fields[NamedField.REG]
+            )
+        return reg_operand
+
+    @cached_property
+    def rm_operand(self):
+        rm_operand = None
+        if NamedField.RM in self.parsed_fields:
+            reg_or_mem_base = self.parsed_fields[NamedField.RM]
+            if self.mode == Mode.REGISTER_MODE:
+                rm_operand = RegisterOperand(register_index=reg_or_mem_base)
+            else:
+                rm_operand = MemoryOperand(
+                    memory_base=reg_or_mem_base,
+                    displacement=self.displacement or 0,
+                )
+        return rm_operand
+
+    def _format_operand(self, operand: Operand) -> str:
         match operand:
             case RegisterOperand():
-                return self.REG_NAME_LOWER_AND_WORD[operand.register_index][word_val]
+                return self.REG_NAME_LOWER_AND_WORD[operand.register_index][self.word]
             case MemoryOperand():
                 equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[operand.memory_base])
                 if operand.displacement and operand.displacement > 0:
@@ -261,54 +315,20 @@ class DisassembledInstructionBuilder:
                 return str(operand.value)
 
     def build(self) -> DisassembledInstruction:
-        word_val = self.parsed_fields[NamedField.W]
-        direction = self.parsed_fields[NamedField.D]
+        assert not (
+            self.data_operand and self.register_operand and self.rm_operand
+        ), "Too many operands"
 
-        disp = None
-        if NamedField.DISP_LO in self.parsed_fields:
-            disp = combine_bytes(
-                self.parsed_fields[NamedField.DISP_LO],
-                self.parsed_fields.get(NamedField.DISP_HI),
-            )
-
-        data_operand = None
-        if NamedField.DATA in self.parsed_fields:
-            data_operand = ImmediateOperand(
-                value=combine_bytes(
-                    self.parsed_fields[NamedField.DATA],
-                    self.parsed_fields.get(NamedField.DATA_IF_W1),
-                )
-            )
-
-        reg_operand = None
-        if NamedField.REG in self.parsed_fields:
-            reg_operand = RegisterOperand(
-                register_index=self.parsed_fields[NamedField.REG]
-            )
-
-        rm_operand = None
-        if NamedField.RM in self.parsed_fields:
-            reg_or_mem_base = self.parsed_fields[NamedField.RM]
-            if self.mode == Mode.REGISTER_MODE:
-                rm_operand = RegisterOperand(register_index=reg_or_mem_base)
-            else:
-                rm_operand = MemoryOperand(
-                    memory_base=reg_or_mem_base,
-                    displacement=disp or 0,
-                )
-
-        assert not (data_operand and reg_operand and rm_operand), "Too many operands"
-
-        if data_operand is not None:
-            operands = [data_operand, reg_operand or rm_operand]
+        if self.data_operand is not None:
+            operands = [self.data_operand, self.register_operand or self.rm_operand]
         else:
-            operands = [reg_operand, rm_operand]
+            operands = [self.register_operand, self.rm_operand]
 
-        if bool(direction):
+        if bool(self.direction):
             operands.reverse()
 
         assert None not in operands, "Cannot have null source or dest"
-        source, dest = (self._format_operand(op, word_val) for op in operands)
+        source, dest = (self._format_operand(op) for op in operands)
 
         return DisassembledInstruction(
             instruction_schema=self.instruction_schema,
