@@ -316,48 +316,6 @@ class DisassembledInstructionBuilder:
             string_rep=f"{self.instruction_schema.mnemonic} {dest}, {source}",
         )
 
-        # source = None
-        # dest_val = None
-        # if NamedField.DATA in self.parsed_fields:
-        #     assert (NamedField.REG in self.parsed_fields) ^ (
-        #         NamedField.RM in self.parsed_fields
-        #     ), "Must have exactly one of reg or rm, not both or neither"
-
-        #     dest_val = self.parsed_fields.get(
-        #         NamedField.REG, self.parsed_fields.get(NamedField.RM)
-        #     )
-        #     assert dest_val is not None
-        #     source = combine_bytes(  # the immediate in the data is source
-        #         self.parsed_fields[NamedField.DATA],
-        #         self.parsed_fields.get(NamedField.DATA_IF_W1),
-        #     )
-        # else:
-        #     dest_val = self.parsed_fields[NamedField.RM]
-        #     source = self.REG_NAME_LOWER_AND_WORD[self.parsed_fields[NamedField.REG]][
-        #         word_val
-        #     ]
-
-        # if self.mode is Mode.REGISTER_MODE:
-        #     dest = self.REG_NAME_LOWER_AND_WORD[dest_val][word_val]
-        # else:
-        #     equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[dest_val])
-
-        #     if NamedField.DISP_LO in self.parsed_fields:
-        #         disp = combine_bytes(
-        #             self.parsed_fields[NamedField.DISP_LO],
-        #             self.parsed_fields.get(NamedField.DISP_HI),
-        #         )
-        #         if disp != 0:
-        #             equation.append(str(disp))
-        #     str_equation = " + ".join(equation)
-        #     dest = f"[{str_equation}]"
-
-        # if bool(direction):
-        #     source, dest = dest, source
-
-        # assert source is not None and dest is not None
-        # logging.debug(f"{self.mode = }")
-
 
 class BitIterator:
     def __init__(self, b: bytes):
