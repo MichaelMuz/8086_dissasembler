@@ -1,3 +1,6 @@
+import math
+
+
 BITS_PER_BYTE = 8
 
 
@@ -18,3 +21,16 @@ def combine_bytes(low: int, high: int | None) -> int:
     if high is not None:
         return (high << 8) + low
     return low
+
+
+def as_signed_int(unsigned: int) -> int:
+    if unsigned == 0:
+        return unsigned
+    byte_width = math.ceil(unsigned.bit_length() / BITS_PER_BYTE)
+    bytes_needed = 1 << (byte_width - 1).bit_length()  # Next power of 2
+    highest_bit_mask = 1 << (bytes_needed * BITS_PER_BYTE)
+    max_signed = highest_bit_mask >> 1
+    if unsigned >= max_signed:
+        return unsigned - highest_bit_mask
+
+    return unsigned
