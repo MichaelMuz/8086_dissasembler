@@ -10,7 +10,7 @@ from python_implementation.src.schema import (
     NamedField,
     SchemaField,
 )
-from python_implementation.src.utils import combine_bytes
+from python_implementation.src.utils import as_signed_int, combine_bytes
 
 
 class Mode(enum.Enum):
@@ -84,7 +84,7 @@ class MemoryOperand:
 
     def __str__(self) -> str:
         equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[self.memory_base])
-        if self.displacement and self.displacement > 0:
+        if self.displacement and self.displacement != 0:
             equation.append(str(self.displacement))
         return f"[{' + '.join(equation)}]"
 
@@ -176,7 +176,7 @@ class DisassembledInstructionBuilder:
                 self.parsed_fields[NamedField.DISP_LO],
                 self.parsed_fields.get(NamedField.DISP_HI),
             )
-            return disp
+            return as_signed_int(disp)
 
     @cached_property
     def data_operand(self):
