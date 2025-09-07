@@ -166,7 +166,7 @@ class DisassembledInstructionBuilder:
 
     @cached_property
     def direction(self):
-        return self.parsed_fields[NamedField.D]
+        return bool(self.parsed_fields[NamedField.D])
 
     @cached_property
     def displacement(self):
@@ -225,7 +225,7 @@ class DisassembledInstructionBuilder:
         else:
             operands = [self.register_operand, self.rm_operand]
 
-        if bool(self.direction):
+        if self.direction:
             operands.reverse()
 
         assert None not in operands, "Cannot have null source or dest"

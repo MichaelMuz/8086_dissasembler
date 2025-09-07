@@ -12,7 +12,7 @@
                     "description": "Immediate to Register/Memory",
                     "format": "1100011 w, mod 000 rm, data, data-if-w=1",
                     "implied_values": {
-                        "d": 1
+                        "d": 0
                     }
                 },
                 {
