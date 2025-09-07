@@ -13,27 +13,28 @@ from python_implementation.src.schema import (
 from python_implementation.src.utils import as_signed_int, combine_bytes
 
 
-class Mode(enum.Enum):
+class ModeType(enum.Enum):
     NO_DISPLACEMENT_MODE = enum.auto()
     BYTE_DISPLACEMENT_MODE = enum.auto()
     WORD_DISPLACEMENT_MODE = enum.auto()
     REGISTER_MODE = enum.auto()
 
-    @staticmethod
-    def get(mod_val: int, rm_val: int | None):
+
+class Mode:
+    def __init__(self, mod_val: int, rm_val: int | None) -> None:
         logging.debug(f"getting mode {mod_val = }, {rm_val = }")
         all_modes = [
-            Mode.NO_DISPLACEMENT_MODE,
-            Mode.BYTE_DISPLACEMENT_MODE,
-            Mode.WORD_DISPLACEMENT_MODE,
-            Mode.REGISTER_MODE,
+            ModeType.NO_DISPLACEMENT_MODE,
+            ModeType.BYTE_DISPLACEMENT_MODE,
+            ModeType.WORD_DISPLACEMENT_MODE,
+            ModeType.REGISTER_MODE,
         ]
 
-        mode = all_modes[mod_val]
-        if mode is Mode.NO_DISPLACEMENT_MODE and rm_val == 0b110:
-            mode = Mode.WORD_DISPLACEMENT_MODE
-
-        return mode
+        self.type = all_modes[mod_val]
+        self.direct_memory_index = False
+        if self.type is ModeType.NO_DISPLACEMENT_MODE and rm_val == 0b110:
+            self.type = ModeType.WORD_DISPLACEMENT_MODE
+            self.direct_memory_index = True
 
 
 @dataclass(frozen=True)
@@ -147,12 +148,12 @@ class DisassembledInstructionBuilder:
 
         if schema_field in self.ALWAYS_NEEDED_FIELDS:
             return True
-        elif schema_field == NamedField.DATA_IF_W1:
+        elif schema_field is NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
-            return (self.mode == Mode.WORD_DISPLACEMENT_MODE) or (
-                self.mode == Mode.BYTE_DISPLACEMENT_MODE
-                and (schema_field == NamedField.DISP_LO)
+            return (self.mode.type is ModeType.WORD_DISPLACEMENT_MODE) or (
+                self.mode.type is ModeType.BYTE_DISPLACEMENT_MODE
+                and (schema_field is NamedField.DISP_LO)
             )
         else:
             raise ValueError(f"don't know how to check if {schema_field} is needed")
@@ -162,7 +163,7 @@ class DisassembledInstructionBuilder:
         """This one is special because it is used in checking if a field is needed"""
         mod_value = self.parsed_fields[NamedField.MOD]
         rm_value = self.parsed_fields.get(NamedField.RM)
-        mode = Mode.get(mod_value, rm_value)
+        mode = Mode(mod_value, rm_value)
         logging.debug(f"locked in mode as {mode = }")
         return mode
 
@@ -211,7 +212,7 @@ class DisassembledInstructionBuilder:
         rm_operand = None
         if NamedField.RM in self.parsed_fields:
             reg_or_mem_base = self.parsed_fields[NamedField.RM]
-            if self.mode == Mode.REGISTER_MODE:
+            if self.mode.type is ModeType.REGISTER_MODE:
                 rm_operand = RegisterOperand(
                     register_index=reg_or_mem_base, word=self.word
                 )
