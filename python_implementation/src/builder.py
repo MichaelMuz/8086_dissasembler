@@ -35,6 +35,9 @@ class Mode:
             self.type = self.Type.WORD_DISPLACEMENT_MODE
             self.direct_memory_index = True
 
+    def __repr__(self) -> str:
+        return f"Mode<type={self.type}, direct_memory_index={self.direct_memory_index}>"
+
 
 @dataclass(frozen=True)
 class ImmediateOperand:
@@ -68,7 +71,7 @@ class RegisterOperand:
 
 @dataclass(frozen=True)
 class MemoryOperand:
-    memory_base: int
+    memory_base: int | None
     displacement: int
 
     RM_TO_EFFECTIVE_ADDR_CALC = [
@@ -84,7 +87,10 @@ class MemoryOperand:
     ]
 
     def __str__(self) -> str:
-        equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[self.memory_base])
+        equation = []
+        if self.memory_base is not None:
+            equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[self.memory_base])
+
         if self.displacement and self.displacement != 0:
             equation.append(str(self.displacement))
         return f"[{' + '.join(equation)}]"
@@ -217,7 +223,9 @@ class DisassembledInstructionBuilder:
                 )
             else:
                 rm_operand = MemoryOperand(
-                    memory_base=reg_or_mem_base,
+                    memory_base=(
+                        None if self.mode.direct_memory_index else reg_or_mem_base
+                    ),
                     displacement=self.displacement or 0,
                 )
         return rm_operand
