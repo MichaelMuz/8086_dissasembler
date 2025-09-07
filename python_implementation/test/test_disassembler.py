@@ -167,11 +167,11 @@ class TestMov(TestDisassembler):
     def test_direct_addresses(self):
         self.help_test_given_asm(["mov bp, [5]", "mov bx, [3458]"])
 
-    # def test_memory_to_accumulator(self):
-    #     self.help_test_given_asm("mov ax, [2555]")
+    def test_memory_to_accumulator(self):
+        self.help_test_given_asm("mov ax, [2555]")
 
-    # def test_memory_to_accumulators(self):
-    #     self.help_test_given_asm(["mov ax, [2555]", "mov ax, [16]"])
+    def test_memory_to_accumulators(self):
+        self.help_test_given_asm(["mov ax, [2555]", "mov ax, [16]"])
 
     # def test_accumulator_to_memory(self):
     #     self.help_test_given_asm("mov [2554], ax")

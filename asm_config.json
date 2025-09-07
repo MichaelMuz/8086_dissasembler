@@ -25,8 +25,13 @@
                 },
                 {
                     "description": "Memory to Accumulator",
-                    "format": "1010000 w, addr-lo, addr-hi",
-                    "implied_values": {}
+                    "format": "1010000 w, disp-lo, disp-hi",
+                    "implied_values": {
+                        "d": 1,
+                        "mod": 0,
+                        "rm": 6,
+                        "reg": 0
+                    }
                 },
                 {
                     "description": "Accumulator to Memory",
