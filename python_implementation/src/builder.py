@@ -13,27 +13,26 @@ from python_implementation.src.schema import (
 from python_implementation.src.utils import as_signed_int, combine_bytes
 
 
-class ModeType(enum.Enum):
-    NO_DISPLACEMENT_MODE = enum.auto()
-    BYTE_DISPLACEMENT_MODE = enum.auto()
-    WORD_DISPLACEMENT_MODE = enum.auto()
-    REGISTER_MODE = enum.auto()
-
-
 class Mode:
+    class Type(enum.Enum):
+        NO_DISPLACEMENT_MODE = enum.auto()
+        BYTE_DISPLACEMENT_MODE = enum.auto()
+        WORD_DISPLACEMENT_MODE = enum.auto()
+        REGISTER_MODE = enum.auto()
+
     def __init__(self, mod_val: int, rm_val: int | None) -> None:
         logging.debug(f"getting mode {mod_val = }, {rm_val = }")
         all_modes = [
-            ModeType.NO_DISPLACEMENT_MODE,
-            ModeType.BYTE_DISPLACEMENT_MODE,
-            ModeType.WORD_DISPLACEMENT_MODE,
-            ModeType.REGISTER_MODE,
+            self.Type.NO_DISPLACEMENT_MODE,
+            self.Type.BYTE_DISPLACEMENT_MODE,
+            self.Type.WORD_DISPLACEMENT_MODE,
+            self.Type.REGISTER_MODE,
         ]
 
         self.type = all_modes[mod_val]
         self.direct_memory_index = False
-        if self.type is ModeType.NO_DISPLACEMENT_MODE and rm_val == 0b110:
-            self.type = ModeType.WORD_DISPLACEMENT_MODE
+        if self.type is self.Type.NO_DISPLACEMENT_MODE and rm_val == 0b110:
+            self.type = self.Type.WORD_DISPLACEMENT_MODE
             self.direct_memory_index = True
 
 
@@ -151,8 +150,8 @@ class DisassembledInstructionBuilder:
         elif schema_field is NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
-            return (self.mode.type is ModeType.WORD_DISPLACEMENT_MODE) or (
-                self.mode.type is ModeType.BYTE_DISPLACEMENT_MODE
+            return (self.mode.type is Mode.Type.WORD_DISPLACEMENT_MODE) or (
+                self.mode.type is Mode.Type.BYTE_DISPLACEMENT_MODE
                 and (schema_field is NamedField.DISP_LO)
             )
         else:
@@ -212,7 +211,7 @@ class DisassembledInstructionBuilder:
         rm_operand = None
         if NamedField.RM in self.parsed_fields:
             reg_or_mem_base = self.parsed_fields[NamedField.RM]
-            if self.mode.type is ModeType.REGISTER_MODE:
+            if self.mode.type is Mode.Type.REGISTER_MODE:
                 rm_operand = RegisterOperand(
                     register_index=reg_or_mem_base, word=self.word
                 )
