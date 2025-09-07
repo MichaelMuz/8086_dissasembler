@@ -147,13 +147,13 @@ class TestMov(TestDisassembler):
             ["mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch"]
         )
 
-    # def test_signed_displacement(self):
-    #     self.help_test_given_asm("mov ax, [bx + di - 37]")
+    def test_signed_displacement(self):
+        self.help_test_given_asm("mov ax, [bx + di - 37]")
 
-    # def test_signed_displacements(self):
-    #     self.help_test_given_asm(
-    #         ["mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]"]
-    #     )
+    def test_signed_displacements(self):
+        self.help_test_given_asm(
+            ["mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]"]
+        )
 
     # def test_explicit_size(self):
     #     self.help_test_given_asm("mov [bp + di], byte 7")
