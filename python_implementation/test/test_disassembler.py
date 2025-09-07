@@ -155,8 +155,8 @@ class TestMov(TestDisassembler):
             ["mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]"]
         )
 
-    # def test_explicit_size(self):
-    #     self.help_test_given_asm("mov [bp + di], byte 7")
+    def test_explicit_size(self):
+        self.help_test_given_asm("mov [bp + di], byte 7")
 
     # def test_explicit_sizes(self):
     #     self.help_test_given_asm(["mov [bp + di], byte 7", "mov [di + 901], word 347"])

@@ -39,6 +39,7 @@ class Mode(enum.Enum):
 @dataclass(frozen=True)
 class ImmediateOperand:
     value: int
+    word: bool
 
     def __str__(self) -> str:
         return str(self.value)
@@ -99,7 +100,12 @@ class DisassembledInstruction:
     source: Operand
 
     def __str__(self) -> str:
-        return f"{self.mnemonic} {self.dest}, {self.source}"
+        size_spec = ""
+        if isinstance(self.dest, MemoryOperand) and isinstance(
+            self.source, ImmediateOperand
+        ):
+            size_spec = "word " if self.source.word else "byte "
+        return f"{self.mnemonic} {self.dest}, {size_spec}{self.source}"
 
 
 class DisassembledInstructionBuilder:
@@ -186,7 +192,8 @@ class DisassembledInstructionBuilder:
                 value=combine_bytes(
                     self.parsed_fields[NamedField.DATA],
                     self.parsed_fields.get(NamedField.DATA_IF_W1),
-                )
+                ),
+                word=self.word,
             )
         return data_operand
 
