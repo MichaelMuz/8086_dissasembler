@@ -146,3 +146,35 @@ class TestMov(TestDisassembler):
         self.help_test_given_asm(
             ["mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch"]
         )
+
+    # def test_signed_displacement(self):
+    #     self.help_test_given_asm("mov ax, [bx + di - 37]")
+
+    # def test_signed_displacements(self):
+    #     self.help_test_given_asm(
+    #         ["mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]"]
+    #     )
+
+    # def test_explicit_size(self):
+    #     self.help_test_given_asm("mov [bp + di], byte 7")
+
+    # def test_explicit_sizes(self):
+    #     self.help_test_given_asm(["mov [bp + di], byte 7", "mov [di + 901], word 347"])
+
+    # def test_direct_address(self):
+    #     self.help_test_given_asm("mov bp, [5]")
+
+    # def test_direct_addresses(self):
+    #     self.help_test_given_asm(["mov bp, [5]", "mov bx, [3458]"])
+
+    # def test_memory_to_accumulator(self):
+    #     self.help_test_given_asm("mov ax, [2555]")
+
+    # def test_memory_to_accumulators(self):
+    #     self.help_test_given_asm(["mov ax, [2555]", "mov ax, [16]"])
+
+    # def test_accumulator_to_memory(self):
+    #     self.help_test_given_asm("mov [2554], ax")
+
+    # def test_accumulator_to_memories(self):
+    #     self.help_test_given_asm(["mov [2554], ax", "mov [15], ax"])

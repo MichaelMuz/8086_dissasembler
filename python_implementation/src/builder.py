@@ -40,32 +40,15 @@ def get_mode(mod_val: int, rm_val: int | None):
 class ImmediateOperand:
     value: int
 
+    def __str__(self) -> str:
+        return str(self.value)
+
 
 @dataclass(frozen=True)
 class RegisterOperand:
     register_index: int
+    word: bool
 
-
-@dataclass(frozen=True)
-class MemoryOperand:
-    memory_base: int
-    displacement: int
-
-
-Operand: TypeAlias = ImmediateOperand | RegisterOperand | MemoryOperand
-
-
-@dataclass(frozen=True)
-class DisassembledInstruction:
-    mnemonic: str
-    dest: str
-    source: str
-
-    def __str__(self) -> str:
-        return f"{self.mnemonic} {self.dest}, {self.source}"
-
-
-class DisassembledInstructionBuilder:
     REG_NAME_LOWER_AND_WORD = [
         # [lower_register_name, word_full_register_name]
         ["al", "ax"],
@@ -77,6 +60,16 @@ class DisassembledInstructionBuilder:
         ["dh", "si"],
         ["bh", "di"],
     ]
+
+    def __str__(self) -> str:
+        return self.REG_NAME_LOWER_AND_WORD[self.register_index][self.word]
+
+
+@dataclass(frozen=True)
+class MemoryOperand:
+    memory_base: int
+    displacement: int
+
     RM_TO_EFFECTIVE_ADDR_CALC = [
         # if there are two things in the list, the equation these bits code for are those added
         ["bx", "si"],
@@ -88,6 +81,28 @@ class DisassembledInstructionBuilder:
         ["bp"],
         ["bx"],
     ]
+
+    def __str__(self) -> str:
+        equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[self.memory_base])
+        if self.displacement and self.displacement > 0:
+            equation.append(str(self.displacement))
+        return f"[{' + '.join(equation)}]"
+
+
+Operand: TypeAlias = ImmediateOperand | RegisterOperand | MemoryOperand
+
+
+@dataclass(frozen=True)
+class DisassembledInstruction:
+    mnemonic: str
+    dest: Operand
+    source: Operand
+
+    def __str__(self) -> str:
+        return f"{self.mnemonic} {self.dest}, {self.source}"
+
+
+class DisassembledInstructionBuilder:
     ALWAYS_NEEDED_FIELDS = {
         # if we see this in an instruction schema, we must always parse it
         NamedField.D,
@@ -147,7 +162,7 @@ class DisassembledInstructionBuilder:
 
     @cached_property
     def word(self):
-        return self.parsed_fields[NamedField.W]
+        return bool(self.parsed_fields[NamedField.W])
 
     @cached_property
     def direction(self):
@@ -180,7 +195,7 @@ class DisassembledInstructionBuilder:
         reg_operand = None
         if NamedField.REG in self.parsed_fields:
             reg_operand = RegisterOperand(
-                register_index=self.parsed_fields[NamedField.REG]
+                register_index=self.parsed_fields[NamedField.REG], word=self.word
             )
         return reg_operand
 
@@ -190,25 +205,15 @@ class DisassembledInstructionBuilder:
         if NamedField.RM in self.parsed_fields:
             reg_or_mem_base = self.parsed_fields[NamedField.RM]
             if self.mode == Mode.REGISTER_MODE:
-                rm_operand = RegisterOperand(register_index=reg_or_mem_base)
+                rm_operand = RegisterOperand(
+                    register_index=reg_or_mem_base, word=self.word
+                )
             else:
                 rm_operand = MemoryOperand(
                     memory_base=reg_or_mem_base,
                     displacement=self.displacement or 0,
                 )
         return rm_operand
-
-    def _format_operand(self, operand: Operand) -> str:
-        match operand:
-            case RegisterOperand():
-                return self.REG_NAME_LOWER_AND_WORD[operand.register_index][self.word]
-            case MemoryOperand():
-                equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[operand.memory_base])
-                if operand.displacement and operand.displacement > 0:
-                    equation.append(str(operand.displacement))
-                return f"[{' + '.join(equation)}]"
-            case ImmediateOperand():
-                return str(operand.value)
 
     def build(self) -> DisassembledInstruction:
         assert not (
@@ -224,7 +229,7 @@ class DisassembledInstructionBuilder:
             operands.reverse()
 
         assert None not in operands, "Cannot have null source or dest"
-        source, dest = (self._format_operand(op) for op in operands)
+        source, dest = operands
 
         return DisassembledInstruction(
             mnemonic=self.instruction_schema.mnemonic, source=source, dest=dest
