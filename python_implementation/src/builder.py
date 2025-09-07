@@ -91,7 +91,7 @@ class MemoryOperand:
         if self.memory_base is not None:
             equation = list(self.RM_TO_EFFECTIVE_ADDR_CALC[self.memory_base])
 
-        if self.displacement and self.displacement != 0:
+        if self.displacement != 0:
             equation.append(str(self.displacement))
         return f"[{' + '.join(equation)}]"
 
