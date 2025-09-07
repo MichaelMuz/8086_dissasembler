@@ -19,21 +19,21 @@ class Mode(enum.Enum):
     WORD_DISPLACEMENT_MODE = enum.auto()
     REGISTER_MODE = enum.auto()
 
+    @staticmethod
+    def get(mod_val: int, rm_val: int | None):
+        logging.debug(f"getting mode {mod_val = }, {rm_val = }")
+        all_modes = [
+            Mode.NO_DISPLACEMENT_MODE,
+            Mode.BYTE_DISPLACEMENT_MODE,
+            Mode.WORD_DISPLACEMENT_MODE,
+            Mode.REGISTER_MODE,
+        ]
 
-def get_mode(mod_val: int, rm_val: int | None):
-    logging.debug(f"getting mode {mod_val = }, {rm_val = }")
-    all_modes = [
-        Mode.NO_DISPLACEMENT_MODE,
-        Mode.BYTE_DISPLACEMENT_MODE,
-        Mode.WORD_DISPLACEMENT_MODE,
-        Mode.REGISTER_MODE,
-    ]
+        mode = all_modes[mod_val]
+        if mode is Mode.NO_DISPLACEMENT_MODE and rm_val == 0b110:
+            mode = Mode.WORD_DISPLACEMENT_MODE
 
-    mode = all_modes[mod_val]
-    if mode is Mode.NO_DISPLACEMENT_MODE and rm_val == 0b110:
-        mode = Mode.WORD_DISPLACEMENT_MODE
-
-    return mode
+        return mode
 
 
 @dataclass(frozen=True)
@@ -156,7 +156,7 @@ class DisassembledInstructionBuilder:
         """This one is special because it is used in checking if a field is needed"""
         mod_value = self.parsed_fields[NamedField.MOD]
         rm_value = self.parsed_fields.get(NamedField.RM)
-        mode = get_mode(mod_value, rm_value)
+        mode = Mode.get(mod_value, rm_value)
         logging.debug(f"locked in mode as {mode = }")
         return mode
 
