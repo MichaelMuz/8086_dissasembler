@@ -137,6 +137,7 @@ class DisassembledInstructionBuilder:
 
     def with_field(self, schema_field: SchemaField, field_value: int):
         if isinstance(schema_field, LiteralField):
+            logging.debug(f"{schema_field = }, {field_value = }")
             assert schema_field.literal_value == field_value
         elif isinstance(schema_field, NamedField):
             self.parsed_fields[schema_field] = field_value

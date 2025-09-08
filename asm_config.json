@@ -50,7 +50,7 @@
             "variations": [
                 {
                     "description": "Reg/Memory and register to either",
-                    "format": "001010 d w, mod 101 rm, disp-lo, disp-hi",
+                    "format": "001010 d w, mod reg rm, disp-lo, disp-hi",
                     "implied_values": {}
                 },
                 {

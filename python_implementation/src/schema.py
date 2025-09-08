@@ -22,6 +22,9 @@ class LiteralField:
         )
         return other_int_shifted == self.literal_value
 
+    def __repr__(self) -> str:
+        return f"LiteralField(literal_value=0b{self.literal_value:08b}, bit_width={self.bit_width})"
+
 
 class NamedField(enum.Enum):
     bit_width: int  # for type checker, this exists
