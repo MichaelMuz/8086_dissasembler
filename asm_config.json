@@ -87,7 +87,7 @@
                 },
                 {
                     "description": "Immediate to Accumulator",
-                    "format": "0010110 w, data, data-if-w=1",
+                    "format": "0000010 w, data, data-if-w=1",
                     "implied_values": {
                         "d": 0,
                         "reg": 0
