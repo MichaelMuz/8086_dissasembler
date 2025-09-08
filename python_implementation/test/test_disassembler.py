@@ -190,35 +190,35 @@ class TestSub(TestDisassembler):
     def test_sub_immediate_from_reg(self):
         self.help_test_given_asm(["sub si, 2", "sub bp, 2", "sub cx, 8"])
 
-    # def test_sub_reg_from_memory_with_displacement(self):
-    #     self.help_test_given_asm(
-    #         [
-    #             "sub bx, [bp + 0]",
-    #             "sub cx, [bx + 2]",
-    #             "sub bh, [bp + si + 4]",
-    #             "sub di, [bp + di + 6]",
-    #         ]
-    #     )
+    def test_sub_reg_from_memory_with_displacement(self):
+        self.help_test_given_asm(
+            [
+                "sub bx, [bp + 0]",
+                "sub cx, [bx + 2]",
+                "sub bh, [bp + si + 4]",
+                "sub di, [bp + di + 6]",
+            ]
+        )
 
-    # def test_sub_reg_from_memory_dest(self):
-    #     self.help_test_given_asm(
-    #         [
-    #             "sub [bx+si], bx",
-    #             "sub [bp], bx",
-    #             "sub [bp + 0], bx",
-    #             "sub [bx + 2], cx",
-    #             "sub [bp + si + 4], bh",
-    #             "sub [bp + di + 6], di",
-    #         ]
-    #     )
+    def test_sub_reg_from_memory_dest(self):
+        self.help_test_given_asm(
+            [
+                "sub [bx+si], bx",
+                "sub [bp], bx",
+                "sub [bp + 0], bx",
+                "sub [bx + 2], cx",
+                "sub [bp + si + 4], bh",
+                "sub [bp + di + 6], di",
+            ]
+        )
 
     # def test_sub_immediate_from_memory(self):
     #     self.help_test_given_asm(["sub byte [bx], 34", "sub word [bx + di], 29"])
 
-    # def test_sub_mixed_operations(self):
-    #     self.help_test_given_asm(
-    #         ["sub ax, [bp]", "sub al, [bx + si]", "sub ax, bx", "sub al, ah"]
-    #     )
+    def test_sub_mixed_operations(self):
+        self.help_test_given_asm(
+            ["sub ax, [bp]", "sub al, [bx + si]", "sub ax, bx", "sub al, ah"]
+        )
 
     # def test_sub_immediate_values(self):
     #     self.help_test_given_asm(["sub ax, 1000", "sub al, -30", "sub al, 9"])
