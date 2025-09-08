@@ -146,7 +146,6 @@ class DisassembledInstructionBuilder:
     def is_needed(self, schema_field: SchemaField) -> bool:
         if isinstance(schema_field, LiteralField):
             return True
-        assert isinstance(schema_field, NamedField)
         assert (
             schema_field not in self.implied_values
         ), f"Asking if {schema_field} is required but its value is already implied"
