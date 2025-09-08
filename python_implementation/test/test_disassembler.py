@@ -220,8 +220,8 @@ class TestSub(TestDisassembler):
             ["sub ax, [bp]", "sub al, [bx + si]", "sub ax, bx", "sub al, ah"]
         )
 
-    # def test_sub_immediate_values(self):
-    #     self.help_test_given_asm(["sub ax, 1000", "sub al, -30", "sub al, 9"])
+    def test_sub_immediate_values(self):
+        self.help_test_given_asm(["sub ax, 1000", "sub al, -30", "sub al, 9"])
 
 
 # class TestAdd(TestDisassembler):
