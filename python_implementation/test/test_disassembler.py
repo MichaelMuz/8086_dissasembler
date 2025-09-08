@@ -212,8 +212,8 @@ class TestSub(TestDisassembler):
             ]
         )
 
-    # def test_sub_immediate_from_memory(self):
-    #     self.help_test_given_asm(["sub byte [bx], 34", "sub word [bx + di], 29"])
+    def test_sub_immediate_from_memory(self):
+        self.help_test_given_asm(["sub byte [bx], 34", "sub word [bx + di], 29"])
 
     def test_sub_mixed_operations(self):
         self.help_test_given_asm(

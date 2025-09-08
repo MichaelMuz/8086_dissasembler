@@ -63,7 +63,12 @@
                 {
                     "description": "Immediate from Accumulator",
                     "format": "0010110 w, data, data-if-w=1",
-                    "implied_values": {}
+                    "implied_values": {
+                        "d": 0,
+                        "mod": 0,
+                        "rm": 6,
+                        "reg": 0
+                    }
                 }
             ]
         }
