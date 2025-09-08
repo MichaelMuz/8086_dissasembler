@@ -44,6 +44,26 @@
                     }
                 }
             ]
+        },
+        {
+            "mnemonic": "sub",
+            "variations": [
+                {
+                    "description": "Reg/Memory and register to either",
+                    "format": "001010 d w, mod 101 rm, disp-lo, disp-hi",
+                    "implied_values": {}
+                },
+                {
+                    "description": "Immediate from Register/Memory",
+                    "format": "100000 s w, mod 101 rm, disp-lo, disp-hi, data, data-if-s:w=01",
+                    "implied_values": {}
+                },
+                {
+                    "description": "Immediate from Accumulator",
+                    "format": "0010110 w, data, data-if-w=1",
+                    "implied_values": {}
+                }
+            ]
         }
     ]
 }

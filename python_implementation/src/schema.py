@@ -28,6 +28,7 @@ class NamedField(enum.Enum):
 
     D = ("d", 1)
     W = ("w", 1)
+    S = ("s", 1)
     REG = ("reg", 3)
     MOD = ("mod", 2)
     RM = ("rm", 3)
@@ -37,6 +38,7 @@ class NamedField(enum.Enum):
     ADDR_HI = ("addr-hi", 8)
     DATA = ("data", 8)
     DATA_IF_W1 = ("data-if-w=1", 8)
+    DATA_IF_SW_01 = ("data-if-s:w=01", 8)
 
     def __new__(cls, field_name: str, bit_width: int):
         obj = object.__new__(cls)
