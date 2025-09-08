@@ -119,6 +119,7 @@ class DisassembledInstructionBuilder:
         # if we see this in an instruction schema, we must always parse it
         NamedField.D,
         NamedField.W,
+        NamedField.S,
         NamedField.MOD,
         NamedField.REG,
         NamedField.RM,
@@ -154,6 +155,8 @@ class DisassembledInstructionBuilder:
             return True
         elif schema_field is NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
+        elif schema_field is NamedField.DATA_IF_SW_01:
+            return self.sign_extension == 0 and self.word
         elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
             return (self.mode.type is Mode.Type.WORD_DISPLACEMENT_MODE) or (
                 self.mode.type is Mode.Type.BYTE_DISPLACEMENT_MODE
@@ -178,6 +181,10 @@ class DisassembledInstructionBuilder:
     @cached_property
     def direction(self):
         return bool(self.parsed_fields[NamedField.D])
+
+    @cached_property
+    def sign_extension(self):
+        return bool(self.parsed_fields[NamedField.S])
 
     @cached_property
     def displacement(self):

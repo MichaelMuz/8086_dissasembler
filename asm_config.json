@@ -56,7 +56,9 @@
                 {
                     "description": "Immediate from Register/Memory",
                     "format": "100000 s w, mod 101 rm, disp-lo, disp-hi, data, data-if-s:w=01",
-                    "implied_values": {}
+                    "implied_values": {
+                        "d": 0
+                    }
                 },
                 {
                     "description": "Immediate from Accumulator",

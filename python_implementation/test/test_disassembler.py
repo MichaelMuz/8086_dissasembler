@@ -187,8 +187,8 @@ class TestSub(TestDisassembler):
     def test_subs_reg_from_memory(self):
         self.help_test_given_asm(["sub bx, [bx+si]", "sub bx, [bp]"])
 
-    # def test_sub_immediate_from_reg(self):
-    #     self.help_test_given_asm(["sub si, 2", "sub bp, 2", "sub cx, 8"])
+    def test_sub_immediate_from_reg(self):
+        self.help_test_given_asm(["sub si, 2", "sub bp, 2", "sub cx, 8"])
 
     # def test_sub_reg_from_memory_with_displacement(self):
     #     self.help_test_given_asm(
