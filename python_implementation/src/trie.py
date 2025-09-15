@@ -75,6 +75,7 @@ def insert_into_trie(
     return head
 
 
+# Need to have final instruction type as soon as possible in the tree bc need to have implied values
 class Trie:
     def __init__(self, head: BitNode) -> None:
         self.head = head
