@@ -1,7 +1,8 @@
-from typing import Iterator, TypeAlias
+from typing import Iterator, Self, TypeAlias
 from dataclasses import dataclass
 import itertools
 from python_implementation.src.schema import (
+    InstructionSchema,
     LiteralField,
     NamedField,
     SchemaField,
@@ -70,3 +71,16 @@ def insert_into_trie(
         head.next = insert_into_trie(head.next, token_iter)
 
     return head
+
+
+class Trie:
+    def __init__(self, head: BitNode) -> None:
+        self.head = head
+
+    @classmethod
+    def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
+        head = None
+        for instruction in instructions:
+            head = insert_into_trie(head, expand_fields_to_bits(instruction.fields))
+        assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
+        return cls(head)
