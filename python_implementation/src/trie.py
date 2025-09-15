@@ -43,18 +43,28 @@ def expand_fields_to_bits(fields: list[SchemaField]) -> Iterator[NamedField | bo
     return itertools.chain(*generators)
 
 
-def insert_into_trie(head: Node, token_iter: Iterator[NamedField | bool]) -> None:
+def insert_into_trie(
+    head: Node | None, token_iter: Iterator[NamedField | bool]
+) -> Node | None:
     current_token = next(token_iter, None)
     if current_token is None:
-        # insertion is over
         return None
+
+    if head is None:
+        if isinstance(current_token, NamedField):
+            head = FieldNode(named_field=current_token)
+        else:
+            head = BitNode()
 
     if isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
-        next_node_attr_name = "right" if current_token else "left"
-        new_node = BitNode()
+        if current_token:
+            head.right = insert_into_trie(head.right, token_iter)
+        else:
+            head.left = insert_into_trie(head.left, token_iter)
+
     else:
         assert isinstance(
             current_token, NamedField
@@ -62,34 +72,6 @@ def insert_into_trie(head: Node, token_iter: Iterator[NamedField | bool]) -> Non
         assert (
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
-        next_node_attr_name = "next"
-        new_node = FieldNode(current_token)
+        head.next = insert_into_trie(head.next, token_iter)
 
-    next_node = getattr(head, next_node_attr_name)
-    if next_node is None:
-        insert_into_trie(new_node, token_iter)
-        setattr(head, next_node_attr_name, new_node)
-    else:
-        insert_into_trie(next_node, token_iter)
-
-
-def build_subtrie_from_remaining(
-    token_iter: Iterator[NamedField | bool],
-) -> Node | None:
-    current_token = next(token_iter, None)
-    if current_token is None:
-        return None
-
-    if isinstance(current_token, int):
-        root = BitNode(None, None)
-        setattr(
-            root,
-            BitNode.get_side_att_name(current_token),
-            build_subtrie_from_remaining(token_iter),
-        )
-        return root
-
-    elif isinstance(current_token, NamedField):
-        root = FieldNode(current_token, None)
-        root.next = build_subtrie_from_remaining(token_iter)
-        return root
+    return head
