@@ -12,8 +12,8 @@ from python_implementation.src.utils import get_sub_most_sig_bits
 
 @dataclass
 class BitNode:
-    left: "Node | None"
-    right: "Node | None"
+    left: "Node | None" = None
+    right: "Node | None" = None
 
     @staticmethod
     def get_side_att_name(bit: bool):
@@ -23,7 +23,7 @@ class BitNode:
 @dataclass
 class FieldNode:
     named_field: NamedField
-    next: "Node | None"
+    next: "Node | None" = None
 
 
 Node: TypeAlias = BitNode | FieldNode
@@ -46,14 +46,15 @@ def expand_fields_to_bits(fields: list[SchemaField]) -> Iterator[NamedField | bo
 def insert_into_trie(head: Node, token_iter: Iterator[NamedField | bool]) -> None:
     current_token = next(token_iter, None)
     if current_token is None:
-        return
+        # insertion is over
+        return None
 
-    next_node_attr_name: str
     if isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
         next_node_attr_name = "right" if current_token else "left"
+        new_node = BitNode()
     else:
         assert isinstance(
             current_token, NamedField
@@ -62,10 +63,12 @@ def insert_into_trie(head: Node, token_iter: Iterator[NamedField | bool]) -> Non
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
         next_node_attr_name = "next"
+        new_node = FieldNode(current_token)
 
     next_node = getattr(head, next_node_attr_name)
     if next_node is None:
-        setattr(head, next_node_attr_name, build_subtrie_from_remaining(token_iter))
+        insert_into_trie(new_node, token_iter)
+        setattr(head, next_node_attr_name, new_node)
     else:
         insert_into_trie(next_node, token_iter)
 
