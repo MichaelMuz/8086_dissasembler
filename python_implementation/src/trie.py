@@ -2,7 +2,6 @@ from typing import Iterator, TypeAlias
 from dataclasses import dataclass
 import itertools
 from python_implementation.src.schema import (
-    InstructionSchema,
     LiteralField,
     NamedField,
     SchemaField,
@@ -14,10 +13,6 @@ from python_implementation.src.utils import get_sub_most_sig_bits
 class BitNode:
     left: "Node | None" = None
     right: "Node | None" = None
-
-    @staticmethod
-    def get_side_att_name(bit: bool):
-        return "right" if bit else "left"
 
 
 @dataclass
