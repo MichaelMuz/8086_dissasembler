@@ -26,7 +26,7 @@ class FieldNode:
 
 @dataclass
 class LeafNode:
-    instruction: SchemaField
+    instruction: InstructionSchema
     token_iter: Iterator[NamedField | bool]
 
 
@@ -48,7 +48,9 @@ def expand_fields_to_bits(fields: list[SchemaField]) -> Iterator[NamedField | bo
 
 
 def insert_into_trie(
-    head: Node | None, token_iter: Iterator[NamedField | bool], instruction: SchemaField
+    head: Node | None,
+    token_iter: Iterator[NamedField | bool],
+    instruction: InstructionSchema,
 ) -> Node:
     current_token = next(token_iter, None)
     if current_token is None:
@@ -109,7 +111,9 @@ class Trie:
     def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
         head = None
         for instruction in instructions:
-            head = insert_into_trie(head, expand_fields_to_bits(instruction.fields))
+            head = insert_into_trie(
+                head, expand_fields_to_bits(instruction.fields), instruction
+            )
         assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
         return cls(head)
 
