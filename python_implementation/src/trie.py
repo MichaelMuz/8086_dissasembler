@@ -24,7 +24,13 @@ class FieldNode:
     next: "Node | None" = None
 
 
-Node: TypeAlias = BitNode | FieldNode
+@dataclass
+class LeafNode:
+    instruction: SchemaField
+    token_iter: Iterator[NamedField | bool]
+
+
+Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 
 def expand_fields_to_bits(fields: list[SchemaField]) -> Iterator[NamedField | bool]:
@@ -42,11 +48,12 @@ def expand_fields_to_bits(fields: list[SchemaField]) -> Iterator[NamedField | bo
 
 
 def insert_into_trie(
-    head: Node | None, token_iter: Iterator[NamedField | bool]
-) -> Node | None:
+    head: Node | None, token_iter: Iterator[NamedField | bool], instruction: SchemaField
+) -> Node:
     current_token = next(token_iter, None)
     if current_token is None:
-        return None
+        assert head is None, "Instruction ends while another continues, ambiguous"
+        return LeafNode(instruction=instruction, token_iter=token_iter)
 
     if head is None:
         if isinstance(current_token, NamedField):
@@ -59,18 +66,24 @@ def insert_into_trie(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
         if current_token:
-            head.right = insert_into_trie(head.right, token_iter)
+            head.right = insert_into_trie(head.right, token_iter, instruction)
         else:
-            head.left = insert_into_trie(head.left, token_iter)
+            head.left = insert_into_trie(head.left, token_iter, instruction)
 
-    else:
+    elif isinstance(head, FieldNode):
         assert isinstance(
             current_token, NamedField
         ), f"Expected NamedField but got {type(current_token)}"
         assert (
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
-        head.next = insert_into_trie(head.next, token_iter)
+        head.next = insert_into_trie(head.next, token_iter, instruction)
+    else:
+        # head is a leaf, we need to downgrade it
+        # next thing in head could be a bit or named but either way they must be the same, not mismatched
+        # let one side create a tree then insert the other side
+        head = insert_into_trie(None, head.token_iter, head.instruction)
+        head = insert_into_trie(head, token_iter, instruction)
 
     return head
 
