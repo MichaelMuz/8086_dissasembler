@@ -53,13 +53,13 @@ def insert_into_trie(
     current_token = next(token_iter, None)
     if current_token is None:
         assert head is None, "Instruction ends while another continues, ambiguous"
-        return LeafNode(instruction, token_iter)
+        head = LeafNode(instruction, token_iter)
 
-    if head is None:
+    elif head is None:
         # No comparison? We are a coiled branch that will unfold lazily
-        return LeafNode(instruction, itertools.chain([current_token], token_iter))
+        head = LeafNode(instruction, itertools.chain([current_token], token_iter))
 
-    if isinstance(head, BitNode):
+    elif isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
@@ -82,8 +82,8 @@ def insert_into_trie(
         assert (
             once_uncoiled_head is not None
         ), "Asking to unroll fully unrolled instruction"
-        if isinstance(current_token, NamedField):
-            uncoiled_node = FieldNode(named_field=current_token)
+        if isinstance(once_uncoiled_head, NamedField):
+            uncoiled_node = FieldNode(named_field=once_uncoiled_head)
         else:
             uncoiled_node = BitNode()
 
