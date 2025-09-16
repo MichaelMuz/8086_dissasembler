@@ -53,13 +53,11 @@ def insert_into_trie(
     current_token = next(token_iter, None)
     if current_token is None:
         assert head is None, "Instruction ends while another continues, ambiguous"
-        return LeafNode(instruction=instruction, token_iter=token_iter)
+        return LeafNode(instruction, token_iter)
 
     if head is None:
-        if isinstance(current_token, NamedField):
-            head = FieldNode(named_field=current_token)
-        else:
-            head = BitNode()
+        # No comparison? We are a coiled branch that will unfold lazily
+        return LeafNode(instruction, itertools.chain([current_token], token_iter))
 
     if isinstance(head, BitNode):
         assert isinstance(
@@ -79,11 +77,25 @@ def insert_into_trie(
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
         head.next = insert_into_trie(head.next, token_iter, instruction)
     else:
-        # head is a leaf, we need to downgrade it
-        # next thing in head could be a bit or named but either way they must be the same, not mismatched
-        # let one side create a tree then insert the other side
-        head = insert_into_trie(None, head.token_iter, head.instruction)
-        head = insert_into_trie(head, token_iter, instruction)
+        # unspring coiled branch that head is
+        once_uncoiled_head = next(head.token_iter, None)
+        assert (
+            once_uncoiled_head is not None
+        ), "Asking to unroll fully unrolled instruction"
+        if isinstance(current_token, NamedField):
+            uncoiled_node = FieldNode(named_field=current_token)
+        else:
+            uncoiled_node = BitNode()
+
+        head_rewind_iter = itertools.chain([once_uncoiled_head], head.token_iter)
+        new_rewind_iter = itertools.chain([current_token], token_iter)
+
+        # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
+        # only adds iterations for one series of bits or one named field, then goes back to being coiled
+        # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
+        head = insert_into_trie(uncoiled_node, head_rewind_iter, head.instruction)
+        # now next instruction will actually add a node to the trie
+        head = insert_into_trie(head, new_rewind_iter, instruction)
 
     return head
 
