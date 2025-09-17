@@ -114,7 +114,7 @@ class DisassembledInstruction:
         return f"{self.mnemonic} {self.dest}, {size_spec}{self.source}"
 
 
-class DisassembledInstructionBuilder:
+class DecodeAccumulator:
     ALWAYS_NEEDED_FIELDS = {
         # if we see this in an instruction schema, we must always parse it
         NamedField.D,
@@ -126,32 +126,21 @@ class DisassembledInstructionBuilder:
         NamedField.DATA,
     }
 
-    def __init__(self, instruction_schema: InstructionSchema, identifier_literal):
-        self.instruction_schema = instruction_schema
-        self.parsed_fields = {
-            named_field: implied_value
-            for named_field, implied_value in instruction_schema.implied_values.items()
-        }
-
-        self.implied_values = set(self.parsed_fields.keys())
-        self.identifier_literal = identifier_literal
+    def __init__(self):
+        self.parsed_fields: dict[NamedField, int] = {}
 
     def with_field(self, schema_field: SchemaField, field_value: int):
-        if isinstance(schema_field, LiteralField):
-            logging.debug(f"{schema_field = }, {field_value = }")
-            assert schema_field.literal_value == field_value
-        elif isinstance(schema_field, NamedField):
+        if isinstance(schema_field, NamedField):
             self.parsed_fields[schema_field] = field_value
-        return self
 
     def is_needed(self, schema_field: SchemaField) -> bool:
+        assert (
+            schema_field not in self.parsed_fields
+        ), f"Asking if {schema_field} is required but its value is already parsed"
         if isinstance(schema_field, LiteralField):
             return True
-        assert (
-            schema_field not in self.implied_values
-        ), f"Asking if {schema_field} is required but its value is already implied"
 
-        if schema_field in self.ALWAYS_NEEDED_FIELDS:
+        elif schema_field in self.ALWAYS_NEEDED_FIELDS:
             return True
         elif schema_field is NamedField.DATA_IF_W1:
             return bool(self.parsed_fields[NamedField.W])
@@ -236,7 +225,7 @@ class DisassembledInstructionBuilder:
                 )
         return rm_operand
 
-    def build(self) -> DisassembledInstruction:
+    def build(self, instruction_schema: InstructionSchema) -> DisassembledInstruction:
         assert not (
             self.data_operand and self.register_operand and self.rm_operand
         ), "Too many operands"
@@ -253,5 +242,5 @@ class DisassembledInstructionBuilder:
         source, dest = operands
 
         return DisassembledInstruction(
-            mnemonic=self.instruction_schema.mnemonic, source=source, dest=dest
+            mnemonic=instruction_schema.mnemonic, source=source, dest=dest
         )
