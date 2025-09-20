@@ -129,9 +129,8 @@ class DecodeAccumulator:
     def __init__(self):
         self.parsed_fields: dict[NamedField, int] = {}
 
-    def with_field(self, schema_field: SchemaField, field_value: int):
-        if isinstance(schema_field, NamedField):
-            self.parsed_fields[schema_field] = field_value
+    def with_field(self, schema_field: NamedField, field_value: int):
+        self.parsed_fields[schema_field] = field_value
 
     def is_needed(self, schema_field: SchemaField) -> bool:
         assert (

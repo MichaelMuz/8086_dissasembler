@@ -229,7 +229,6 @@ class TrieRequester:
         ), "Can't consume into Leaf Node"
 
         if isinstance(self.current_node, BitNode):
-            # self.accumulator.add_bit() in the future or something to preserve actual literal bits too
             self.current_node = (
                 self.current_node.right if bits else self.current_node.left
             )
@@ -265,6 +264,8 @@ class FieldsRequestor:
                 self.token_iter = itertools.chain([next_thing], self.token_iter)
             next_thing = LiteralField(acc_int, bit_count)
 
+        if next_thing is not None and not self.accumulator.is_needed(next_thing):
+            next_thing = self._get_next_field()
         return next_thing
 
     def bits_needed(self) -> int:
@@ -273,8 +274,10 @@ class FieldsRequestor:
 
     def consume(self, bits: int) -> None:
         assert self.current_field is not None, "Current field is None"
-
-        self.accumulator.with_field(self.current_field, bits)
+        if isinstance(self.current_field, NamedField):
+            self.accumulator.with_field(self.current_field, bits)
+        else:
+            assert self.current_field.literal_value == bits, "Literal does not match"
         self.current_field = self._get_next_field()
 
     def is_complete(self) -> bool:
