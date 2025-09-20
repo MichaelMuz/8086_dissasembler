@@ -244,38 +244,38 @@ class TrieRequester:
         return False
 
 
-class InstructionRequestor:
+class FieldsRequestor:
     def __init__(
-        self, instruction: InstructionSchema, accumulator: DecodeAccumulator
+        self, token_iter: Iterator[NamedField | bool], accumulator: DecodeAccumulator
     ) -> None:
-        self.instruction = instruction
+        self.token_iter = token_iter
         self.accumulator = accumulator
+        self.current_field = self._get_next_field()
+
+    def _get_next_field(self) -> SchemaField | None:
+        num_list = []
+        while isinstance(next_thing := next(self.token_iter, None), bool):
+            num_list.append(str(int(next_thing)))
+
+        bit_count = len(num_list)
+        acc_int = int("".join(num_list), 2)
+
+        if bit_count > 0:
+            if next_thing is not None:
+                self.token_iter = itertools.chain([next_thing], self.token_iter)
+            next_thing = LiteralField(acc_int, bit_count)
+
+        return next_thing
 
     def bits_needed(self) -> int:
-        if isinstance(self.current_node, BitNode):
-            return 1
-        elif isinstance(self.current_node, FieldNode):
-            return self.current_node.named_field.bit_width
-        else:
-            raise ValueError("Should be complete when at LeafNode")
+        assert self.current_field is not None, "Current field is None"
+        return self.current_field.bit_width
 
     def consume(self, bits: int) -> None:
-        assert self.current_node is not None, "Current node is None"
-        assert not isinstance(
-            self.current_node, LeafNode
-        ), "Can't consume into Leaf Node"
+        assert self.current_field is not None, "Current field is None"
 
-        if isinstance(self.current_node, BitNode):
-            # self.accumulator.add_bit() in the future or something to preserve actual literal bits too
-            self.current_node = (
-                self.current_node.right if bits else self.current_node.left
-            )
-        elif isinstance(self.current_node, FieldNode):
-            self.accumulator.with_field(self.current_node.named_field, bits)
-            self.current_node = self.current_node.next
+        self.accumulator.with_field(self.current_field, bits)
+        self.current_field = self._get_next_field()
 
     def is_complete(self) -> bool:
-        if isinstance(self.current_node, LeafNode):
-            self.instruction_schema = self.current_node.instruction
-            return True
-        return False
+        return self.current_field is None
