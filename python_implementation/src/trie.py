@@ -10,7 +10,6 @@ from python_implementation.src.schema import (
     SchemaField,
 )
 from python_implementation.src.utils import get_sub_most_sig_bits
-from python_implementation.src.decoder import BitIterator
 
 
 @dataclass
@@ -35,37 +34,6 @@ class LeafNode:
 def bin_iter(field: LiteralField) -> Generator[bool, None, None]:
     for i in range(field.bit_width):
         yield bool(utils.get_sub_most_sig_bits(field.literal_value, i, 1))
-
-
-class InstructionIterator:
-    def __init__(self, instruction: InstructionSchema) -> None:
-        self.instruction = instruction
-        self.ind = 0
-        self.sub_iter = None
-
-    def get_bit_or_named_field(self) -> bool | NamedField:
-        next_up = None
-        if self.sub_iter is not None:
-            next_up = next(self.sub_iter, None)
-        if next_up is None:
-            self.sub_iter = None
-            match self.instruction.fields[self.ind]:
-                case LiteralField() as x:
-                    self.sub_iter = bin_iter(x)
-                    next_up = next(self.sub_iter)
-                case NamedField() as x:
-                    next_up = x
-            self.ind += 1
-
-        assert next_up is not None, "Somehow next is None"
-        return next_up
-
-    def get_whole_field(self):
-        if self.sub_iter is not None:
-            unfinished_lit = ((1 << i * int(e)) for i, e in self.sub_iter)
-            return unfinished_lit
-        else:
-            return
 
 
 Node: TypeAlias = BitNode | FieldNode | LeafNode
@@ -154,53 +122,6 @@ class Trie:
             )
         assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
         return cls(head)
-
-
-# class TrieTraverser:
-#     def __init__(self, trie: Trie) -> None:
-#         self.curr_node = trie.head
-#         self.acc = DecodeAccumulator()
-
-#     def get_req_bits(self) -> int | None:
-#         if isinstance(self.curr_node, BitNode):
-#             return 1
-#         elif isinstance(self.curr_node, FieldNode):
-#             return self.curr_node.named_field.bit_width
-#         else:
-#             return None
-
-#     def progress(self, val: int) -> int:
-#         if isinstance(self.curr_node, BitNode):
-#             return 1
-#         elif isinstance(self.curr_node, FieldNode):
-#             return self.curr_node.named_field.bit_width
-
-
-def parse(trie: Trie, bit_iter: BitIterator):
-    head = trie.head
-    acc = DecodeAccumulator()
-    while head is not None and not isinstance(head, LeafNode):
-        if isinstance(head, BitNode):
-            if bit_iter.next_bits(1):
-                head = head.right
-            else:
-                head = head.left
-        elif isinstance(head, FieldNode):
-            acc.with_field(
-                head.named_field, bit_iter.next_bits(head.named_field.bit_width)
-            )
-            head = head.next
-
-    assert head is not None, "Invalid Instruction"
-
-    while (e := next(head.token_iter, None)) is not None:
-        match e:
-            case bool():
-                bit_iter.next_bits(1)
-            case NamedField():
-                acc.with_field(e, bit_iter.next_bits(e.bit_width))
-
-    return acc.build(head.instruction)
 
 
 # when knowing the full instruction or using the tree that pattern we always have is
