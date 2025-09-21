@@ -145,70 +145,58 @@ class LeafNode:
 Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 
-def create_trie(instructions: list[InstructionSchema]):
-    all_inst_iters = map(
-        BitModeInstructionSchemaIterator,
-        map(FieldModeInstructionSchemaIterator, instructions),
-    )
-    head = LeafNode(next(all_inst_iters))
-    for instruction_iter in all_inst_iters:
-        curr_head = head
-        for val in instruction_iter:
-            curr_head = curr_head.insert(val)
+# def insert_into_trie_rec(
+#     head: Node | None,
+#     token_iter: BitModeInstructionSchemaIterator,
+# ) -> Node:
+#     current_token = next(token_iter, None)
+#     if current_token is None:
+#         assert head is None, "Instruction ends while another continues, ambiguous"
+#         head = LeafNode(None, token_iter)
 
+#     elif head is None:
+#         # No comparison? We are a coiled branch that will unfold lazily
+#         if isinstance(current_token, bool):
+#             # never coil on literal field, we don't want to split fields
+#             head = BitNode()
+#         else:
+#             # can coil on a named field, we are not splitting things
+#             head = LeafNode(current_token, token_iter)
 
-def insert_into_trie(
-    head: Node | None,
-    token_iter: BitModeInstructionSchemaIterator,
-) -> Node:
-    current_token = next(token_iter, None)
-    if current_token is None:
-        assert head is None, "Instruction ends while another continues, ambiguous"
-        head = LeafNode(token_iter)
+#     elif isinstance(head, BitNode):
+#         assert isinstance(
+#             current_token, bool
+#         ), f"Expected bit but got {type(current_token)}"
+#         if current_token:
+#             head.right = insert_into_trie(head.right, token_iter)
+#         else:
+#             head.left = insert_into_trie(head.left, token_iter)
 
-    elif head is None:
-        # No comparison? We are a coiled branch that will unfold lazily
-        if isinstance(current_token, bool):
-            # never coil on literal field, we don't want to split fields
-            head = BitNode()
-        else:
-            # can coil on a named field, we are not splitting things
-            head = LeafNode(token_iter)
+#     elif isinstance(head, FieldNode):
+#         assert isinstance(
+#             current_token, NamedField
+#         ), f"Expected NamedField but got {type(current_token)}"
+#         assert (
+#             head.named_field == current_token
+#         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
+#         head.next = insert_into_trie(head.next, token_iter)
+#     else:
+#         # unspring coiled branch that head is
+#         assert (
+#             head.coil_start is not None
+#         ), "Asking to unroll fully unrolled instruction"
+#         uncoiled_node = FieldNode(named_field=head.coil_start)
 
-    elif isinstance(head, BitNode):
-        assert isinstance(
-            current_token, bool
-        ), f"Expected bit but got {type(current_token)}"
-        if current_token:
-            head.right = insert_into_trie(head.right, token_iter)
-        else:
-            head.left = insert_into_trie(head.left, token_iter)
+#         new_rewind_iter = itertools.chain([current_token])
 
-    elif isinstance(head, FieldNode):
-        assert isinstance(
-            current_token, NamedField
-        ), f"Expected NamedField but got {type(current_token)}"
-        assert (
-            head.named_field == current_token
-        ), f"Incompatible named fields: {head.named_field} vs {current_token}"
-        head.next = insert_into_trie(head.next, token_iter)
-    else:
-        # unspring coiled branch that head is
-        assert (
-            head.coil_start is not None
-        ), "Asking to unroll fully unrolled instruction"
-        uncoiled_node = FieldNode(named_field=head.coil_start)
+#         # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
+#         # only adds iterations for one series of bits or one named field, then goes back to being coiled
+#         # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
+#         head = insert_into_trie(uncoiled_node, head.token_iter)
+#         # now next instruction will actually add a node to the trie
+#         head = insert_into_trie(head, new_rewind_iter)
 
-        new_rewind_iter = itertools.chain([current_token])
-
-        # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
-        # only adds iterations for one series of bits or one named field, then goes back to being coiled
-        # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
-        head = insert_into_trie(uncoiled_node, head.token_iter)
-        # now next instruction will actually add a node to the trie
-        head = insert_into_trie(head, new_rewind_iter)
-
-    return head
+#     return head
 
 
 # Need to have final instruction type as soon as possible in the tree bc need to have implied values
@@ -218,16 +206,29 @@ class Trie:
 
     @classmethod
     def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
-        head = None
-        for instruction in instructions:
-            head = insert_into_trie(
-                head,
-                BitModeInstructionSchemaIterator(
-                    FieldModeInstructionSchemaIterator(instruction)
-                ),
-            )
-        assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
-        return cls(head)
+        all_inst_iters = map(
+            BitModeInstructionSchemaIterator,
+            map(FieldModeInstructionSchemaIterator, instructions),
+        )
+        head = LeafNode(next(all_inst_iters))
+        for instruction_iter in all_inst_iters:
+            curr_head = head
+            for val in instruction_iter:
+                curr_head = curr_head.insert(val)
+        return Trie(head)
+
+    # @classmethod
+    # def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
+    #     head = None
+    #     for instruction in instructions:
+    #         head = insert_into_trie(
+    #             head,
+    #             BitModeInstructionSchemaIterator(
+    #                 FieldModeInstructionSchemaIterator(instruction)
+    #             ),
+    #         )
+    #     assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
+    #     return cls(head)
 
 
 # when knowing the full instruction or using the tree that pattern we always have is
