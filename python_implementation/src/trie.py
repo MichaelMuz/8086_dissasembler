@@ -37,13 +37,7 @@ class LeafNode:
 # We can have a base class that does this, calling .get_next_subiter and child classes that override it based on if they want to break down literal filed iterators or not
 
 
-class SubIterator(Iterator):
-    @abstractmethod
-    def has_more(self) -> bool:
-        pass
-
-
-class LiteralFieldIterator(SubIterator):
+class LiteralFieldIterator:
     def __init__(self, literal_field: LiteralField):
         self.literal_field = literal_field
         self.bit_index = 0
@@ -63,64 +57,43 @@ class LiteralFieldIterator(SubIterator):
         return ret
 
 
-class WholeFieldIterator(SubIterator):
-    def __init__(self, field: SchemaField):
-        self.field = field
-        self.used = False
-
-    def has_more(self) -> bool:
-        return not self.used
+class FieldModeInstructionSchemaIterator:
+    def __init__(self, instruction: InstructionSchema, starting_ind=0) -> None:
+        self.instruction = instruction
+        self.field_ind = starting_ind
 
     def __next__(self) -> SchemaField:
         if not self.has_more():
             raise StopIteration
-        self.used = True
-        return self.field
-
-
-T = TypeVar("T")
-
-
-class InstructionSchemaIterator(Generic[T]):
-    def __init__(self, instruction: InstructionSchema, starting_ind=0) -> None:
-        self.instruction = instruction
-        self.field_ind = starting_ind
-        self.curr_iter = self.create_sub_iter()
-
-    @abstractmethod
-    def create_sub_iter(self) -> SubIterator:
-        pass
-
-    def __next__(self) -> T:
-        if not self.has_more():
-            raise StopIteration
-        return next(self.curr_iter)
+        return self.instruction.fields[self.field_ind]
 
     def has_more(self) -> bool:
-        if not self.curr_iter.has_more():
-            self.field_ind += 1
-            if self.field_ind < len(self.instruction.fields):
-                self.curr_iter = self.create_sub_iter()
-        return self.curr_iter.has_more()
+        return self.field_ind < len(self.instruction.fields)
 
 
-class BitModeInstructionSchemaIterator(InstructionSchemaIterator[bool | NamedField]):
-    def create_sub_iter(self) -> WholeFieldIterator | LiteralFieldIterator:
-        field = self.instruction.fields[self.field_ind]
-        if isinstance(field, NamedField):
-            return WholeFieldIterator(field)
-        return LiteralFieldIterator(field)
+class BitModeInstructionSchemaIterator:
+    def __init__(self, whole_iter: FieldModeInstructionSchemaIterator) -> None:
+        self.whole_iter = whole_iter
+        self.sub_iter = None
 
-    def to_field_mode(self):
-        assert (
-            not self.curr_iter.has_more()
-        ), "Cannot transition until full field consumed in bit mode"
-        return FieldModeInstructionSchemaIterator(self.instruction, self.field_ind)
+    def __next__(self):
+        assert self.has_more(), "Called next but iterator is spent"
+        if self.sub_iter is None or not self._sub_has_more():
+            next_whole = next(self.whole_iter)
+            if isinstance(next_whole, NamedField):
+                return next_whole
+            self.sub_iter = LiteralFieldIterator(next_whole)
 
+        return next(self.sub_iter)
 
-class FieldModeInstructionSchemaIterator(InstructionSchemaIterator[SchemaField]):
-    def create_sub_iter(self) -> WholeFieldIterator:
-        return WholeFieldIterator(self.instruction.fields[self.field_ind])
+    def _sub_has_more(self):
+        return self.sub_iter is not None and self.sub_iter.has_more()
+
+    def has_more(self):
+        return self.whole_iter.has_more() or self._sub_has_more()
+
+    def to_whole_field_mode(self):
+        return self.whole_iter
 
 
 def bin_iter(field: LiteralField) -> Generator[bool, None, None]:
