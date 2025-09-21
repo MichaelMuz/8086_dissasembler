@@ -1,5 +1,4 @@
-from abc import abstractmethod
-from typing import Generator, Generic, Iterator, Self, TypeAlias, TypeVar
+from typing import Generator, Iterator, Self, TypeAlias
 from dataclasses import dataclass
 import itertools
 from python_implementation.src import utils
@@ -58,7 +57,7 @@ class LiteralFieldIterator:
 
 
 class FieldModeInstructionSchemaIterator:
-    def __init__(self, instruction: InstructionSchema, starting_ind=0) -> None:
+    def __init__(self, instruction: InstructionSchema, starting_ind: int = 0) -> None:
         self.instruction = instruction
         self.field_ind = starting_ind
 
@@ -76,8 +75,9 @@ class BitModeInstructionSchemaIterator:
         self.whole_iter = whole_iter
         self.sub_iter = None
 
-    def __next__(self):
-        assert self.has_more(), "Called next but iterator is spent"
+    def __next__(self) -> bool | NamedField:
+        if not self.has_more():
+            raise StopIteration
         if self.sub_iter is None or not self._sub_has_more():
             next_whole = next(self.whole_iter)
             if isinstance(next_whole, NamedField):
@@ -86,13 +86,14 @@ class BitModeInstructionSchemaIterator:
 
         return next(self.sub_iter)
 
-    def _sub_has_more(self):
+    def _sub_has_more(self) -> bool:
         return self.sub_iter is not None and self.sub_iter.has_more()
 
-    def has_more(self):
+    def has_more(self) -> bool:
         return self.whole_iter.has_more() or self._sub_has_more()
 
-    def to_whole_field_mode(self):
+    def to_whole_field_mode(self) -> FieldModeInstructionSchemaIterator:
+        assert not self._sub_has_more(), "Cannot transition mid literal"
         return self.whole_iter
 
 
