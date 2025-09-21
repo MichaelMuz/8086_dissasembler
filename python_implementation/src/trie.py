@@ -50,6 +50,9 @@ class BitModeInstructionSchemaIterator:
         self.whole_iter = whole_iter
         self.sub_iter = None
 
+    def __iter__(self):
+        return self
+
     def __next__(self) -> bool | NamedField:
         if not self.has_more():
             raise StopIteration
@@ -77,23 +80,88 @@ class BitNode:
     left: "Node | None" = None
     right: "Node | None" = None
 
+    def insert(self, bit: bool):
+        new_node = BitNode()
+        if bit:
+            self.right = new_node
+        else:
+            self.left = new_node
+        return new_node
+
 
 @dataclass
 class FieldNode:
     named_field: NamedField
     next: "Node | None" = None
 
+    def insert(self, named_field: NamedField):
+        assert (
+            self.named_field is named_field
+        ), f"Incompatible named fields: {self.named_field} vs {named_field}"
+        return self
+
+
+def create_node(val: NamedField | bool) -> "Node":
+    if isinstance(val, bool):
+        head = BitNode()
+    else:
+        head = FieldNode(val)
+    return head
+
 
 @dataclass
 class LeafNode:
-    coil_start: NamedField | None
     token_iter: BitModeInstructionSchemaIterator
+
+    def insert(self, val: bool | NamedField):
+        first_node = None
+        curr_node = None
+        prev_node = None
+        # if curr is still a bool then we need to put it in the right place in the previous bitnode chain (if there was one)
+        # if curr becomes a named field we need to put it in the right place in the previous bitnode chain (if there was one) and break bc we will now coil the rest
+        for curr in self.token_iter:
+            if isinstance(curr, NamedField):
+                curr_node = FieldNode(curr)
+            elif prev_node is not None:
+                curr_node = prev_node.insert(curr)
+            else:
+                curr_node = BitNode()
+
+            if first_node is None:
+                first_node = curr_node
+
+            if not isinstance(curr_node, BitNode):
+                break
+
+            prev_node = curr_node
+
+        assert first_node is not None, "We had an empty iterator"
+
+        # branch to assert types make sense for type checking
+        if isinstance(first_node, BitNode):
+            assert isinstance(val, bool), "BitNode requires bool value"
+            return first_node.insert(val)
+        else:
+            assert isinstance(val, NamedField), "FieldNode requires NamedField value"
+            return first_node.insert(val)
 
 
 Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 
-def insert_into_trie(
+def create_trie(instructions: list[InstructionSchema]):
+    all_inst_iters = map(
+        BitModeInstructionSchemaIterator,
+        map(FieldModeInstructionSchemaIterator, instructions),
+    )
+    head = LeafNode(next(all_inst_iters))
+    for instruction_iter in all_inst_iters:
+        curr_head = head
+        for val in instruction_iter:
+            curr_head = curr_head.insert(val)
+
+
+def insert_into_trie_rec(
     head: Node | None,
     token_iter: BitModeInstructionSchemaIterator,
 ) -> Node:
