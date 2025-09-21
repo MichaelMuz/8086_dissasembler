@@ -1,4 +1,4 @@
-from typing import Generator, Iterator, Self, TypeAlias
+from typing import Self, TypeAlias
 from dataclasses import dataclass
 import itertools
 from python_implementation.src import utils
@@ -9,29 +9,6 @@ from python_implementation.src.schema import (
     NamedField,
     SchemaField,
 )
-from python_implementation.src.utils import get_sub_most_sig_bits
-
-
-@dataclass
-class BitNode:
-    left: "Node | None" = None
-    right: "Node | None" = None
-
-
-@dataclass
-class FieldNode:
-    named_field: NamedField
-    next: "Node | None" = None
-
-
-@dataclass
-class LeafNode:
-    instruction: InstructionSchema
-    coil_start: NamedField | None
-    token_iter: Iterator[NamedField | bool]
-
-
-Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 
 class LiteralFieldIterator:
@@ -95,15 +72,35 @@ class BitModeInstructionSchemaIterator:
         return self.whole_iter
 
 
+@dataclass
+class BitNode:
+    left: "Node | None" = None
+    right: "Node | None" = None
+
+
+@dataclass
+class FieldNode:
+    named_field: NamedField
+    next: "Node | None" = None
+
+
+@dataclass
+class LeafNode:
+    coil_start: NamedField | None
+    token_iter: BitModeInstructionSchemaIterator
+
+
+Node: TypeAlias = BitNode | FieldNode | LeafNode
+
+
 def insert_into_trie(
     head: Node | None,
-    token_iter: Iterator[NamedField | bool],
-    instruction: InstructionSchema,
+    token_iter: BitModeInstructionSchemaIterator,
 ) -> Node:
     current_token = next(token_iter, None)
     if current_token is None:
         assert head is None, "Instruction ends while another continues, ambiguous"
-        head = LeafNode(instruction, None, token_iter)
+        head = LeafNode(None, token_iter)
 
     elif head is None:
         # No comparison? We are a coiled branch that will unfold lazily
@@ -112,16 +109,16 @@ def insert_into_trie(
             head = BitNode()
         else:
             # can coil on a named field, we are not splitting things
-            head = LeafNode(instruction, current_token, token_iter)
+            head = LeafNode(current_token, token_iter)
 
     elif isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
         if current_token:
-            head.right = insert_into_trie(head.right, token_iter, instruction)
+            head.right = insert_into_trie(head.right, token_iter)
         else:
-            head.left = insert_into_trie(head.left, token_iter, instruction)
+            head.left = insert_into_trie(head.left, token_iter)
 
     elif isinstance(head, FieldNode):
         assert isinstance(
@@ -130,7 +127,7 @@ def insert_into_trie(
         assert (
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
-        head.next = insert_into_trie(head.next, token_iter, instruction)
+        head.next = insert_into_trie(head.next, token_iter)
     else:
         # unspring coiled branch that head is
         assert (
@@ -138,14 +135,14 @@ def insert_into_trie(
         ), "Asking to unroll fully unrolled instruction"
         uncoiled_node = FieldNode(named_field=head.coil_start)
 
-        new_rewind_iter = itertools.chain([current_token], token_iter)
+        new_rewind_iter = itertools.chain([current_token])
 
         # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
         # only adds iterations for one series of bits or one named field, then goes back to being coiled
         # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
-        head = insert_into_trie(uncoiled_node, head.token_iter, head.instruction)
+        head = insert_into_trie(uncoiled_node, head.token_iter)
         # now next instruction will actually add a node to the trie
-        head = insert_into_trie(head, new_rewind_iter, instruction)
+        head = insert_into_trie(head, new_rewind_iter)
 
     return head
 
@@ -160,7 +157,10 @@ class Trie:
         head = None
         for instruction in instructions:
             head = insert_into_trie(
-                head, expand_fields_to_bits(instruction.fields), instruction
+                head,
+                BitModeInstructionSchemaIterator(
+                    FieldModeInstructionSchemaIterator(instruction)
+                ),
             )
         assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
         return cls(head)
@@ -175,7 +175,6 @@ class TrieRequester:
     def __init__(self, trie: Trie, accumulator: DecodeAccumulator):
         self.current_node = trie.head
         self.accumulator = accumulator
-        self.instruction_schema = None
 
     def bits_needed(self) -> int:
         if isinstance(self.current_node, BitNode):
@@ -201,35 +200,22 @@ class TrieRequester:
 
     def is_complete(self) -> bool:
         if isinstance(self.current_node, LeafNode):
-            self.instruction_schema = self.current_node.instruction
             return True
         return False
 
 
 class FieldsRequestor:
     def __init__(
-        self, token_iter: Iterator[NamedField | bool], accumulator: DecodeAccumulator
+        self,
+        token_iter: FieldModeInstructionSchemaIterator,
+        accumulator: DecodeAccumulator,
     ) -> None:
         self.token_iter = token_iter
         self.accumulator = accumulator
         self.current_field = self._get_next_field()
 
     def _get_next_field(self) -> SchemaField | None:
-        num_list = []
-        while isinstance(next_thing := next(self.token_iter, None), bool):
-            num_list.append(str(int(next_thing)))
-
-        bit_count = len(num_list)
-        acc_int = int("".join(num_list), 2)
-
-        if bit_count > 0:
-            if next_thing is not None:
-                self.token_iter = itertools.chain([next_thing], self.token_iter)
-            next_thing = LiteralField(acc_int, bit_count)
-
-        if next_thing is not None and not self.accumulator.is_needed(next_thing):
-            next_thing = self._get_next_field()
-        return next_thing
+        self.current_field = next(self.token_iter, None)
 
     def bits_needed(self) -> int:
         assert self.current_field is not None, "Current field is None"
