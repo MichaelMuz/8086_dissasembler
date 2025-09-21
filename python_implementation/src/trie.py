@@ -31,9 +31,7 @@ class LeafNode:
     token_iter: Iterator[NamedField | bool]
 
 
-# want to go through with literal fields broken down. Then we have state change function that returns a new thing that goes through the rest by whole chunk, checking to make sure we didn't
-# switch in a broken down literal part. The general concept of how each iterator works is pretty simple, they have an iterator and they pull from it until it is over then they grab the next thing in the chain.
-# We can have a base class that does this, calling .get_next_subiter and child classes that override it based on if they want to break down literal filed iterators or not
+Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 
 class LiteralFieldIterator:
@@ -95,28 +93,6 @@ class BitModeInstructionSchemaIterator:
     def to_whole_field_mode(self) -> FieldModeInstructionSchemaIterator:
         assert not self._sub_has_more(), "Cannot transition mid literal"
         return self.whole_iter
-
-
-def bin_iter(field: LiteralField) -> Generator[bool, None, None]:
-    for i in range(field.bit_width):
-        yield bool(utils.get_sub_most_sig_bits(field.literal_value, i, 1))
-
-
-Node: TypeAlias = BitNode | FieldNode | LeafNode
-
-
-def expand_fields_to_bits(fields: list[SchemaField]) -> Iterator[NamedField | bool]:
-    generators = []
-    for field in fields:
-        if isinstance(field, LiteralField):
-            generators.append(
-                get_sub_most_sig_bits(field.literal_value, i, 1)
-                for i in range(field.bit_width)
-            )
-        else:
-            generators.append([field])  # Single item "generator"
-
-    return itertools.chain(*generators)
 
 
 def insert_into_trie(
