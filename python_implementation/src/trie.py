@@ -159,7 +159,7 @@ def create_trie(instructions: list[InstructionSchema]):
 def insert_into_trie(
     head: Node | None,
     token_iter: BitModeInstructionSchemaIterator,
-    current_token: SchemaField | bool | None = None,
+    current_token: NamedField | bool | None = None,
 ) -> Node:
     if current_token is None:
         current_token = next(token_iter, None)
@@ -175,7 +175,8 @@ def insert_into_trie(
             head = BitNode()
         else:
             # can coil on a named field, we are not splitting things
-            head = LeafNode(token_iter)
+            head = FieldNode(current_token)
+            head.next = LeafNode(token_iter)
 
     elif isinstance(head, BitNode):
         assert isinstance(
@@ -195,19 +196,7 @@ def insert_into_trie(
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
         head.next = insert_into_trie(head.next, token_iter)
     else:
-        # unspring coiled branch that head is
-        first_coil_val = next(head.token_iter, None)
-        assert first_coil_val is not None, "Asking to unroll fully unrolled instruction"
-        assert isinstance(
-            first_coil_val, NamedField
-        ), "First thing in coiled node was bits"
-        uncoiled_node = FieldNode(first_coil_val)
-
-        # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
-        # only adds iterations for one series of bits or one named field, then goes back to being coiled
-        # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
-        head = insert_into_trie(uncoiled_node, head.token_iter)
-        # now next instruction will actually add a node to the trie
+        head = insert_into_trie(None, head.token_iter)
         head = insert_into_trie(head, token_iter, current_token=current_token)
 
     return head
