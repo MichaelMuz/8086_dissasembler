@@ -236,7 +236,7 @@ class Requestor:
         self.state = TrieRequester(trie, accumulator)
 
     def bits_needed(self) -> int:
-        return self.bits_needed()
+        return self.state.bits_needed()
 
     def consume(self, bits: int) -> None:
         self.state.consume(bits)
