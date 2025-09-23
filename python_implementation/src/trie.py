@@ -194,6 +194,13 @@ class TrieRequester:
             return True
         return False
 
+    def get_product(self) -> LeafNode:
+        assert self.is_complete()
+        assert isinstance(
+            self.current_node, LeafNode
+        ), "Non-leaf node at bottom of tree"
+        return self.current_node
+
 
 class FieldsRequestor:
     def __init__(
@@ -222,3 +229,22 @@ class FieldsRequestor:
 
     def is_complete(self) -> bool:
         return self.current_field is None
+
+
+class Requestor:
+    def __init__(self, trie: Trie, accumulator: DecodeAccumulator):
+        self.state = TrieRequester(trie, accumulator)
+
+    def bits_needed(self) -> int:
+        return self.bits_needed()
+
+    def consume(self, bits: int) -> None:
+        self.state.consume(bits)
+        if self.state.is_complete() and isinstance(self.state, TrieRequester):
+            self.state = FieldsRequestor(
+                self.state.get_product().token_iter.to_whole_field_mode(),
+                self.state.accumulator,
+            )
+
+    def is_complete(self):
+        return self.state.is_complete()
