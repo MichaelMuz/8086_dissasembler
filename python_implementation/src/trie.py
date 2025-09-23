@@ -1,5 +1,4 @@
-from functools import singledispatchmethod
-from typing import Never, Self, TypeAlias
+from typing import Self, TypeAlias
 from dataclasses import dataclass
 from python_implementation.src import utils
 from python_implementation.src.builder import DecodeAccumulator
@@ -80,80 +79,19 @@ class BitNode:
     left: "Node | None" = None
     right: "Node | None" = None
 
-    @singledispatchmethod
-    def insert(self, bit: bool) -> "BitNode":
-        new_node = BitNode()
-        if bit:
-            self.right = new_node
-        else:
-            self.left = new_node
-        return new_node
-
-    @insert.register
-    def _(self, _: NamedField) -> Never:
-        raise ValueError("Cannot insert named field into Bitnode")
-
 
 @dataclass
 class FieldNode:
     named_field: NamedField
     next: "Node | None" = None
 
-    @singledispatchmethod
-    def insert(self, named_field: NamedField) -> "FieldNode":
-        assert (
-            self.named_field is named_field
-        ), f"Incompatible named fields: {self.named_field} vs {named_field}"
-        return self
-
-    @insert.register
-    def _(self, _: bool) -> Never:
-        raise ValueError("Cannot insert bit into Bitnode")
-
 
 @dataclass
 class LeafNode:
     token_iter: BitModeInstructionSchemaIterator
 
-    def insert(self, val: bool | NamedField):
-        first_node = None
-        prev_node = None
-        # if curr is still a bool then we need to put it in the right place in the previous bitnode chain (if there was one)
-        # if curr becomes a named field we need to put it in the right place in the previous bitnode chain (if there was one) and break bc we will now coil the rest
-        for curr in self.token_iter:
-            if isinstance(curr, NamedField):
-                curr_node = FieldNode(curr)
-            elif prev_node is not None:
-                curr_node = prev_node.insert(curr)
-            else:
-                curr_node = BitNode()
-
-            if first_node is None:
-                first_node = curr_node
-
-            if not isinstance(curr_node, BitNode):
-                break
-
-            prev_node = curr_node
-
-        assert first_node is not None, "We had an empty iterator"
-
-        return first_node.insert(val)
-
 
 Node: TypeAlias = BitNode | FieldNode | LeafNode
-
-
-def create_trie(instructions: list[InstructionSchema]):
-    all_inst_iters = map(
-        BitModeInstructionSchemaIterator,
-        map(FieldModeInstructionSchemaIterator, instructions),
-    )
-    head = LeafNode(next(all_inst_iters))
-    for instruction_iter in all_inst_iters:
-        curr_head = head
-        for val in instruction_iter:
-            curr_head = curr_head.insert(val)
 
 
 def insert_into_trie(
