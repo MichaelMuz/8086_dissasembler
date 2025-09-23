@@ -1,7 +1,6 @@
 from functools import singledispatchmethod
 from typing import Never, Self, TypeAlias
 from dataclasses import dataclass
-import itertools
 from python_implementation.src import utils
 from python_implementation.src.builder import DecodeAccumulator
 from python_implementation.src.schema import (
