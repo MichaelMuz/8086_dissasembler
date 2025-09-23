@@ -159,23 +159,27 @@ def create_trie(instructions: list[InstructionSchema]):
 def insert_into_trie(
     head: Node | None,
     token_iter: BitModeInstructionSchemaIterator,
-    current_token: NamedField | bool | None = None,
 ) -> Node:
-    if current_token is None:
-        current_token = next(token_iter, None)
+    current_token = next(token_iter, None)
 
     if current_token is None:
+        # both done, we are a leaf at the very bottom of a finished instruction
         assert head is None, "Instruction ends while another continues, ambiguous"
         head = LeafNode(token_iter)
+        return head
 
-    elif head is None:
+    elif isinstance(head, LeafNode):
+        # head will be None and the correct thing will be created for head, then we will insert the current token
+        head = insert_into_trie(None, head.token_iter)
+
+    if head is None:
+        # head is None so we are the root, make the correct node
         if isinstance(current_token, bool):
             head = BitNode()
         else:
             head = FieldNode(current_token)
-            head.next = LeafNode(token_iter)
 
-    elif isinstance(head, BitNode):
+    if isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
@@ -192,9 +196,6 @@ def insert_into_trie(
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
         head.next = insert_into_trie(head.next, token_iter)
-    else:
-        head = insert_into_trie(None, head.token_iter)
-        head = insert_into_trie(head, token_iter, current_token=current_token)
 
     return head
 
