@@ -160,8 +160,11 @@ def create_trie(instructions: list[InstructionSchema]):
 def insert_into_trie(
     head: Node | None,
     token_iter: BitModeInstructionSchemaIterator,
+    current_token: SchemaField | bool | None = None,
 ) -> Node:
-    current_token = next(token_iter, None)
+    if current_token is None:
+        current_token = next(token_iter, None)
+
     if current_token is None:
         assert head is None, "Instruction ends while another continues, ambiguous"
         head = LeafNode(token_iter)
@@ -194,19 +197,19 @@ def insert_into_trie(
         head.next = insert_into_trie(head.next, token_iter)
     else:
         # unspring coiled branch that head is
-        assert (
-            head.coil_start is not None
-        ), "Asking to unroll fully unrolled instruction"
-        uncoiled_node = FieldNode(named_field=head.coil_start)
-
-        new_rewind_iter = itertools.chain([current_token])
+        first_coil_val = next(head.token_iter, None)
+        assert first_coil_val is not None, "Asking to unroll fully unrolled instruction"
+        assert isinstance(
+            first_coil_val, NamedField
+        ), "First thing in coiled node was bits"
+        uncoiled_node = FieldNode(first_coil_val)
 
         # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
         # only adds iterations for one series of bits or one named field, then goes back to being coiled
         # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
         head = insert_into_trie(uncoiled_node, head.token_iter)
         # now next instruction will actually add a node to the trie
-        head = insert_into_trie(head, new_rewind_iter)
+        head = insert_into_trie(head, token_iter, current_token=current_token)
 
     return head
 

@@ -160,10 +160,10 @@ class Trie:
             curr_head = head
             prev = None
             for val in instruction_iter:
-                a = curr_head.insert(val)
                 new_prev, curr_head = curr_head.insert(val)
                 if prev is not None:
-                    prev.ne
+                    prev.insert(new_prev)
+        assert isinstance(head, BitNode), "Trie must start with a bitNode"
         return Trie(head)
 
 
