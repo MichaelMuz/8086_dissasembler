@@ -1,7 +1,6 @@
 from functools import singledispatchmethod
 from typing import Never, Self, TypeAlias
 from dataclasses import dataclass
-import itertools
 from python_implementation.src import utils
 from python_implementation.src.builder import DecodeAccumulator
 from python_implementation.src.schema import (
@@ -82,13 +81,13 @@ class BitNode:
     right: "Node | None" = None
 
     @singledispatchmethod
-    def insert(self, bit: bool) -> "BitNode":
+    def insert(self, bit: bool) -> "tuple[BitNode, BitNode]":
         new_node = BitNode()
         if bit:
             self.right = new_node
         else:
             self.left = new_node
-        return new_node
+        return self, new_node
 
     @insert.register
     def _(self, _: NamedField) -> Never:
@@ -101,11 +100,11 @@ class FieldNode:
     next: "Node | None" = None
 
     @singledispatchmethod
-    def insert(self, named_field: NamedField) -> "FieldNode":
+    def insert(self, named_field: NamedField) -> "tuple[FieldNode, FieldNode]":
         assert (
             self.named_field is named_field
         ), f"Incompatible named fields: {self.named_field} vs {named_field}"
-        return self
+        return self, self
 
     @insert.register
     def _(self, _: bool) -> Never:
@@ -116,7 +115,7 @@ class FieldNode:
 class LeafNode:
     token_iter: BitModeInstructionSchemaIterator
 
-    def insert(self, val: bool | NamedField):
+    def insert(self, val: bool | NamedField) -> "tuple[BitNode | FieldNode, Node]":
         first_node = None
         prev_node = None
         # if curr is still a bool then we need to put it in the right place in the previous bitnode chain (if there was one)
@@ -125,7 +124,7 @@ class LeafNode:
             if isinstance(curr, NamedField):
                 curr_node = FieldNode(curr)
             elif prev_node is not None:
-                curr_node = prev_node.insert(curr)
+                _, curr_node = prev_node.insert(curr)
             else:
                 curr_node = BitNode()
 
@@ -139,64 +138,10 @@ class LeafNode:
 
         assert first_node is not None, "We had an empty iterator"
 
-        return first_node.insert(val)
+        return first_node, first_node.insert(val)[1]
 
 
 Node: TypeAlias = BitNode | FieldNode | LeafNode
-
-
-# def insert_into_trie_rec(
-#     head: Node | None,
-#     token_iter: BitModeInstructionSchemaIterator,
-# ) -> Node:
-#     current_token = next(token_iter, None)
-#     if current_token is None:
-#         assert head is None, "Instruction ends while another continues, ambiguous"
-#         head = LeafNode(None, token_iter)
-
-#     elif head is None:
-#         # No comparison? We are a coiled branch that will unfold lazily
-#         if isinstance(current_token, bool):
-#             # never coil on literal field, we don't want to split fields
-#             head = BitNode()
-#         else:
-#             # can coil on a named field, we are not splitting things
-#             head = LeafNode(current_token, token_iter)
-
-#     elif isinstance(head, BitNode):
-#         assert isinstance(
-#             current_token, bool
-#         ), f"Expected bit but got {type(current_token)}"
-#         if current_token:
-#             head.right = insert_into_trie(head.right, token_iter)
-#         else:
-#             head.left = insert_into_trie(head.left, token_iter)
-
-#     elif isinstance(head, FieldNode):
-#         assert isinstance(
-#             current_token, NamedField
-#         ), f"Expected NamedField but got {type(current_token)}"
-#         assert (
-#             head.named_field == current_token
-#         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
-#         head.next = insert_into_trie(head.next, token_iter)
-#     else:
-#         # unspring coiled branch that head is
-#         assert (
-#             head.coil_start is not None
-#         ), "Asking to unroll fully unrolled instruction"
-#         uncoiled_node = FieldNode(named_field=head.coil_start)
-
-#         new_rewind_iter = itertools.chain([current_token])
-
-#         # We are comparing the uncoiled thing against itself so we can reatach the rest of the coil
-#         # only adds iterations for one series of bits or one named field, then goes back to being coiled
-#         # only one extra iteration on top of what it does otherwise for bits (this iteration) and for fields it is just 2 because we assert it is correct and the next gives a leaf node
-#         head = insert_into_trie(uncoiled_node, head.token_iter)
-#         # now next instruction will actually add a node to the trie
-#         head = insert_into_trie(head, new_rewind_iter)
-
-#     return head
 
 
 # Need to have final instruction type as soon as possible in the tree bc need to have implied values
@@ -213,22 +158,13 @@ class Trie:
         head = LeafNode(next(all_inst_iters))
         for instruction_iter in all_inst_iters:
             curr_head = head
+            prev = None
             for val in instruction_iter:
-                curr_head = curr_head.insert(val)
+                a = curr_head.insert(val)
+                new_prev, curr_head = curr_head.insert(val)
+                if prev is not None:
+                    prev.ne
         return Trie(head)
-
-    # @classmethod
-    # def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
-    #     head = None
-    #     for instruction in instructions:
-    #         head = insert_into_trie(
-    #             head,
-    #             BitModeInstructionSchemaIterator(
-    #                 FieldModeInstructionSchemaIterator(instruction)
-    #             ),
-    #         )
-    #     assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
-    #     return cls(head)
 
 
 # when knowing the full instruction or using the tree that pattern we always have is
