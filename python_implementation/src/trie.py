@@ -169,12 +169,9 @@ def insert_into_trie(
         head = LeafNode(token_iter)
 
     elif head is None:
-        # No comparison? We are a coiled branch that will unfold lazily
         if isinstance(current_token, bool):
-            # never coil on literal field, we don't want to split fields
             head = BitNode()
         else:
-            # can coil on a named field, we are not splitting things
             head = FieldNode(current_token)
             head.next = LeafNode(token_iter)
 
