@@ -12,68 +12,47 @@ from python_implementation.src.schema import (
 from python_implementation.src.decoder import BitIterator
 
 
-class LiteralFieldIterator:
-    def __init__(self, literal_field: LiteralField):
-        self.literal_field = literal_field
-        self.bit_index = 0
-
-    def has_more(self) -> bool:
-        return self.bit_index < self.literal_field.bit_width
-
-    def __next__(self) -> bool:
-        if not self.has_more():
-            raise StopIteration
-        ret = bool(
-            utils.get_sub_most_sig_bits(
-                self.literal_field.literal_value, self.bit_index, 1
-            )
-        )
-        self.bit_index += 1
-        return ret
-
-
-class FieldModeInstructionSchemaIterator:
+class FieldModeSchemaIterator:
     def __init__(self, instruction: InstructionSchema, starting_ind: int = 0) -> None:
         self.instruction = instruction
         self.field_ind = starting_ind
 
     def __next__(self) -> SchemaField:
-        if not self.has_more():
+        if self.field_ind >= len(self.instruction.fields):
             raise StopIteration
         return self.instruction.fields[self.field_ind]
 
-    def has_more(self) -> bool:
-        return self.field_ind < len(self.instruction.fields)
 
-
-class BitModeInstructionSchemaIterator:
-    def __init__(self, whole_iter: FieldModeInstructionSchemaIterator) -> None:
-        self.whole_iter = whole_iter
-        self.sub_iter = None
-
-    def __iter__(self):
-        return self
+class BitModeSchemaIterator:
+    def __init__(self, instruction: InstructionSchema) -> None:
+        self.instruction = instruction
+        self.whole_ind = 0
+        self.bit_ind = 0
 
     def __next__(self) -> bool | NamedField:
-        if not self.has_more():
-            raise StopIteration
-        if self.sub_iter is None or not self._sub_has_more():
-            next_whole = next(self.whole_iter)
-            if isinstance(next_whole, NamedField):
-                return next_whole
-            self.sub_iter = LiteralFieldIterator(next_whole)
+        curr = None
+        for self.whole_ind in range(self.whole_ind, len(self.instruction.fields)):
+            curr = self.instruction.fields[self.whole_ind]
+            if isinstance(curr, NamedField):
+                return curr
 
-        return next(self.sub_iter)
+            elif self.bit_ind < curr.bit_width:
+                to_ret = bool(
+                    utils.get_sub_most_sig_bits(curr.literal_value, self.bit_ind, 1)
+                )
+                self.bit_ind += 1
+                return to_ret
 
-    def _sub_has_more(self) -> bool:
-        return self.sub_iter is not None and self.sub_iter.has_more()
+            else:
+                self.bit_ind = 0
 
-    def has_more(self) -> bool:
-        return self.whole_iter.has_more() or self._sub_has_more()
+        raise StopIteration
 
-    def to_whole_field_mode(self) -> FieldModeInstructionSchemaIterator:
-        assert not self._sub_has_more(), "Cannot transition mid literal"
-        return self.whole_iter
+
+def test():
+    a = 10
+    for a in range(10, 100):
+        return a
 
 
 @dataclass
@@ -90,7 +69,7 @@ class FieldNode:
 
 @dataclass
 class LeafNode:
-    token_iter: BitModeInstructionSchemaIterator
+    token_iter: BitModeSchemaIterator
 
 
 Node: TypeAlias = BitNode | FieldNode | LeafNode
@@ -98,7 +77,7 @@ Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 def insert_into_trie(
     head: Node | None,
-    token_iter: BitModeInstructionSchemaIterator,
+    token_iter: BitModeSchemaIterator,
 ) -> Node:
     current_token = next(token_iter, None)
 
@@ -151,9 +130,7 @@ class Trie:
         for instruction in instructions:
             head = insert_into_trie(
                 head,
-                BitModeInstructionSchemaIterator(
-                    FieldModeInstructionSchemaIterator(instruction)
-                ),
+                BitModeSchemaIterator(instruction),
             )
         assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
         return cls(head)
