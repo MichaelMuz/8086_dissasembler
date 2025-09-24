@@ -9,69 +9,50 @@ from python_implementation.src.schema import (
     SchemaField,
 )
 
-
-class LiteralFieldIterator:
-    def __init__(self, literal_field: LiteralField):
-        self.literal_field = literal_field
-        self.bit_index = 0
-
-    def has_more(self) -> bool:
-        return self.bit_index < self.literal_field.bit_width
-
-    def __next__(self) -> bool:
-        if not self.has_more():
-            raise StopIteration
-        ret = bool(
-            utils.get_sub_most_sig_bits(
-                self.literal_field.literal_value, self.bit_index, 1
-            )
-        )
-        self.bit_index += 1
-        return ret
+from python_implementation.src.decoder import BitIterator
 
 
-class FieldModeInstructionSchemaIterator:
+class FieldModeSchemaIterator:
     def __init__(self, instruction: InstructionSchema, starting_ind: int = 0) -> None:
         self.instruction = instruction
         self.field_ind = starting_ind
 
     def __next__(self) -> SchemaField:
-        if not self.has_more():
+        if self.field_ind >= len(self.instruction.fields):
             raise StopIteration
         return self.instruction.fields[self.field_ind]
 
-    def has_more(self) -> bool:
-        return self.field_ind < len(self.instruction.fields)
 
-
-class BitModeInstructionSchemaIterator:
-    def __init__(self, whole_iter: FieldModeInstructionSchemaIterator) -> None:
-        self.whole_iter = whole_iter
-        self.sub_iter = None
-
-    def __iter__(self):
-        return self
+class BitModeSchemaIterator:
+    def __init__(self, instruction: InstructionSchema) -> None:
+        self.instruction = instruction
+        self.whole_ind = 0
+        self.bit_ind = 0
 
     def __next__(self) -> bool | NamedField:
-        if not self.has_more():
-            raise StopIteration
-        if self.sub_iter is None or not self._sub_has_more():
-            next_whole = next(self.whole_iter)
-            if isinstance(next_whole, NamedField):
-                return next_whole
-            self.sub_iter = LiteralFieldIterator(next_whole)
+        curr = None
+        for self.whole_ind in range(self.whole_ind, len(self.instruction.fields)):
+            curr = self.instruction.fields[self.whole_ind]
+            if isinstance(curr, NamedField):
+                return curr
 
-        return next(self.sub_iter)
+            elif self.bit_ind < curr.bit_width:
+                to_ret = bool(
+                    utils.get_sub_most_sig_bits(curr.literal_value, self.bit_ind, 1)
+                )
+                self.bit_ind += 1
+                return to_ret
 
-    def _sub_has_more(self) -> bool:
-        return self.sub_iter is not None and self.sub_iter.has_more()
+            else:
+                self.bit_ind = 0
 
-    def has_more(self) -> bool:
-        return self.whole_iter.has_more() or self._sub_has_more()
+        raise StopIteration
 
-    def to_whole_field_mode(self) -> FieldModeInstructionSchemaIterator:
-        assert not self._sub_has_more(), "Cannot transition mid literal"
-        return self.whole_iter
+
+def test():
+    a = 10
+    for a in range(10, 100):
+        return a
 
 
 @dataclass
@@ -88,7 +69,7 @@ class FieldNode:
 
 @dataclass
 class LeafNode:
-    token_iter: BitModeInstructionSchemaIterator
+    token_iter: BitModeSchemaIterator
 
 
 Node: TypeAlias = BitNode | FieldNode | LeafNode
@@ -96,7 +77,7 @@ Node: TypeAlias = BitNode | FieldNode | LeafNode
 
 def insert_into_trie(
     head: Node | None,
-    token_iter: BitModeInstructionSchemaIterator,
+    token_iter: BitModeSchemaIterator,
 ) -> Node:
     current_token = next(token_iter, None)
 
@@ -149,102 +130,34 @@ class Trie:
         for instruction in instructions:
             head = insert_into_trie(
                 head,
-                BitModeInstructionSchemaIterator(
-                    FieldModeInstructionSchemaIterator(instruction)
-                ),
+                BitModeSchemaIterator(instruction),
             )
         assert isinstance(head, BitNode), f"Expected BitNode, got `{type(head)}`"
         return cls(head)
 
 
-# when knowing the full instruction or using the tree that pattern we always have is
-# "ok, how many more bits to read?", the requestors will answer this. One for a Trie and one for normal
-# stream of instruction schemas.
-
-
-class TrieRequester:
-    def __init__(self, trie: Trie, accumulator: DecodeAccumulator):
-        self.current_node = trie.head
-        self.accumulator = accumulator
-
-    def bits_needed(self) -> int:
-        if isinstance(self.current_node, BitNode):
-            return 1
-        elif isinstance(self.current_node, FieldNode):
-            return self.current_node.named_field.bit_width
-        else:
-            raise ValueError("Should be complete when at LeafNode")
-
-    def consume(self, bits: int) -> None:
-        assert self.current_node is not None, "Current node is None"
-        assert not isinstance(
-            self.current_node, LeafNode
-        ), "Can't consume into Leaf Node"
-
-        if isinstance(self.current_node, BitNode):
-            self.current_node = (
-                self.current_node.right if bits else self.current_node.left
+def parse(trie: Trie, bit_iter: BitIterator):
+    head = trie.head
+    acc = DecodeAccumulator()
+    while head is not None and not isinstance(head, LeafNode):
+        if isinstance(head, BitNode):
+            if bit_iter.next_bits(1):
+                head = head.right
+            else:
+                head = head.left
+        elif isinstance(head, FieldNode):
+            acc.with_field(
+                head.named_field, bit_iter.next_bits(head.named_field.bit_width)
             )
-        elif isinstance(self.current_node, FieldNode):
-            self.accumulator.with_field(self.current_node.named_field, bits)
-            self.current_node = self.current_node.next
+            head = head.next
 
-    def is_complete(self) -> bool:
-        if isinstance(self.current_node, LeafNode):
-            return True
-        return False
-
-    def get_product(self) -> LeafNode:
-        assert self.is_complete()
-        assert isinstance(
-            self.current_node, LeafNode
-        ), "Non-leaf node at bottom of tree"
-        return self.current_node
-
-
-class FieldsRequestor:
-    def __init__(
-        self,
-        token_iter: FieldModeInstructionSchemaIterator,
-        accumulator: DecodeAccumulator,
-    ) -> None:
-        self.token_iter = token_iter
-        self.accumulator = accumulator
-        self.current_field = self._get_next_field()
-
-    def _get_next_field(self) -> SchemaField | None:
-        self.current_field = next(self.token_iter, None)
-
-    def bits_needed(self) -> int:
-        assert self.current_field is not None, "Current field is None"
-        return self.current_field.bit_width
-
-    def consume(self, bits: int) -> None:
-        assert self.current_field is not None, "Current field is None"
-        if isinstance(self.current_field, NamedField):
-            self.accumulator.with_field(self.current_field, bits)
+    assert head is not None, "Invalid Instruction"
+    whole_iter = head.token_iter.to_whole_field_mode()
+    while (e := next(whole_iter, None)) is not None:
+        val = bit_iter.next_bits(e.bit_width)
+        if isinstance(e, LiteralField):
+            assert val == e.literal_value
         else:
-            assert self.current_field.literal_value == bits, "Literal does not match"
-        self.current_field = self._get_next_field()
+            acc.with_field(e, val)
 
-    def is_complete(self) -> bool:
-        return self.current_field is None
-
-
-class Requestor:
-    def __init__(self, trie: Trie, accumulator: DecodeAccumulator):
-        self.state = TrieRequester(trie, accumulator)
-
-    def bits_needed(self) -> int:
-        return self.state.bits_needed()
-
-    def consume(self, bits: int) -> None:
-        self.state.consume(bits)
-        if self.state.is_complete() and isinstance(self.state, TrieRequester):
-            self.state = FieldsRequestor(
-                self.state.get_product().token_iter.to_whole_field_mode(),
-                self.state.accumulator,
-            )
-
-    def is_complete(self):
-        return self.state.is_complete()
+    return acc.build(whole_iter.instruction)
