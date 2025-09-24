@@ -1,4 +1,4 @@
-from typing import Self, TypeAlias
+from typing import Iterator, Self, TypeAlias
 from dataclasses import dataclass
 from python_implementation.src import utils
 from python_implementation.src.builder import DecodeAccumulator
@@ -12,33 +12,30 @@ from python_implementation.src.schema import (
 from python_implementation.src.decoder import BitIterator
 
 
-class FieldModeSchemaIterator:
-    def __init__(self, instruction: InstructionSchema, starting_ind: int = 0) -> None:
-        self.instruction = instruction
-        self.field_ind = starting_ind
-
-    def __next__(self) -> SchemaField:
-        if self.field_ind >= len(self.instruction.fields):
-            raise StopIteration
-        return self.instruction.fields[self.field_ind]
-
-
 class BitModeSchemaIterator:
     def __init__(self, instruction: InstructionSchema) -> None:
         self.instruction = instruction
         self.whole_ind = 0
         self.bit_ind = 0
 
-    def __next__(self) -> bool | NamedField:
-        curr = None
-        for self.whole_ind in range(self.whole_ind, len(self.instruction.fields)):
-            curr = self.instruction.fields[self.whole_ind]
-            if isinstance(curr, NamedField):
-                return curr
+    @property
+    def _fields(self):
+        return self.instruction.fields
 
-            elif self.bit_ind < curr.bit_width:
+    @property
+    def _curr_inst(self):
+        return self._fields[self.whole_ind]
+
+    def __next__(self) -> bool | NamedField:
+        for self.whole_ind in range(self.whole_ind, len(self.instruction.fields)):
+            if isinstance(self._curr_inst, NamedField):
+                return self._curr_inst
+
+            elif self.bit_ind < self._curr_inst.bit_width:
                 to_ret = bool(
-                    utils.get_sub_most_sig_bits(curr.literal_value, self.bit_ind, 1)
+                    utils.get_sub_most_sig_bits(
+                        self._curr_inst.literal_value, self.bit_ind, 1
+                    )
                 )
                 self.bit_ind += 1
                 return to_ret
@@ -48,11 +45,16 @@ class BitModeSchemaIterator:
 
         raise StopIteration
 
+    def to_whole_field_iter(self) -> Iterator[SchemaField]:
+        match self._curr_inst:
+            case LiteralField(bit_width=bw):
+                assert (
+                    self.whole_ind == bw + 1
+                ), "Cannot Transition on unfinished literal"
+            case NamedField():
+                assert self.bit_ind == 0, "Inconsistant bit index state"
 
-def test():
-    a = 10
-    for a in range(10, 100):
-        return a
+        return (self._fields[i] for i in range(self.whole_ind, len(self._fields)))
 
 
 @dataclass
@@ -152,7 +154,7 @@ def parse(trie: Trie, bit_iter: BitIterator):
             head = head.next
 
     assert head is not None, "Invalid Instruction"
-    whole_iter = head.token_iter.to_whole_field_mode()
+    whole_iter = head.token_iter.to_whole_field_iter()
     while (e := next(whole_iter, None)) is not None:
         val = bit_iter.next_bits(e.bit_width)
         if isinstance(e, LiteralField):
@@ -160,4 +162,4 @@ def parse(trie: Trie, bit_iter: BitIterator):
         else:
             acc.with_field(e, val)
 
-    return acc.build(whole_iter.instruction)
+    return acc.build(head.token_iter.instruction)
