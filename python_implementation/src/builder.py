@@ -115,43 +115,11 @@ class DisassembledInstruction:
 
 
 class DecodeAccumulator:
-    ALWAYS_NEEDED_FIELDS = {
-        # if we see this in an instruction schema, we must always parse it
-        NamedField.D,
-        NamedField.W,
-        NamedField.S,
-        NamedField.MOD,
-        NamedField.REG,
-        NamedField.RM,
-        NamedField.DATA,
-    }
-
     def __init__(self):
         self.parsed_fields: dict[NamedField, int] = {}
 
     def with_field(self, schema_field: NamedField, field_value: int):
         self.parsed_fields[schema_field] = field_value
-
-    def is_needed(self, schema_field: SchemaField) -> bool:
-        assert (
-            schema_field not in self.parsed_fields
-        ), f"Asking if {schema_field} is required but its value is already parsed"
-        if isinstance(schema_field, LiteralField):
-            return True
-
-        elif schema_field in self.ALWAYS_NEEDED_FIELDS:
-            return True
-        elif schema_field is NamedField.DATA_IF_W1:
-            return bool(self.parsed_fields[NamedField.W])
-        elif schema_field is NamedField.DATA_IF_SW_01:
-            return self.sign_extension == 0 and self.word
-        elif schema_field in (NamedField.DISP_LO, NamedField.DISP_HI):
-            return (self.mode.type is Mode.Type.WORD_DISPLACEMENT_MODE) or (
-                self.mode.type is Mode.Type.BYTE_DISPLACEMENT_MODE
-                and (schema_field is NamedField.DISP_LO)
-            )
-        else:
-            raise ValueError(f"don't know how to check if {schema_field} is needed")
 
     @cached_property
     def mode(self) -> Mode:
