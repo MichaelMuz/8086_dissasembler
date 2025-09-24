@@ -48,11 +48,9 @@ class BitModeSchemaIterator:
     def to_whole_field_iter(self) -> Iterator[SchemaField]:
         match self._curr_inst:
             case LiteralField(bit_width=bw):
-                assert (
-                    self.whole_ind == bw + 1
-                ), "Cannot Transition on unfinished literal"
+                assert self.bit_ind == bw, "Cannot Transition on unfinished literal"
             case NamedField():
-                assert self.bit_ind == 0, "Inconsistant bit index state"
+                assert self.bit_ind == 0, "Inconsistent bit index state"
 
         return (self._fields[i] for i in range(self.whole_ind, len(self._fields)))
 
