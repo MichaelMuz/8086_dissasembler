@@ -1,12 +1,10 @@
 from dataclasses import dataclass
-import enum
-import json
-import logging
-from pathlib import Path
-import re
-from typing import TypeAlias
-from python_implementation.src.builder import DecodeAccumulator
-from python_implementation.src.utils import BITS_PER_BYTE
+
+from python_implementation.src.templates.schema_field import (
+    LiteralField,
+    ParsedNamedField,
+    SchemaField,
+)
 
 
 @dataclass

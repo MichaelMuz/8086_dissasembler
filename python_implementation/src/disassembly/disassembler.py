@@ -1,8 +1,6 @@
 import logging
-from python_implementation.src.templates import (
-    DisassembledInstruction,
-    DisassembledInstructionBuilder,
-)
+from python_implementation.src.disassembly.instruction import DisassembledInstruction
+from python_implementation.src.parse.accumulator import DecodeAccumulator
 from python_implementation.src.templates.instruction_schema import InstructionSchema
 from python_implementation.src.utils import BITS_PER_BYTE, get_sub_most_sig_bits
 
@@ -59,13 +57,13 @@ def disassemble_instruction(
     instruction_schema: InstructionSchema, bit_iter: BitIterator
 ) -> DisassembledInstruction:
 
-    disassembled_instruction_builder = DisassembledInstructionBuilder(
+    disasm_state = DecodeAccumulator(
         instruction_schema,
         bit_iter.next_bits(instruction_schema.identifier_literal.bit_width),
     )
 
     for schema_field in instruction_schema.fields:
-        if not disassembled_instruction_builder.is_needed(schema_field):
+        if not disasm_state.is_needed(schema_field):
             logging.debug(f"{schema_field = } not needed")
             continue
 
@@ -74,9 +72,9 @@ def disassemble_instruction(
         field_value = bit_iter.next_bits(schema_field.bit_width)
         logging.debug(f"has value {field_value = }")
         logging.debug(f"curr byte: {bit_iter.curr_byte:08b} {bit_iter.msb_bit_ind = }")
-        disassembled_instruction_builder.with_field(schema_field, field_value)
+        disasm_state.with_field(schema_field, field_value)
 
-    return disassembled_instruction_builder.build()
+    return disasm_state.build(disasm_state)
 
 
 def disassemble(

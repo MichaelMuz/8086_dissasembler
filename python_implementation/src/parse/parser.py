@@ -1,15 +1,13 @@
-from typing import Iterator, Self, TypeAlias
-from dataclasses import dataclass
-from python_implementation.src import utils
-from python_implementation.src.builder import DecodeAccumulator
-from python_implementation.src.schema import (
-    InstructionSchema,
-    LiteralField,
-    NamedField,
-    SchemaField,
+from python_implementation.src.disassembly.disassembler import BitIterator
+from python_implementation.src.parse.accumulator import DecodeAccumulator
+from python_implementation.src.parse.match_trie import (
+    BitNode,
+    FieldNode,
+    LeafNode,
+    Trie,
 )
-
-from python_implementation.src.decoder import BitIterator
+from python_implementation.src.templates.schema_field import LiteralField
+from python_implementation.src.parse.accumulator import DecodeAccumulator
 
 
 def parse(trie: Trie, bit_iter: BitIterator):

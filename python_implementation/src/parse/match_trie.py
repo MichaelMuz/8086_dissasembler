@@ -1,15 +1,12 @@
 from typing import Iterator, Self, TypeAlias
 from dataclasses import dataclass
 from python_implementation.src import utils
-from python_implementation.src.builder import DecodeAccumulator
-from python_implementation.src.schema import (
-    InstructionSchema,
+from python_implementation.src.templates.instruction_schema import InstructionSchema
+from python_implementation.src.templates.schema_field import (
     LiteralField,
     NamedField,
     SchemaField,
 )
-
-from python_implementation.src.decoder import BitIterator
 
 
 class BitModeSchemaIterator:

@@ -1,21 +1,25 @@
-from dataclasses import dataclass
-import enum
 from functools import cached_property
 import logging
-from typing import TypeAlias
 
-from python_implementation.src.schema import (
-    InstructionSchema,
-    LiteralField,
-    NamedField,
-    SchemaField,
+from python_implementation.src.disassembly.instruction import DisassembledInstruction
+from python_implementation.src.parse.operands import (
+    ImmediateOperand,
+    RegisterOperand,
+    MemoryOperand,
 )
+from python_implementation.src.parse.mode import Mode
+from python_implementation.src.templates.instruction_schema import InstructionSchema
+from python_implementation.src.templates.schema_field import NamedField
 from python_implementation.src.utils import as_signed_int, combine_bytes
 
 
 class DecodeAccumulator:
-    def __init__(self):
+    def __init__(self, instruction_schema: InstructionSchema):
         self.parsed_fields: dict[NamedField, int] = {}
+        # We won't have this yet, we will add these when the instruction schema is discovered
+        # self.parsed_fields: dict[NamedField, int] = dict(
+        #     instruction_schema.implied_values
+        # )
 
     def with_field(self, schema_field: NamedField, field_value: int):
         self.parsed_fields[schema_field] = field_value
