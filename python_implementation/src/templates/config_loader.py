@@ -1,12 +1,6 @@
-from dataclasses import dataclass
-import enum
 import json
-import logging
 from pathlib import Path
 import re
-from typing import TypeAlias
-from python_implementation.src.builder import DecodeAccumulator
-from python_implementation.src.utils import BITS_PER_BYTE
 
 
 def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSchema]:

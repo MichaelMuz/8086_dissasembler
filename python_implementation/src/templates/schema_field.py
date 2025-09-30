@@ -1,12 +1,12 @@
-from dataclasses import dataclass
 import enum
-import json
 import logging
-from pathlib import Path
-import re
-from typing import TypeAlias
-from python_implementation.src.builder import DecodeAccumulator
+from typing import TYPE_CHECKING, TypeAlias
+
 from python_implementation.src.utils import BITS_PER_BYTE
+from python_implementation.src.parse.mode import Mode
+
+if TYPE_CHECKING:
+    from python_implementation.src.parse.accumulator import DecodeAccumulator
 
 
 class LiteralField:
@@ -58,7 +58,7 @@ class NamedField(enum.Enum):
 
         match self:
             case self.DISP_HI:
-                return acc.mode.type == Mode.WORD_DISPLACEMENT_MODE
+                return acc.mode.type == Mode.Type.WORD_DISPLACEMENT_MODE
             case self.ADDR_HI:
                 raise NotImplementedError("Don't use ADDR_HI yet")
             case self.DATA_IF_W1:

@@ -1,9 +1,9 @@
 import logging
-from python_implementation.src.builder import (
+from python_implementation.src.templates import (
     DisassembledInstruction,
     DisassembledInstructionBuilder,
 )
-from python_implementation.src.schema import InstructionSchema
+from python_implementation.src.templates.instruction_schema import InstructionSchema
 from python_implementation.src.utils import BITS_PER_BYTE, get_sub_most_sig_bits
 
 
