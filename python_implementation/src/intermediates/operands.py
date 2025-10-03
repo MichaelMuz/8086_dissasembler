@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import TypeAlias
 
 
 @dataclass(frozen=True)
@@ -59,4 +58,4 @@ class MemoryOperand:
         return f"[{' + '.join(equation)}]"
 
 
-Operand: TypeAlias = ImmediateOperand | RegisterOperand | MemoryOperand
+type Operand = ImmediateOperand | RegisterOperand | MemoryOperand

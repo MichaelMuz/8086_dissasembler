@@ -1,9 +1,12 @@
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 
-from python_implementation.src.templates.instruction_schema import InstructionSchema
-from python_implementation.src.templates.schema_field import LiteralField, NamedField
+from python_implementation.src.base.schema import (
+    InstructionSchema,
+    LiteralField,
+    NamedField,
+)
 
 
 def get_parsable_instructions(json_data_from_file: dict) -> list[InstructionSchema]:

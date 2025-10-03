@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from python_implementation.src.parse.operands import (
+from python_implementation.src.intermediates.operands import (
     ImmediateOperand,
     MemoryOperand,
     Operand,

@@ -1,12 +1,8 @@
-import enum
 import logging
-from typing import TYPE_CHECKING, TypeAlias
+from dataclasses import dataclass
+from enum import Enum
 
 from python_implementation.src.utils import BITS_PER_BYTE
-from python_implementation.src.parse.mode import Mode
-
-if TYPE_CHECKING:
-    from python_implementation.src.parse.accumulator import DecodeAccumulator
 
 
 class LiteralField:
@@ -27,7 +23,7 @@ class LiteralField:
         return f"LiteralField(literal_value=0b{self.literal_value:08b}, bit_width={self.bit_width})"
 
 
-class NamedField(enum.Enum):
+class NamedField(Enum):
     bit_width: int  # for type checker, this exists
     always_needed: bool  # for type checker, this exists
 
@@ -52,22 +48,14 @@ class NamedField(enum.Enum):
         obj.always_needed = always_needed
         return obj
 
-    def is_needed(self, acc: DecodeAccumulator):
-        if self.always_needed:
-            return True
 
-        match self:
-            case self.DISP_HI:
-                return acc.mode.type == Mode.Type.WORD_DISPLACEMENT_MODE
-            case self.ADDR_HI:
-                raise NotImplementedError("Don't use ADDR_HI yet")
-            case self.DATA_IF_W1:
-                return acc.word
-            case self.DATA_IF_SW_01:
-                return not (acc.sign_extension) and acc.word
-            case _:
-                raise ValueError("I don't know how to check if this is needed")
+type SchemaField = LiteralField | NamedField
+type ParsedNamedField = dict[NamedField, int]
 
 
-SchemaField: TypeAlias = LiteralField | NamedField
-ParsedNamedField: TypeAlias = dict[NamedField, int]
+@dataclass
+class InstructionSchema:
+    mnemonic: str
+    identifier_literal: LiteralField
+    fields: list[SchemaField]
+    implied_values: ParsedNamedField

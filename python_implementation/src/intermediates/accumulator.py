@@ -1,15 +1,16 @@
 from functools import cached_property
 import logging
-
-from python_implementation.src.disassembly.instruction import DisassembledInstruction
-from python_implementation.src.parse.operands import (
-    ImmediateOperand,
-    RegisterOperand,
-    MemoryOperand,
+from python_implementation.src.base.schema import (
+    InstructionSchema,
+    NamedField,
 )
-from python_implementation.src.parse.mode import Mode
-from python_implementation.src.templates.instruction_schema import InstructionSchema
-from python_implementation.src.templates.schema_field import NamedField
+from python_implementation.src.disassembled import DisassembledInstruction
+from python_implementation.src.intermediates.mode import Mode
+from python_implementation.src.intermediates.operands import (
+    ImmediateOperand,
+    MemoryOperand,
+    RegisterOperand,
+)
 from python_implementation.src.utils import as_signed_int, combine_bytes
 
 
@@ -94,6 +95,22 @@ class DecodeAccumulator:
                     displacement=self.displacement or 0,
                 )
         return rm_operand
+
+    def is_needed(self, field: NamedField):
+        if field.always_needed:
+            return True
+
+        match field:
+            case field.DISP_HI:
+                return self.mode.type == Mode.Type.WORD_DISPLACEMENT_MODE
+            case field.ADDR_HI:
+                raise NotImplementedError("Don't use ADDR_HI yet")
+            case field.DATA_IF_W1:
+                return self.word
+            case field.DATA_IF_SW_01:
+                return not (self.sign_extension) and self.word
+            case _:
+                raise ValueError("I don't know how to check if this is needed")
 
     def build(self, instruction_schema: InstructionSchema) -> DisassembledInstruction:
         assert not (

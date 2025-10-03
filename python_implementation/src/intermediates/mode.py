@@ -1,13 +1,13 @@
-import enum
 import logging
+from enum import Enum, auto
 
 
 class Mode:
-    class Type(enum.Enum):
-        NO_DISPLACEMENT_MODE = enum.auto()
-        BYTE_DISPLACEMENT_MODE = enum.auto()
-        WORD_DISPLACEMENT_MODE = enum.auto()
-        REGISTER_MODE = enum.auto()
+    class Type(Enum):
+        NO_DISPLACEMENT_MODE = auto()
+        BYTE_DISPLACEMENT_MODE = auto()
+        WORD_DISPLACEMENT_MODE = auto()
+        REGISTER_MODE = auto()
 
     def __init__(self, mod_val: int, rm_val: int | None) -> None:
         logging.debug(f"getting mode {mod_val = }, {rm_val = }")
