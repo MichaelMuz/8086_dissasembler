@@ -15,12 +15,8 @@ from python_implementation.src.utils import as_signed_int, combine_bytes
 
 
 class DecodeAccumulator:
-    def __init__(self, instruction_schema: InstructionSchema):
+    def __init__(self):
         self.parsed_fields: dict[NamedField, int] = {}
-        # We won't have this yet, we will add these when the instruction schema is discovered
-        # self.parsed_fields: dict[NamedField, int] = dict(
-        #     instruction_schema.implied_values
-        # )
 
     def with_field(self, schema_field: NamedField, field_value: int):
         self.parsed_fields[schema_field] = field_value

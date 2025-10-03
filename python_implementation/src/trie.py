@@ -1,3 +1,16 @@
+from collections.abc import Iterator
+from dataclasses import dataclass
+from typing import Self
+
+from python_implementation.src.base.schema import (
+    InstructionSchema,
+    LiteralField,
+    NamedField,
+    SchemaField,
+)
+from python_implementation.src.utils import get_sub_most_sig_bits
+
+
 class BitModeSchemaIterator:
     def __init__(self, instruction: InstructionSchema) -> None:
         self.instruction = instruction
@@ -19,7 +32,7 @@ class BitModeSchemaIterator:
 
             elif self.bit_ind < self._curr_inst.bit_width:
                 to_ret = bool(
-                    utils.get_sub_most_sig_bits(
+                    get_sub_most_sig_bits(
                         self._curr_inst.literal_value, self.bit_ind, 1
                     )
                 )
@@ -58,7 +71,7 @@ class LeafNode:
     token_iter: BitModeSchemaIterator
 
 
-Node: TypeAlias = BitNode | FieldNode | LeafNode
+type Node = BitNode | FieldNode | LeafNode
 
 
 def insert_into_trie(
