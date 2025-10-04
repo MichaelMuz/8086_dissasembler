@@ -6,7 +6,7 @@ import subprocess
 import unittest
 from typing import override
 
-from ..src import disassembler as disasm
+from ..src import main as disasm
 
 logging.basicConfig(level=logging.DEBUG)
 test_logger = logging.getLogger("tests")
@@ -65,16 +65,14 @@ class TestDisassembler(unittest.TestCase):
         )
         test_logger.debug(get_bin_seen_error_str(original_bin))
         try:
-            disassembled = disasm.disassemble_binary_to_string(
-                self.parsable_instructions, original_bin
-            )
+            disassembled = disasm.parse_binary(self.parsable_instructions, original_bin)
             logging.debug(f"disassembler output: \n{disassembled}")
         except Exception as e:
             test_logger.debug(get_bin_seen_error_str(original_bin))
             raise e
 
         try:
-            bin_of_our_disassembly = get_bin_from_nasm(disassembled)
+            bin_of_our_disassembly = get_bin_from_nasm(str(disassembled))
         except Exception as e:
             test_logger.debug(get_bin_seen_error_str(original_bin))
             test_logger.debug(f"our disassembly:\n{disassembled}")

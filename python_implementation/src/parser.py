@@ -1,6 +1,6 @@
 import logging
 
-from python_implementation.src.base.schema import LiteralField
+from python_implementation.src.base.schema import InstructionSchema, LiteralField
 from python_implementation.src.disassembled import Disassembly
 from python_implementation.src.intermediates.accumulator import DecodeAccumulator
 from python_implementation.src.trie import BitNode, FieldNode, LeafNode, Trie
@@ -82,8 +82,11 @@ def parse(trie: Trie, bit_iter: BitIterator):
     return acc.build(head.token_iter.instruction)
 
 
-def parse_binary(trie: Trie, bit_iter: BitIterator) -> Disassembly:
-
+def parse_binary(
+    parsable_instructions: list[InstructionSchema], file_contents: bytes
+) -> Disassembly:
+    trie = Trie.from_parsable_instructions(parsable_instructions)
+    bit_iter = BitIterator(file_contents)
     disassembled_instructions = []
     while bit_iter.peek_whole_byte() is not None:
         logging.debug("starting new instruction")
