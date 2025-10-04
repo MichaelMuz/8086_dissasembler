@@ -10,8 +10,10 @@ def get_sub_bits(to_ind: int, start_ind: int, num_bits: int):
     return r_shifted & mask
 
 
-def get_sub_most_sig_bits(to_ind: int, msb_start_ind: int, num_bits: int):
-    max_ind = BITS_PER_BYTE - 1
+def get_sub_most_sig_bits(
+    to_ind: int, msb_start_ind: int, num_bits: int, total_bits=BITS_PER_BYTE
+):
+    max_ind = total_bits - 1
     end_ind = max_ind - msb_start_ind
     start_ind = end_ind - num_bits + 1  # includes start
     return get_sub_bits(to_ind, start_ind, num_bits)

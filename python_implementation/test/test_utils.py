@@ -74,6 +74,8 @@ class TestGetSubMostSigBits(unittest.TestCase):
         self.assertEqual(get_sub_most_sig_bits(0b11010110, 1, 1), 1)
         # Get third bit from top
         self.assertEqual(get_sub_most_sig_bits(0b11010110, 2, 1), 0)
+        # custom top size
+        self.assertEqual(get_sub_most_sig_bits(0b10, 0, 1, total_bits=2), 1)
 
     def test_get_sub_most_sig_bits_last_bits(self):
         # get last 2 bits

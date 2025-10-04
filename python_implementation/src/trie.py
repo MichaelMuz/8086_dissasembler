@@ -38,7 +38,12 @@ class BitModeSchemaIterator:
             self.whole_ind += 1
         else:
             next_ret = bool(
-                get_sub_most_sig_bits(self._curr_inst.literal_value, self.bit_ind, 1)
+                get_sub_most_sig_bits(
+                    self._curr_inst.literal_value,
+                    self.bit_ind,
+                    1,
+                    total_bits=self._curr_inst.bit_width,
+                )
             )
             logger.info(
                 f"{self._curr_inst.literal_value = }, {self.bit_ind = }, {next_ret = }"
