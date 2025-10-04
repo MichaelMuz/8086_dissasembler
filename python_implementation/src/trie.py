@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Self
 from venv import logger
 
@@ -18,9 +19,9 @@ class BitModeSchemaIterator:
         self.whole_ind = 0
         self.bit_ind = 0
 
-    @property
+    @cached_property
     def _fields(self):
-        return self.instruction.fields
+        return [self.instruction.identifier_literal] + self.instruction.fields
 
     @property
     def _curr_inst(self):
@@ -29,9 +30,15 @@ class BitModeSchemaIterator:
     def __iter__(self):
         return self
 
+    def is_next_named(self):
+        return self.has_more() and isinstance(self._curr_inst, NamedField)
+
+    def has_more(self):
+        return self.whole_ind < len(self._fields)
+
     def __next__(self) -> bool | NamedField:
         next_ret = None
-        if self.whole_ind == len(self.instruction.fields):
+        if self.whole_ind == len(self._fields):
             raise StopIteration
         elif isinstance(self._curr_inst, NamedField):
             next_ret = self._curr_inst
@@ -45,7 +52,7 @@ class BitModeSchemaIterator:
                     total_bits=self._curr_inst.bit_width,
                 )
             )
-            logger.info(
+            logger.debug(
                 f"{self._curr_inst.literal_value = }, {self.bit_ind = }, {next_ret = }"
             )
             self.bit_ind += 1
@@ -84,32 +91,85 @@ class LeafNode:
 type Node = BitNode | FieldNode | LeafNode
 
 
+def make_correct_node(val: NamedField | bool):
+    if isinstance(val, bool):
+        head = BitNode()
+    else:
+        head = FieldNode(val)
+    return head
+
+
+def insert_into_internal_node(head: BitNode | FieldNode, val: NamedField | bool):
+    if isinstance(head, BitNode):
+        assert isinstance(val, bool), f"Expected bit but got {type(val)}"
+        if val:
+            head.right = BitNode()
+        else:
+            head.left = BitNode()
+
+    elif isinstance(head, FieldNode):
+        assert isinstance(val, NamedField), f"Expected NamedField but got {type(val)}"
+        assert (
+            head.named_field == val
+        ), f"Incompatible named fields: {head.named_field} vs {val}"
+        logger.debug(f"Inserting {head = }")
+        head.next = insert_into_trie(head.next, token_iter)
+
+
+def create_node_from_token(token, remaining_iter):
+    """Create appropriate node type from token and attach remaining iterator"""
+    if isinstance(token, bool):
+        node = BitNode()
+        if token:
+            node.right = insert_into_trie(None, remaining_iter)
+        else:
+            node.left = insert_into_trie(None, remaining_iter)
+        return node
+    else:
+        node = FieldNode(token)
+        node.next = insert_into_trie(None, remaining_iter)
+        return node
+
+
 def insert_into_trie(
     head: Node | None,
     token_iter: BitModeSchemaIterator,
 ) -> Node:
-    current_token = next(token_iter, None)
-    logger.debug(f"{head = }, {current_token = }")
-
-    if current_token is None:
-        # both done, we are a leaf at the very bottom of a finished instruction
-        assert head is None, "Instruction ends while another continues, ambiguous"
-        logger.debug("Completely finished instruction, leaf node with empty iterator")
-        head = LeafNode(token_iter)
-        return head
+    """
+    Need to:
+    1. if head is a bitnode we make sure the next token is a bool and go left/right
+    2. if head is a field node we need to make sure the next token is a named field and go next
+    3. if head is None we need to make a subtree from here, we will curl into a leaf node
+    4. if head is a leaf node we need to unroll it one token, make the correct node, then attach
+       the rest of it, coiled, to the right next/left/right pointer
+    """
+    if head is None:
+        if not token_iter.has_more():
+            logger.debug(
+                "Completely finished instruction, leaf node with empty iterator"
+            )
+            return LeafNode(token_iter)
+        if token_iter.is_next_named():
+            # If we are not being compared and on the boundary of a named field, we can coil up here
+            logger.debug("curling here")
+            return LeafNode(token_iter)
+        else:
+            logger.debug("this token must be a bit")
+            head = BitNode()
 
     elif isinstance(head, LeafNode):
-        # head will be None and the correct thing will be created for head, then we will insert the current token
-        logger.debug("Inserting a leaf node, making a new trie with rest of fields")
-        head = insert_into_trie(None, head.token_iter)
+        logger.debug("Unrolling leaf node")
+        next_leaf_token = next(head.token_iter, None)
+        assert next_leaf_token is not None, "Duplicate instruction detected"
+        assert isinstance(
+            next_leaf_token, NamedField
+        ), "First field in coiled leaf should be named"
+        next_leaf_node = FieldNode(next_leaf_token)
+        next_leaf_node.next = insert_into_trie(None, head.token_iter)
+        head = next_leaf_node
 
-    if head is None:
-        # head is None so we are the root, make the correct node
-        if isinstance(current_token, bool):
-            head = BitNode()
-        else:
-            head = FieldNode(current_token)
-        logger.debug(f"Head is None so we made a {type(head)}")
+    current_token = next(token_iter, None)
+    logger.debug(f"{head = }, {current_token = }, {token_iter.whole_ind = }")
 
     if isinstance(head, BitNode):
         assert isinstance(
