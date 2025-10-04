@@ -37,15 +37,15 @@ class TestAsSignedInt(unittest.TestCase):
 
 class TestGetSubBits(unittest.TestCase):
     def test_get_sub_bits_basic(self):
-        # Get 3 bits starting at bit 2 (from right): should get 101
+        # Get 3 bits starting at bit 2
         self.assertEqual(get_sub_bits(0b11010110, 2, 3), 0b101)
 
     def test_get_sub_bits_from_start(self):
-        # Get lowest 4 bits from 0b11010110
+        # Get lowest 4 bits
         self.assertEqual(get_sub_bits(0b11010110, 0, 4), 0b0110)
 
     def test_get_sub_bits_single_bit(self):
-        # Get bit at position 5 from 0b11010110
+        # Get bit at position 5 from the right
         self.assertEqual(get_sub_bits(0b11010110, 5, 1), 0)
         self.assertEqual(get_sub_bits(0b11010110, 4, 1), 1)
 
@@ -54,19 +54,17 @@ class TestGetSubBits(unittest.TestCase):
         self.assertEqual(get_sub_bits(0b11010110, 0, 8), 0b11010110)
 
     def test_get_sub_bits_high_bits(self):
-        # Get top 3 bits from 0b11010110
+        # Get top 3 bits
         self.assertEqual(get_sub_bits(0b11010110, 5, 3), 0b110)
 
 
 class TestGetSubMostSigBits(unittest.TestCase):
     def test_get_sub_most_sig_bits_from_top(self):
-        # 0b11010110, get 3 bits starting from MSB (index 0)
-        # Should get 110 = 6
+        # get 3 bits starting from MSB
         self.assertEqual(get_sub_most_sig_bits(0b11010110, 0, 3), 0b110)
 
     def test_get_sub_most_sig_bits_middle(self):
-        # 0b11010110, get 3 bits starting from bit 2 from top
-        # Skip 2 bits (11), get next 3 (010)
+        # get 3 bits starting from bit index 2 from top
         self.assertEqual(get_sub_most_sig_bits(0b11010110, 2, 3), 0b010)
 
     def test_get_sub_most_sig_bits_single_bit(self):
@@ -78,7 +76,7 @@ class TestGetSubMostSigBits(unittest.TestCase):
         self.assertEqual(get_sub_most_sig_bits(0b11010110, 2, 1), 0)
 
     def test_get_sub_most_sig_bits_last_bits(self):
-        # 0b11010110, get last 2 bits
+        # get last 2 bits
         self.assertEqual(get_sub_most_sig_bits(0b11010110, 6, 2), 0b10)
 
     def test_get_sub_most_sig_bits_all_bits(self):
