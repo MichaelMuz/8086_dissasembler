@@ -1,4 +1,6 @@
+import logging
 import unittest
+from venv import logger
 
 from python_implementation.src.base.schema import (
     InstructionSchema,
@@ -11,6 +13,25 @@ from python_implementation.src.trie import (
     LeafNode,
     insert_into_trie,
 )
+
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+class TestBitModeSchemaIterator(unittest.TestCase):
+    def test_iteration(self):
+        it = BitModeSchemaIterator(
+            InstructionSchema(
+                "mnemonic",
+                LiteralField(0b101, 3),
+                [LiteralField(0b10, 2), NamedField.D],
+                {},
+            )
+        )
+        logger.debug([x for x in it])
+        assert next(it) == True
+        assert next(it) == False
+        assert next(it) == NamedField.D
 
 
 class TestTrie(unittest.TestCase):

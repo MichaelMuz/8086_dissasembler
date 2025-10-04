@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Self
+from venv import logger
 
 from python_implementation.src.base.schema import (
     InstructionSchema,
@@ -25,24 +26,28 @@ class BitModeSchemaIterator:
     def _curr_inst(self):
         return self._fields[self.whole_ind]
 
+    def __iter__(self):
+        return self
+
     def __next__(self) -> bool | NamedField:
-        for self.whole_ind in range(self.whole_ind, len(self.instruction.fields)):
-            if isinstance(self._curr_inst, NamedField):
-                return self._curr_inst
-
-            elif self.bit_ind < self._curr_inst.bit_width:
-                to_ret = bool(
-                    get_sub_most_sig_bits(
-                        self._curr_inst.literal_value, self.bit_ind, 1
-                    )
-                )
-                self.bit_ind += 1
-                return to_ret
-
-            else:
+        next_ret = None
+        if self.whole_ind == len(self.instruction.fields):
+            raise StopIteration
+        elif isinstance(self._curr_inst, NamedField):
+            next_ret = self._curr_inst
+            self.whole_ind += 1
+        else:
+            next_ret = bool(
+                get_sub_most_sig_bits(self._curr_inst.literal_value, self.bit_ind, 1)
+            )
+            logger.info(
+                f"{self._curr_inst.literal_value = }, {self.bit_ind = }, {next_ret = }"
+            )
+            self.bit_ind += 1
+            if self.bit_ind == self._curr_inst.bit_width:
                 self.bit_ind = 0
-
-        raise StopIteration
+                self.whole_ind += 1
+        return next_ret
 
     def to_whole_field_iter(self) -> Iterator[SchemaField]:
         match self._curr_inst:
@@ -79,15 +84,18 @@ def insert_into_trie(
     token_iter: BitModeSchemaIterator,
 ) -> Node:
     current_token = next(token_iter, None)
+    logger.debug(f"{head = }, {current_token = }")
 
     if current_token is None:
         # both done, we are a leaf at the very bottom of a finished instruction
         assert head is None, "Instruction ends while another continues, ambiguous"
+        logger.debug("Completely finished instruction, leaf node with empty iterator")
         head = LeafNode(token_iter)
         return head
 
     elif isinstance(head, LeafNode):
         # head will be None and the correct thing will be created for head, then we will insert the current token
+        logger.debug("Inserting a leaf node, making a new trie with rest of fields")
         head = insert_into_trie(None, head.token_iter)
 
     if head is None:
@@ -96,14 +104,18 @@ def insert_into_trie(
             head = BitNode()
         else:
             head = FieldNode(current_token)
+        logger.debug(f"Head is None so we made a {type(head)}")
 
     if isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
+        logger.debug("Handling a BitNode")
         if current_token:
+            logger.debug("Going right")
             head.right = insert_into_trie(head.right, token_iter)
         else:
+            logger.debug("Going left")
             head.left = insert_into_trie(head.left, token_iter)
 
     elif isinstance(head, FieldNode):
@@ -113,6 +125,7 @@ def insert_into_trie(
         assert (
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
+        logger.debug(f"Inserting {head = }")
         head.next = insert_into_trie(head.next, token_iter)
 
     return head
