@@ -18,10 +18,11 @@ def get_bin_seen_error_str(bin: bytes) -> str:
 
 
 class TestDisassembler(unittest.TestCase):
+    @classmethod
     @override
-    def setUp(self) -> None:
-        self.parsable_instructions = disasm.get_parsable_instructions_from_config()
-        return super().setUp()
+    def setUpClass(cls) -> None:
+        cls.parsable_instructions = disasm.get_parsable_instructions_from_config()
+        return super().setUpClass()
 
     def get_bin_from_nasm(self, asm_instructions: str):
         with tempfile.TemporaryDirectory() as temp_dir:
