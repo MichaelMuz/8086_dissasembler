@@ -68,7 +68,7 @@ class TestDisassembler(unittest.TestCase):
             raise e
 
         try:
-            bin_of_our_disassembly = get_bin_from_nasm(str(disassembled))
+            bin_of_our_disassembly = self.get_bin_from_nasm(str(disassembled))
         except Exception as e:
             test_logger.debug(get_bin_seen_error_str(original_bin))
             test_logger.debug(f"our disassembly:\n{disassembled}")
