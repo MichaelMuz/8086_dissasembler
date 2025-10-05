@@ -2,7 +2,9 @@ from functools import cached_property
 import logging
 from python_implementation.src.base.schema import (
     InstructionSchema,
+    LiteralField,
     NamedField,
+    SchemaField,
 )
 from python_implementation.src.disassembled import DisassembledInstruction
 from python_implementation.src.intermediates.mode import Mode
@@ -18,8 +20,11 @@ class DecodeAccumulator:
     def __init__(self):
         self.parsed_fields: dict[NamedField, int] = {}
 
-    def with_field(self, schema_field: NamedField, field_value: int):
-        self.parsed_fields[schema_field] = field_value
+    def with_field(self, schema_field: SchemaField, field_value: int):
+        if isinstance(schema_field, NamedField):
+            self.parsed_fields[schema_field] = field_value
+        else:
+            assert field_value == schema_field.literal_value
 
     @cached_property
     def mode(self) -> Mode:
@@ -92,11 +97,16 @@ class DecodeAccumulator:
                 )
         return rm_operand
 
-    def is_needed(self, field: NamedField):
-        if field.always_needed:
+    def is_needed(self, field: SchemaField):
+        if isinstance(field, LiteralField) or field.always_needed:
             return True
 
         match field:
+            case field.DISP_LO:
+                return self.mode.type in (
+                    Mode.Type.WORD_DISPLACEMENT_MODE,
+                    Mode.Type.BYTE_DISPLACEMENT_MODE,
+                )
             case field.DISP_HI:
                 return self.mode.type == Mode.Type.WORD_DISPLACEMENT_MODE
             case field.ADDR_HI:

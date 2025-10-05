@@ -1,6 +1,7 @@
 import logging
+from venv import logger
 
-from python_implementation.src.base.schema import InstructionSchema, LiteralField
+from python_implementation.src.base.schema import InstructionSchema
 from python_implementation.src.disassembled import Disassembly
 from python_implementation.src.intermediates.accumulator import DecodeAccumulator
 from python_implementation.src.trie import BitNode, FieldNode, LeafNode, Trie
@@ -60,23 +61,25 @@ def parse(trie: Trie, bit_iter: BitIterator):
     acc = DecodeAccumulator()
     while head is not None and not isinstance(head, LeafNode):
         if isinstance(head, BitNode):
+            logger.debug("requesting 1 bit")
             if bit_iter.next_bits(1):
                 head = head.right
             else:
                 head = head.left
         elif isinstance(head, FieldNode):
+            logger.debug(f"requesting {head.named_field.bit_width} bits")
             acc.with_field(
                 head.named_field, bit_iter.next_bits(head.named_field.bit_width)
             )
             head = head.next
 
+    logger.debug("Got to leaf node")
     assert head is not None, "Invalid Instruction"
     whole_iter = head.token_iter.to_whole_field_iter()
-    while (e := next(whole_iter, None)) is not None:
-        val = bit_iter.next_bits(e.bit_width)
-        if isinstance(e, LiteralField):
-            assert val == e.literal_value
-        else:
+    for e in whole_iter:
+        if acc.is_needed(e):
+            logger.debug(f"need {e}")
+            val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
 
     return acc.build(head.token_iter.instruction)

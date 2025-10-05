@@ -4,7 +4,6 @@ from python_implementation.src.base.config_loader import (
     get_parsable_instructions_from_config,
 )
 from python_implementation.src.parser import parse_binary
-from python_implementation.src.trie import Trie
 
 
 def main():
