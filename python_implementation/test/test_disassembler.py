@@ -218,45 +218,45 @@ class TestSub(TestDisassembler):
         self.help_test_given_asm(["sub ax, 1000", "sub al, -30", "sub al, 9"])
 
 
-# class TestAdd(TestDisassembler):
-#     def test_add_reg_from_memory(self):
-#         self.help_test_given_asm(["add bx, [bx+si]", "add bx, [bp]"])
+class TestAdd(TestDisassembler):
+    def test_add_reg_from_memory(self):
+        self.help_test_given_asm(["add bx, [bx+si]", "add bx, [bp]"])
 
-#     def test_add_immediate_to_reg(self):
-#         self.help_test_given_asm(["add si, 2", "add bp, 2", "add cx, 8"])
+    def test_add_immediate_to_reg(self):
+        self.help_test_given_asm(["add si, 2", "add bp, 2", "add cx, 8"])
 
-#     def test_add_reg_from_memory_with_displacement(self):
-#         self.help_test_given_asm(
-#             [
-#                 "add bx, [bp + 0]",
-#                 "add cx, [bx + 2]",
-#                 "add bh, [bp + si + 4]",
-#                 "add di, [bp + di + 6]",
-#             ]
-#         )
+    def test_add_reg_from_memory_with_displacement(self):
+        self.help_test_given_asm(
+            [
+                "add bx, [bp + 0]",
+                "add cx, [bx + 2]",
+                "add bh, [bp + si + 4]",
+                "add di, [bp + di + 6]",
+            ]
+        )
 
-#     def test_add_reg_to_memory(self):
-#         self.help_test_given_asm(
-#             [
-#                 "add [bx+si], bx",
-#                 "add [bp], bx",
-#                 "add [bp + 0], bx",
-#                 "add [bx + 2], cx",
-#                 "add [bp + si + 4], bh",
-#                 "add [bp + di + 6], di",
-#             ]
-#         )
+    def test_add_reg_to_memory(self):
+        self.help_test_given_asm(
+            [
+                "add [bx+si], bx",
+                "add [bp], bx",
+                "add [bp + 0], bx",
+                "add [bx + 2], cx",
+                "add [bp + si + 4], bh",
+                "add [bp + di + 6], di",
+            ]
+        )
 
-#     def test_add_immediate_to_memory(self):
-#         self.help_test_given_asm(["add byte [bx], 34", "add word [bp + si + 1000], 29"])
+    def test_add_immediate_to_memory(self):
+        self.help_test_given_asm(["add byte [bx], 34", "add word [bp + si + 1000], 29"])
 
-#     def test_add_mixed_operations(self):
-#         self.help_test_given_asm(
-#             ["add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah"]
-#         )
+    def test_add_mixed_operations(self):
+        self.help_test_given_asm(
+            ["add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah"]
+        )
 
-#     def test_add_immediate_values(self):
-#         self.help_test_given_asm(["add ax, 1000", "add al, -30", "add al, 9"])
+    def test_add_immediate_values(self):
+        self.help_test_given_asm(["add ax, 1000", "add al, -30", "add al, 9"])
 
 
 # class TestCmp(TestDisassembler):
