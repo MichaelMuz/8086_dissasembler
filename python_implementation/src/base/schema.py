@@ -8,7 +8,7 @@ from python_implementation.src.utils import BITS_PER_BYTE
 class LiteralField:
     def __init__(self, literal_value: int, bit_width: int):
         self.literal_value = literal_value
-        assert bit_width > 0 and bit_width < BITS_PER_BYTE
+        assert bit_width > 0 and bit_width <= BITS_PER_BYTE
         self.bit_width = bit_width
 
     def is_match(self, other_int: int):
@@ -34,6 +34,7 @@ class NamedField(Enum):
     MOD = ("mod", 2, True)
     RM = ("rm", 3, True)
     DATA = ("data", 8, True)
+    IP_INC8 = ("ip-inc8", 8, True)
     DISP_LO = ("disp-lo", 8)
     DISP_HI = ("disp-hi", 8)
     ADDR_LO = ("addr-lo", 8)

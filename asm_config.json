@@ -119,6 +119,206 @@
                     }
                 }
             ]
+        },
+        {
+            "mnemonic": "je",
+            "variations": [
+                {
+                    "description": "Jump on equal/zero",
+                    "format": "01110100, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jl",
+            "variations": [
+                {
+                    "description": "Jump on less/not greater or equal",
+                    "format": "01111100, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jle",
+            "variations": [
+                {
+                    "description": "Jump on less or equal/not greater",
+                    "format": "01111110, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jb",
+            "variations": [
+                {
+                    "description": "Jump on below/not above or equal",
+                    "format": "01110010, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jbe",
+            "variations": [
+                {
+                    "description": "Jump on below or equal/not above",
+                    "format": "01110110, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jp",
+            "variations": [
+                {
+                    "description": "Jump on parity/parity even",
+                    "format": "01111010, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jo",
+            "variations": [
+                {
+                    "description": "Jump on overflow",
+                    "format": "01110000, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "js",
+            "variations": [
+                {
+                    "description": "Jump on sign",
+                    "format": "01111000, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jne",
+            "variations": [
+                {
+                    "description": "Jump on not equal/not zero",
+                    "format": "01110101, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jnl",
+            "variations": [
+                {
+                    "description": "Jump on not less/greater or equal",
+                    "format": "01111101, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jg",
+            "variations": [
+                {
+                    "description": "Jump on not less or equal/greater",
+                    "format": "01111111, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jnb",
+            "variations": [
+                {
+                    "description": "Jump on not below/above or equal",
+                    "format": "01110011, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "ja",
+            "variations": [
+                {
+                    "description": "Jump on not below or equal/above",
+                    "format": "01110111, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jnp",
+            "variations": [
+                {
+                    "description": "Jump on not par/par odd",
+                    "format": "01111011, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jno",
+            "variations": [
+                {
+                    "description": "Jump on not overflow",
+                    "format": "01110001, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jns",
+            "variations": [
+                {
+                    "description": "Jump on not sign",
+                    "format": "01111001, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "loop",
+            "variations": [
+                {
+                    "description": "Loop CX times",
+                    "format": "11100010, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "loopz",
+            "variations": [
+                {
+                    "description": "Loop while zero/equal",
+                    "format": "11100001, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "loopnz",
+            "variations": [
+                {
+                    "description": "Loop while not zero/equal",
+                    "format": "11100000, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
+        },
+        {
+            "mnemonic": "jcxz",
+            "variations": [
+                {
+                    "description": "Jump on CX zero",
+                    "format": "11100011, ip-inc8",
+                    "implied_values": {}
+                }
+            ]
         }
     ]
 }
