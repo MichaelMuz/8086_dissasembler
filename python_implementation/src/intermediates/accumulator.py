@@ -26,6 +26,12 @@ class DecodeAccumulator:
         else:
             assert field_value == schema_field.literal_value
 
+    def with_implied_fields(self, implied_fields: dict[NamedField, int]) -> None:
+        assert self.parsed_fields.keys().isdisjoint(
+            implied_fields.keys()
+        ), "Given implied fields overlap with already parsed fields"
+        self.parsed_fields.update(implied_fields)
+
     @cached_property
     def mode(self) -> Mode:
         """This one is special because it is used in checking if a field is needed"""

@@ -75,6 +75,7 @@ def parse(trie: Trie, bit_iter: BitIterator):
 
     logger.debug("Got to leaf node")
     assert head is not None, "Invalid Instruction"
+    acc.with_implied_fields(head.token_iter.instruction.implied_values)
     whole_iter = head.token_iter.to_whole_field_iter()
     for e in whole_iter:
         if acc.is_needed(e):
