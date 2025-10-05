@@ -259,45 +259,45 @@ class TestAdd(TestDisassembler):
         self.help_test_given_asm(["add ax, 1000", "add al, -30", "add al, 9"])
 
 
-# class TestCmp(TestDisassembler):
-#     def test_cmp_reg_with_memory(self):
-#         self.help_test_given_asm(["cmp bx, [bx+si]", "cmp bx, [bp]"])
+class TestCmp(TestDisassembler):
+    def test_cmp_reg_with_memory(self):
+        self.help_test_given_asm(["cmp bx, [bx+si]", "cmp bx, [bp]"])
 
-#     def test_cmp_reg_with_immediate(self):
-#         self.help_test_given_asm(["cmp si, 2", "cmp bp, 2", "cmp cx, 8"])
+    def test_cmp_reg_with_immediate(self):
+        self.help_test_given_asm(["cmp si, 2", "cmp bp, 2", "cmp cx, 8"])
 
-#     def test_cmp_reg_with_memory_displacement(self):
-#         self.help_test_given_asm(
-#             [
-#                 "cmp bx, [bp + 0]",
-#                 "cmp cx, [bx + 2]",
-#                 "cmp bh, [bp + si + 4]",
-#                 "cmp di, [bp + di + 6]",
-#             ]
-#         )
+    def test_cmp_reg_with_memory_displacement(self):
+        self.help_test_given_asm(
+            [
+                "cmp bx, [bp + 0]",
+                "cmp cx, [bx + 2]",
+                "cmp bh, [bp + si + 4]",
+                "cmp di, [bp + di + 6]",
+            ]
+        )
 
-#     def test_cmp_memory_with_reg(self):
-#         self.help_test_given_asm(
-#             [
-#                 "cmp [bx+si], bx",
-#                 "cmp [bp], bx",
-#                 "cmp [bp + 0], bx",
-#                 "cmp [bx + 2], cx",
-#                 "cmp [bp + si + 4], bh",
-#                 "cmp [bp + di + 6], di",
-#             ]
-#         )
+    def test_cmp_memory_with_reg(self):
+        self.help_test_given_asm(
+            [
+                "cmp [bx+si], bx",
+                "cmp [bp], bx",
+                "cmp [bp + 0], bx",
+                "cmp [bx + 2], cx",
+                "cmp [bp + si + 4], bh",
+                "cmp [bp + di + 6], di",
+            ]
+        )
 
-#     def test_cmp_memory_with_immediate(self):
-#         self.help_test_given_asm(["cmp byte [bx], 34", "cmp word [4834], 29"])
+    def test_cmp_memory_with_immediate(self):
+        self.help_test_given_asm(["cmp byte [bx], 34", "cmp word [4834], 29"])
 
-#     def test_cmp_mixed_operations(self):
-#         self.help_test_given_asm(
-#             ["cmp ax, [bp]", "cmp al, [bx + si]", "cmp ax, bx", "cmp al, ah"]
-#         )
+    def test_cmp_mixed_operations(self):
+        self.help_test_given_asm(
+            ["cmp ax, [bp]", "cmp al, [bx + si]", "cmp ax, bx", "cmp al, ah"]
+        )
 
-#     def test_cmp_immediate_values(self):
-#         self.help_test_given_asm(["cmp ax, 1000", "cmp al, -30", "cmp al, 9"])
+    def test_cmp_immediate_values(self):
+        self.help_test_given_asm(["cmp ax, 1000", "cmp al, -30", "cmp al, 9"])
 
 
 # class TestJumps(TestDisassembler):
