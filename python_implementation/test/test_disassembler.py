@@ -1,8 +1,8 @@
 import itertools
 import logging
-import os
-import shutil
+from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 from typing import override
 
@@ -10,21 +10,6 @@ from ..src import main as disasm
 
 logging.basicConfig(level=logging.DEBUG)
 test_logger = logging.getLogger("tests")
-
-TEMP_NASM_INPUT_FILE_LOCATION = "tmp/inst.asm"
-TEMP_NASM_OUTPUT_FILE_LOCATION = "tmp/bin.asm"
-
-
-def get_bin_from_nasm(asm_instructions: str):
-    with open(TEMP_NASM_INPUT_FILE_LOCATION, "w") as file:
-        file.write(asm_instructions)
-    subprocess.run(
-        ["nasm", TEMP_NASM_INPUT_FILE_LOCATION, "-o", TEMP_NASM_OUTPUT_FILE_LOCATION],
-        capture_output=True,
-    )
-    with open(TEMP_NASM_OUTPUT_FILE_LOCATION, "rb") as file:
-        binary: bytes = file.read()
-    return binary
 
 
 def get_bin_seen_error_str(bin: bytes) -> str:
@@ -34,22 +19,32 @@ def get_bin_seen_error_str(bin: bytes) -> str:
 
 class TestDisassembler(unittest.TestCase):
     @override
-    def tearDown(self) -> None:
-        nasm_temp_file_dir = TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
-        if os.path.exists(nasm_temp_file_dir):
-            shutil.rmtree(nasm_temp_file_dir)
-
-        return super().tearDown()
-
-    @override
     def setUp(self) -> None:
-        nasm_temp_file_dir = TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
-        if not os.path.exists(nasm_temp_file_dir):
-            os.makedirs(nasm_temp_file_dir)
-
         self.parsable_instructions = disasm.get_parsable_instructions_from_config()
-
         return super().setUp()
+
+    def get_bin_from_nasm(self, asm_instructions: str):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            temp_nasm_input_file = temp_dir_path / "inst.asm"
+            temp_nasm_output_file = temp_dir_path / "bin.asm"
+            with open(temp_nasm_input_file, "w") as file:
+                file.write(asm_instructions)
+
+            subprocess.run(
+                [
+                    "nasm",
+                    temp_nasm_input_file.absolute(),
+                    "-o",
+                    temp_nasm_output_file.absolute(),
+                ],
+                capture_output=True,
+            )
+
+            with open(temp_nasm_output_file, "rb") as file:
+                binary: bytes = file.read()
+
+        return binary
 
     def help_test_given_asm(self, asm_instructions: list[str] | str):
         """
@@ -60,7 +55,7 @@ class TestDisassembler(unittest.TestCase):
         """
         if isinstance(asm_instructions, str):
             asm_instructions = [asm_instructions]
-        original_bin = get_bin_from_nasm(
+        original_bin = self.get_bin_from_nasm(
             "\n".join(itertools.chain(["bits 16"], asm_instructions))
         )
         test_logger.debug(get_bin_seen_error_str(original_bin))
