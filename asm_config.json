@@ -80,7 +80,7 @@
                 },
                 {
                     "description": "Immediate to Register/Memory",
-                    "format": "100000 s w, mod 101 rm, disp-lo, disp-hi, data, data-if-s:w=01",
+                    "format": "100000 s w, mod 000 rm, disp-lo, disp-hi, data, data-if-s:w=01",
                     "implied_values": {
                         "d": 0
                     }
