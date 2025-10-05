@@ -79,15 +79,40 @@
                     "implied_values": {}
                 },
                 {
-                    "description": "Immediate to Register/Memory",
+                    "description": "Immediate from Register/Memory",
                     "format": "100000 s w, mod 000 rm, disp-lo, disp-hi, data, data-if-s:w=01",
                     "implied_values": {
                         "d": 0
                     }
                 },
                 {
-                    "description": "Immediate to Accumulator",
+                    "description": "Immediate from Accumulator",
                     "format": "0000010 w, data, data-if-w=1",
+                    "implied_values": {
+                        "d": 0,
+                        "reg": 0
+                    }
+                }
+            ]
+        },
+        {
+            "mnemonic": "cmp",
+            "variations": [
+                {
+                    "description": "Reg/Memory and register",
+                    "format": "001110 d w, mod reg rm, disp-lo, disp-hi",
+                    "implied_values": {}
+                },
+                {
+                    "description": "Immediate with Register/Memory",
+                    "format": "100000 s w, mod 111 rm, disp-lo, disp-hi, data, data-if-s:w=01",
+                    "implied_values": {
+                        "d": 0
+                    }
+                },
+                {
+                    "description": "Immediate with Accumulator",
+                    "format": "0011110 w, data, data-if-w=1",
                     "implied_values": {
                         "d": 0,
                         "reg": 0
