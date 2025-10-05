@@ -1,30 +1,15 @@
 import itertools
 import logging
-import os
-import shutil
+from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 from typing import override
 
-from ..src import disassembler as disasm
+from ..src import main as disasm
 
 logging.basicConfig(level=logging.DEBUG)
 test_logger = logging.getLogger("tests")
-
-TEMP_NASM_INPUT_FILE_LOCATION = "tmp/inst.asm"
-TEMP_NASM_OUTPUT_FILE_LOCATION = "tmp/bin.asm"
-
-
-def get_bin_from_nasm(asm_instructions: str):
-    with open(TEMP_NASM_INPUT_FILE_LOCATION, "w") as file:
-        file.write(asm_instructions)
-    subprocess.run(
-        ["nasm", TEMP_NASM_INPUT_FILE_LOCATION, "-o", TEMP_NASM_OUTPUT_FILE_LOCATION],
-        capture_output=True,
-    )
-    with open(TEMP_NASM_OUTPUT_FILE_LOCATION, "rb") as file:
-        binary: bytes = file.read()
-    return binary
 
 
 def get_bin_seen_error_str(bin: bytes) -> str:
@@ -33,23 +18,34 @@ def get_bin_seen_error_str(bin: bytes) -> str:
 
 
 class TestDisassembler(unittest.TestCase):
+    @classmethod
     @override
-    def tearDown(self) -> None:
-        nasm_temp_file_dir = TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
-        if os.path.exists(nasm_temp_file_dir):
-            shutil.rmtree(nasm_temp_file_dir)
+    def setUpClass(cls) -> None:
+        cls.parsable_instructions = disasm.get_parsable_instructions_from_config()
+        return super().setUpClass()
 
-        return super().tearDown()
+    def get_bin_from_nasm(self, asm_instructions: str):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            temp_nasm_input_file = temp_dir_path / "inst.asm"
+            temp_nasm_output_file = temp_dir_path / "bin.asm"
+            with open(temp_nasm_input_file, "w") as file:
+                file.write(asm_instructions)
 
-    @override
-    def setUp(self) -> None:
-        nasm_temp_file_dir = TEMP_NASM_INPUT_FILE_LOCATION.split("/")[0]
-        if not os.path.exists(nasm_temp_file_dir):
-            os.makedirs(nasm_temp_file_dir)
+            subprocess.run(
+                [
+                    "nasm",
+                    temp_nasm_input_file.absolute(),
+                    "-o",
+                    temp_nasm_output_file.absolute(),
+                ],
+                capture_output=True,
+            )
 
-        self.parsable_instructions = disasm.get_parsable_instructions_from_config()
+            with open(temp_nasm_output_file, "rb") as file:
+                binary: bytes = file.read()
 
-        return super().setUp()
+        return binary
 
     def help_test_given_asm(self, asm_instructions: list[str] | str):
         """
@@ -60,21 +56,19 @@ class TestDisassembler(unittest.TestCase):
         """
         if isinstance(asm_instructions, str):
             asm_instructions = [asm_instructions]
-        original_bin = get_bin_from_nasm(
+        original_bin = self.get_bin_from_nasm(
             "\n".join(itertools.chain(["bits 16"], asm_instructions))
         )
         test_logger.debug(get_bin_seen_error_str(original_bin))
         try:
-            disassembled = disasm.disassemble_binary_to_string(
-                self.parsable_instructions, original_bin
-            )
+            disassembled = disasm.parse_binary(self.parsable_instructions, original_bin)
             logging.debug(f"disassembler output: \n{disassembled}")
         except Exception as e:
             test_logger.debug(get_bin_seen_error_str(original_bin))
             raise e
 
         try:
-            bin_of_our_disassembly = get_bin_from_nasm(disassembled)
+            bin_of_our_disassembly = self.get_bin_from_nasm(str(disassembled))
         except Exception as e:
             test_logger.debug(get_bin_seen_error_str(original_bin))
             test_logger.debug(f"our disassembly:\n{disassembled}")
@@ -224,45 +218,45 @@ class TestSub(TestDisassembler):
         self.help_test_given_asm(["sub ax, 1000", "sub al, -30", "sub al, 9"])
 
 
-# class TestAdd(TestDisassembler):
-#     def test_add_reg_from_memory(self):
-#         self.help_test_given_asm(["add bx, [bx+si]", "add bx, [bp]"])
+class TestAdd(TestDisassembler):
+    def test_add_reg_from_memory(self):
+        self.help_test_given_asm(["add bx, [bx+si]", "add bx, [bp]"])
 
-#     def test_add_immediate_to_reg(self):
-#         self.help_test_given_asm(["add si, 2", "add bp, 2", "add cx, 8"])
+    def test_add_immediate_to_reg(self):
+        self.help_test_given_asm(["add si, 2", "add bp, 2", "add cx, 8"])
 
-#     def test_add_reg_from_memory_with_displacement(self):
-#         self.help_test_given_asm(
-#             [
-#                 "add bx, [bp + 0]",
-#                 "add cx, [bx + 2]",
-#                 "add bh, [bp + si + 4]",
-#                 "add di, [bp + di + 6]",
-#             ]
-#         )
+    def test_add_reg_from_memory_with_displacement(self):
+        self.help_test_given_asm(
+            [
+                "add bx, [bp + 0]",
+                "add cx, [bx + 2]",
+                "add bh, [bp + si + 4]",
+                "add di, [bp + di + 6]",
+            ]
+        )
 
-#     def test_add_reg_to_memory(self):
-#         self.help_test_given_asm(
-#             [
-#                 "add [bx+si], bx",
-#                 "add [bp], bx",
-#                 "add [bp + 0], bx",
-#                 "add [bx + 2], cx",
-#                 "add [bp + si + 4], bh",
-#                 "add [bp + di + 6], di",
-#             ]
-#         )
+    def test_add_reg_to_memory(self):
+        self.help_test_given_asm(
+            [
+                "add [bx+si], bx",
+                "add [bp], bx",
+                "add [bp + 0], bx",
+                "add [bx + 2], cx",
+                "add [bp + si + 4], bh",
+                "add [bp + di + 6], di",
+            ]
+        )
 
-#     def test_add_immediate_to_memory(self):
-#         self.help_test_given_asm(["add byte [bx], 34", "add word [bp + si + 1000], 29"])
+    def test_add_immediate_to_memory(self):
+        self.help_test_given_asm(["add byte [bx], 34", "add word [bp + si + 1000], 29"])
 
-#     def test_add_mixed_operations(self):
-#         self.help_test_given_asm(
-#             ["add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah"]
-#         )
+    def test_add_mixed_operations(self):
+        self.help_test_given_asm(
+            ["add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah"]
+        )
 
-#     def test_add_immediate_values(self):
-#         self.help_test_given_asm(["add ax, 1000", "add al, -30", "add al, 9"])
+    def test_add_immediate_values(self):
+        self.help_test_given_asm(["add ax, 1000", "add al, -30", "add al, 9"])
 
 
 # class TestCmp(TestDisassembler):

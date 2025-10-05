@@ -1,7 +1,9 @@
 import os
 
-from python_implementation.src.decoder import disassemble_binary_to_string
-from python_implementation.src.schema import get_parsable_instructions_from_config
+from python_implementation.src.base.config_loader import (
+    get_parsable_instructions_from_config,
+)
+from python_implementation.src.parser import parse_binary
 
 
 def main():
@@ -13,12 +15,10 @@ def main():
         full_input_file_path = os.path.join(input_directory, file_name)
         with open(full_input_file_path, "rb") as file:
             file_contents: bytes = file.read()
-        disassembled = disassemble_binary_to_string(
-            parsable_instructions, file_contents
-        )
+        disasm = parse_binary(parsable_instructions, file_contents)
         full_output_file_path = os.path.join(output_directory, file_name + ".asm")
         with open(full_output_file_path, "w") as f:
-            f.write(disassembled)
+            f.write(str(disasm))
 
 
 if __name__ == "__main__":

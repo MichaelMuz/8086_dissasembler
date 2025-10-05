@@ -1,0 +1,33 @@
+from dataclasses import dataclass
+from typing import override
+
+from python_implementation.src.intermediates.operands import (
+    ImmediateOperand,
+    MemoryOperand,
+    Operand,
+)
+
+
+@dataclass(frozen=True)
+class DisassembledInstruction:
+    mnemonic: str
+    dest: Operand
+    source: Operand
+
+    @override
+    def __str__(self) -> str:
+        size_spec = ""
+        if isinstance(self.dest, MemoryOperand) and isinstance(
+            self.source, ImmediateOperand
+        ):
+            size_spec = "word " if self.source.word else "byte "
+        return f"{self.mnemonic} {self.dest}, {size_spec}{self.source}"
+
+
+@dataclass(frozen=True)
+class Disassembly:
+    instructions: list[DisassembledInstruction]
+
+    @override
+    def __str__(self) -> str:
+        return "\n".join(["bits 16", *map(str, self.instructions)])
