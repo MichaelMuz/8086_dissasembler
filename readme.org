@@ -10,9 +10,6 @@ nasm asm/single_register_mov
 we are writing a dissasembler, given a binary get the asm from it
 
 given a binary, generate asm code
-I am going binary -> asm code
-
-given asm -> nasm -> binary -> my_prog -> confirm my asm is same as given asm -> nasm -> confirm my dissasembled and reassembled binary is same as original binary
 
 #+begin_src shell
 mish@fedora:~/code/20muzm01/perf_aware/asm$ xxd single_register_mov
