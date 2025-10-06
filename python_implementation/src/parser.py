@@ -62,7 +62,9 @@ def parse(trie: Trie, bit_iter: BitIterator):
     while head is not None and not isinstance(head, LeafNode):
         if isinstance(head, BitNode):
             logger.debug("requesting 1 bit")
-            if bit_iter.next_bits(1):
+            b = bool(bit_iter.next_bits(1))
+            acc.with_bit(b)
+            if b:
                 head = head.right
             else:
                 head = head.left

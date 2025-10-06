@@ -6,7 +6,10 @@ from python_implementation.src.base.schema import (
     NamedField,
     SchemaField,
 )
-from python_implementation.src.disassembled import DisassembledInstruction
+from python_implementation.src.disassembled import (
+    DisassembledBinaryInstruction,
+    DisassembledInstruction,
+)
 from python_implementation.src.intermediates.mode import Mode
 from python_implementation.src.intermediates.operands import (
     ImmediateOperand,
@@ -19,12 +22,17 @@ from python_implementation.src.utils import as_signed_int, combine_bytes
 class DecodeAccumulator:
     def __init__(self):
         self.parsed_fields: dict[NamedField, int] = {}
+        self.size = 0
 
     def with_field(self, schema_field: SchemaField, field_value: int):
+        self.size += schema_field.bit_width
         if isinstance(schema_field, NamedField):
             self.parsed_fields[schema_field] = field_value
         else:
             assert field_value == schema_field.literal_value
+
+    def with_bit(self, _: bool):
+        self.size += 1
 
     def with_implied_fields(self, implied_fields: dict[NamedField, int]) -> None:
         assert self.parsed_fields.keys().isdisjoint(
@@ -140,6 +148,9 @@ class DecodeAccumulator:
         assert None not in operands, "Cannot have null source or dest"
         source, dest = operands
 
-        return DisassembledInstruction(
-            mnemonic=instruction_schema.mnemonic, source=source, dest=dest
+        return DisassembledBinaryInstruction(
+            mnemonic=instruction_schema.mnemonic,
+            source=source,
+            dest=dest,
+            inst_size=self.size,
         )
