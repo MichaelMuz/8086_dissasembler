@@ -9,6 +9,7 @@ from python_implementation.src.base.schema import (
 from python_implementation.src.disassembled import (
     DisassembledBinaryInstruction,
     DisassembledInstruction,
+    DisassembledJumpInstruction,
 )
 from python_implementation.src.intermediates.mode import Mode
 from python_implementation.src.intermediates.operands import (
@@ -60,6 +61,10 @@ class DecodeAccumulator:
     @cached_property
     def sign_extension(self):
         return bool(self.parsed_fields[NamedField.S])
+
+    @cached_property
+    def ip_inc8(self):
+        return self.parsed_fields.get(NamedField.IP_INC8)
 
     @cached_property
     def displacement(self):
@@ -133,6 +138,11 @@ class DecodeAccumulator:
                 raise ValueError("I don't know how to check if this is needed")
 
     def build(self, instruction_schema: InstructionSchema) -> DisassembledInstruction:
+        if self.ip_inc8:
+            return DisassembledJumpInstruction(
+                instruction_schema.mnemonic, self.ip_inc8, self.size
+            )
+
         assert not (
             self.data_operand and self.register_operand and self.rm_operand
         ), "Too many operands"
