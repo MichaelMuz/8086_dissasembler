@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import cached_property
 from typing import override
+from venv import logger
 
 from python_implementation.src.intermediates.operands import (
     ImmediateOperand,
@@ -51,30 +52,34 @@ class Disassembly:
 
     @cached_property
     def instructions_with_labels(self) -> list[DisassembledInstruction | str]:
-
         curr_byte = 0
-        label_counter = 0
-        jump_loc_to_label_name: dict[int, str] = {}
+        jump_loc_to_insts: dict[int, list[DisassembledJumpInstruction]] = {}
         for inst in self.instructions:
             if isinstance(inst, DisassembledJumpInstruction):
                 target_byte = inst.get_abs_label_offset(curr_byte)
-
-                if target_byte not in jump_loc_to_label_name:
-                    jump_loc_to_label_name[target_byte] = f"label_{label_counter}"
-                    label_counter += 1
-
-                inst.label = jump_loc_to_label_name[target_byte]
+                jump_loc_to_insts.setdefault(target_byte, [])
+                jump_loc_to_insts[target_byte].append(inst)
 
             curr_byte += inst.inst_size
 
         curr_byte = 0
+        label_counter = 0
         result: list[DisassembledInstruction | str] = []
         for inst in self.instructions:
-            if curr_byte in jump_loc_to_label_name:
-                result.append(jump_loc_to_label_name[curr_byte] + ":")
+            if curr_byte in jump_loc_to_insts:
+                label = f"label_{label_counter}"
+                label_counter += 1
+                for j_inst in jump_loc_to_insts.pop(curr_byte):
+                    j_inst.label = label
+                result.append(label + ":")
 
             result.append(inst)
             curr_byte += inst.inst_size
+
+        if len(jump_loc_to_insts) > 0:
+            logger.warning(
+                "Disassembly contains jumps pointing to middle of other instructions or out of instruction bounds"
+            )
 
         return result
 

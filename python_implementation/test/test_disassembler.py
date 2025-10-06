@@ -300,50 +300,50 @@ class TestCmp(TestDisassembler):
         self.help_test_given_asm(["cmp ax, 1000", "cmp al, -30", "cmp al, 9"])
 
 
-# class TestJumps(TestDisassembler):
-#     def test_jnz_instructions(self):
-#         self.help_test_given_asm(
-#             [
-#                 "test_label0:",
-#                 "jnz test_label1",
-#                 "jnz test_label0",
-#                 "test_label1:",
-#                 "jnz test_label0",
-#                 "jnz test_label1",
-#             ]
-#         )
+class TestJumps(TestDisassembler):
+    def test_jnz_instructions(self):
+        self.help_test_given_asm(
+            [
+                "test_label0:",
+                "jnz test_label1",
+                "jnz test_label0",
+                "test_label1:",
+                "jnz test_label0",
+                "jnz test_label1",
+            ]
+        )
 
-#     def test_conditional_jumps(self):
-#         self.help_test_given_asm(
-#             [
-#                 "label:",
-#                 "je label",
-#                 "jl label",
-#                 "jle label",
-#                 "jb label",
-#                 "jbe label",
-#                 "jp label",
-#                 "jo label",
-#                 "js label",
-#             ]
-#         )
+    def test_conditional_jumps(self):
+        self.help_test_given_asm(
+            [
+                "label:",
+                "je label",
+                "jl label",
+                "jle label",
+                "jb label",
+                "jbe label",
+                "jp label",
+                "jo label",
+                "js label",
+            ]
+        )
 
-#     def test_negative_conditional_jumps(self):
-#         self.help_test_given_asm(
-#             [
-#                 "label:",
-#                 "jne label",
-#                 "jnl label",
-#                 "jg label",
-#                 "jnb label",
-#                 "ja label",
-#                 "jnp label",
-#                 "jno label",
-#                 "jns label",
-#             ]
-#         )
+    def test_negative_conditional_jumps(self):
+        self.help_test_given_asm(
+            [
+                "label:",
+                "jne label",
+                "jnl label",
+                "jg label",
+                "jnb label",
+                "ja label",
+                "jnp label",
+                "jno label",
+                "jns label",
+            ]
+        )
 
-#     def test_loop_instructions(self):
-#         self.help_test_given_asm(
-#             ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
-#         )
+    def test_loop_instructions(self):
+        self.help_test_given_asm(
+            ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
+        )
