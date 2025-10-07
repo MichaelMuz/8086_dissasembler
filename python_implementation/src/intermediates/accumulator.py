@@ -17,23 +17,23 @@ from python_implementation.src.intermediates.operands import (
     MemoryOperand,
     RegisterOperand,
 )
-from python_implementation.src.utils import as_signed_int, combine_bytes
+from python_implementation.src.utils import BITS_PER_BYTE, as_signed_int, combine_bytes
 
 
 class DecodeAccumulator:
     def __init__(self):
         self.parsed_fields: dict[NamedField, int] = {}
-        self.size = 0
+        self.bit_size = 0
 
     def with_field(self, schema_field: SchemaField, field_value: int):
-        self.size += schema_field.bit_width
+        self.bit_size += schema_field.bit_width
         if isinstance(schema_field, NamedField):
             self.parsed_fields[schema_field] = field_value
         else:
             assert field_value == schema_field.literal_value
 
     def with_bit(self, _: bool):
-        self.size += 1
+        self.bit_size += 1
 
     def with_implied_fields(self, implied_fields: dict[NamedField, int]) -> None:
         assert self.parsed_fields.keys().isdisjoint(
@@ -98,6 +98,11 @@ class DecodeAccumulator:
             )
         return reg_operand
 
+    def get_size(self):
+        size, rem = divmod(self.bit_size, BITS_PER_BYTE)
+        assert rem == 0, "Asking for size on incomplete instruction"
+        return size
+
     @cached_property
     def rm_operand(self):
         rm_operand = None
@@ -140,7 +145,7 @@ class DecodeAccumulator:
     def build(self, instruction_schema: InstructionSchema) -> DisassembledInstruction:
         if self.ip_inc8:
             return DisassembledJumpInstruction(
-                instruction_schema.mnemonic, self.ip_inc8, self.size
+                instruction_schema.mnemonic, self.ip_inc8, self.get_size()
             )
 
         assert not (
@@ -162,5 +167,5 @@ class DecodeAccumulator:
             mnemonic=instruction_schema.mnemonic,
             source=source,
             dest=dest,
-            inst_size=self.size,
+            inst_size=self.get_size(),
         )

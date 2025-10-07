@@ -78,7 +78,7 @@ class TestDisassembler(unittest.TestCase):
         self.assertEqual(
             original_bin,
             bin_of_our_disassembly,
-            f"nasm: {bin_pp(original_bin)}, us: {bin_pp(bin_of_our_disassembly)}",
+            f"nasm: {bin_pp(original_bin)}, us: {bin_pp(bin_of_our_disassembly)}, our asm:\n{disassembled}",
         )
 
 
@@ -316,37 +316,37 @@ class TestJumps(TestDisassembler):
             ]
         )
 
-    # def test_conditional_jumps(self):
-    #     self.help_test_given_asm(
-    #         [
-    #             "label:",
-    #             "je label",
-    #             "jl label",
-    #             "jle label",
-    #             "jb label",
-    #             "jbe label",
-    #             "jp label",
-    #             "jo label",
-    #             "js label",
-    #         ]
-    #     )
+    def test_conditional_jumps(self):
+        self.help_test_given_asm(
+            [
+                "label:",
+                "je label",
+                "jl label",
+                "jle label",
+                "jb label",
+                "jbe label",
+                "jp label",
+                "jo label",
+                "js label",
+            ]
+        )
 
-    # def test_negative_conditional_jumps(self):
-    #     self.help_test_given_asm(
-    #         [
-    #             "label:",
-    #             "jne label",
-    #             "jnl label",
-    #             "jg label",
-    #             "jnb label",
-    #             "ja label",
-    #             "jnp label",
-    #             "jno label",
-    #             "jns label",
-    #         ]
-    #     )
+    def test_negative_conditional_jumps(self):
+        self.help_test_given_asm(
+            [
+                "label:",
+                "jne label",
+                "jnl label",
+                "jg label",
+                "jnb label",
+                "ja label",
+                "jnp label",
+                "jno label",
+                "jns label",
+            ]
+        )
 
-    # def test_loop_instructions(self):
-    #     self.help_test_given_asm(
-    #         ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
-    #     )
+    def test_loop_instructions(self):
+        self.help_test_given_asm(
+            ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
+        )

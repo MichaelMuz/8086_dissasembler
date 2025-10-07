@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from functools import cached_property
 from typing import override
 from venv import logger
@@ -8,6 +8,7 @@ from python_implementation.src.intermediates.operands import (
     MemoryOperand,
     Operand,
 )
+from python_implementation.src.utils import as_signed_int
 
 
 @dataclass(frozen=True)
@@ -30,17 +31,20 @@ class DisassembledBinaryInstruction:
 @dataclass
 class DisassembledJumpInstruction:
     mnemonic: str
-    disp: int
+    disp: InitVar[int]
     inst_size: int
     label: str | None = None
 
+    def __post_init__(self, disp):
+        self.displ = as_signed_int(disp)
+
     @override
     def __str__(self) -> str:
-        destination = self.label or f"{self.disp:08b}"
+        destination = self.label or f"${as_signed_int(self.displ):+}"
         return f"{self.mnemonic} {destination}"
 
     def get_abs_label_offset(self, curr_byte_ind: int):
-        return curr_byte_ind + self.inst_size + self.disp
+        return curr_byte_ind + self.inst_size + self.displ
 
 
 type DisassembledInstruction = DisassembledBinaryInstruction | DisassembledJumpInstruction
@@ -78,12 +82,11 @@ class Disassembly:
 
         if len(jump_loc_to_insts) > 0:
             logger.warning(
-                "Disassembly contains jumps pointing to middle of other instructions or out of instruction bounds"
+                f"Disassembly contains {len(jump_loc_to_insts)} jumps pointing to middle of other instructions or out of instruction bounds"
             )
 
         return result
 
     @override
     def __str__(self) -> str:
-        print(f"{self.instructions_with_labels = }")
         return "\n".join(["bits 16", *map(str, self.instructions_with_labels)])
