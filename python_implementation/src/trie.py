@@ -2,7 +2,6 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Self
-from venv import logger
 
 from python_implementation.src.base.schema import (
     InstructionSchema,
@@ -52,9 +51,6 @@ class BitModeSchemaIterator:
                     total_bits=self._curr_inst.bit_width,
                 )
             )
-            logger.debug(
-                f"{self._curr_inst.literal_value = }, {self.bit_ind = }, {next_ret = }"
-            )
             self.bit_ind += 1
             if self.bit_ind == self._curr_inst.bit_width:
                 self.bit_ind = 0
@@ -91,46 +87,6 @@ class LeafNode:
 type Node = BitNode | FieldNode | LeafNode
 
 
-def make_correct_node(val: NamedField | bool):
-    if isinstance(val, bool):
-        head = BitNode()
-    else:
-        head = FieldNode(val)
-    return head
-
-
-def insert_into_internal_node(head: BitNode | FieldNode, val: NamedField | bool):
-    if isinstance(head, BitNode):
-        assert isinstance(val, bool), f"Expected bit but got {type(val)}"
-        if val:
-            head.right = BitNode()
-        else:
-            head.left = BitNode()
-
-    elif isinstance(head, FieldNode):
-        assert isinstance(val, NamedField), f"Expected NamedField but got {type(val)}"
-        assert (
-            head.named_field == val
-        ), f"Incompatible named fields: {head.named_field} vs {val}"
-        logger.debug(f"Inserting {head = }")
-        head.next = insert_into_trie(head.next, token_iter)
-
-
-def create_node_from_token(token, remaining_iter):
-    """Create appropriate node type from token and attach remaining iterator"""
-    if isinstance(token, bool):
-        node = BitNode()
-        if token:
-            node.right = insert_into_trie(None, remaining_iter)
-        else:
-            node.left = insert_into_trie(None, remaining_iter)
-        return node
-    else:
-        node = FieldNode(token)
-        node.next = insert_into_trie(None, remaining_iter)
-        return node
-
-
 def insert_into_trie(
     head: Node | None,
     token_iter: BitModeSchemaIterator,
@@ -145,20 +101,14 @@ def insert_into_trie(
     """
     if head is None:
         if not token_iter.has_more():
-            logger.debug(
-                "Completely finished instruction, leaf node with empty iterator"
-            )
             return LeafNode(token_iter)
         if token_iter.is_next_named():
             # If we are not being compared and on the boundary of a named field, we can coil up here
-            logger.debug("curling here")
             return LeafNode(token_iter)
         else:
-            logger.debug("this token must be a bit")
             head = BitNode()
 
     elif isinstance(head, LeafNode):
-        logger.debug("Unrolling leaf node")
         next_leaf_token = next(head.token_iter, None)
         assert next_leaf_token is not None, "Duplicate instruction detected"
         assert isinstance(
@@ -169,18 +119,14 @@ def insert_into_trie(
         head = next_leaf_node
 
     current_token = next(token_iter, None)
-    logger.debug(f"{head = }, {current_token = }, {token_iter.whole_ind = }")
 
     if isinstance(head, BitNode):
         assert isinstance(
             current_token, bool
         ), f"Expected bit but got {type(current_token)}"
-        logger.debug("Handling a BitNode")
         if current_token:
-            logger.debug("Going right")
             head.right = insert_into_trie(head.right, token_iter)
         else:
-            logger.debug("Going left")
             head.left = insert_into_trie(head.left, token_iter)
 
     elif isinstance(head, FieldNode):
@@ -190,7 +136,6 @@ def insert_into_trie(
         assert (
             head.named_field == current_token
         ), f"Incompatible named fields: {head.named_field} vs {current_token}"
-        logger.debug(f"Inserting {head = }")
         head.next = insert_into_trie(head.next, token_iter)
 
     return head
