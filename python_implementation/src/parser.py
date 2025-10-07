@@ -1,5 +1,4 @@
 import logging
-from venv import logger
 
 from python_implementation.src.base.schema import InstructionSchema
 from python_implementation.src.disassembled import Disassembly
@@ -20,12 +19,9 @@ class BitIterator:
         self.curr_byte = next(self.iterator, None)
         self.byte_ind += 1
         self.msb_bit_ind = 0
-
-        logging.debug(f"grabbing byte, it was: {self.curr_byte}")
         return self.curr_byte is None
 
     def next_bits(self, num_bits: int):
-        logging.debug(f"request for: {num_bits = }")
         if num_bits > BITS_PER_BYTE:
             raise ValueError("Our ISA does not have fields larger than a byte")
         assert num_bits > 0
@@ -61,7 +57,6 @@ def parse(trie: Trie, bit_iter: BitIterator):
     acc = DecodeAccumulator()
     while head is not None and not isinstance(head, LeafNode):
         if isinstance(head, BitNode):
-            logger.debug("requesting 1 bit")
             b = bool(bit_iter.next_bits(1))
             acc.with_bit(b)
             if b:
@@ -69,19 +64,16 @@ def parse(trie: Trie, bit_iter: BitIterator):
             else:
                 head = head.left
         elif isinstance(head, FieldNode):
-            logger.debug(f"requesting {head.named_field.bit_width} bits")
             acc.with_field(
                 head.named_field, bit_iter.next_bits(head.named_field.bit_width)
             )
             head = head.next
 
-    logger.debug("Got to leaf node")
     assert head is not None, "Invalid Instruction"
     acc.with_implied_fields(head.token_iter.instruction.implied_values)
     whole_iter = head.token_iter.to_whole_field_iter()
     for e in whole_iter:
         if acc.is_needed(e):
-            logger.debug(f"need {e}")
             val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
 
@@ -95,7 +87,6 @@ def parse_binary(
     bit_iter = BitIterator(file_contents)
     disassembled_instructions = []
     while bit_iter.peek_whole_byte() is not None:
-        logging.debug("starting new instruction")
 
         disassembled_instruction = parse(trie, bit_iter)
         disassembled_instructions.append(disassembled_instruction)

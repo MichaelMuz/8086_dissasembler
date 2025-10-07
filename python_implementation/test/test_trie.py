@@ -1,6 +1,5 @@
 import logging
 import unittest
-from venv import logger
 
 from python_implementation.src.base.schema import (
     InstructionSchema,
@@ -177,7 +176,6 @@ class TestTrie(unittest.TestCase):
         # curled up on named field
         assert node.token_iter.is_next_named()
 
-        logger.debug("Inserting another here")
         head = insert_into_trie(
             head,
             BitModeSchemaIterator(
@@ -196,7 +194,6 @@ class TestTrie(unittest.TestCase):
 
         # the leaf node uncurled
         node = head.right
-        logger.debug(f"HERE {node = }")
         assert isinstance(node, FieldNode)
         assert node.named_field == NamedField.D
 
@@ -237,7 +234,6 @@ class TestTrie(unittest.TestCase):
         # curled up on named field
         assert node.token_iter.is_next_named()
 
-        logger.debug("Inserting another here")
         head = insert_into_trie(
             head,
             BitModeSchemaIterator(
@@ -271,7 +267,6 @@ class TestTrie(unittest.TestCase):
 
         l = node.left
         r = node.right
-        logger.debug(f"RIGHT: {r = }")
         assert r.left is None and isinstance(r.right, LeafNode)
         r_leaf = r.right
         with self.assertRaises(StopIteration):

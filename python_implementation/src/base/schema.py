@@ -14,9 +14,6 @@ class LiteralField:
     def is_match(self, other_int: int):
         assert int.bit_length(other_int) <= 8
         other_int_shifted = other_int >> (BITS_PER_BYTE - self.bit_width)
-        logging.debug(
-            f"comparing me: {self.literal_value:08b}, to: {other_int_shifted:08b}. Before downshift: {other_int:08b}"
-        )
         return other_int_shifted == self.literal_value
 
     def __repr__(self) -> str:

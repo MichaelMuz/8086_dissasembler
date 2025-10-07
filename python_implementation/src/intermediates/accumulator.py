@@ -47,7 +47,6 @@ class DecodeAccumulator:
         mod_value = self.parsed_fields[NamedField.MOD]
         rm_value = self.parsed_fields.get(NamedField.RM)
         mode = Mode(mod_value, rm_value)
-        logging.debug(f"locked in mode as {mode = }")
         return mode
 
     @cached_property
