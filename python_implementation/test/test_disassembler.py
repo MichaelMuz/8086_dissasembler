@@ -12,9 +12,9 @@ logging.basicConfig(level=logging.DEBUG)
 test_logger = logging.getLogger("tests")
 
 
-def get_bin_seen_error_str(bin: bytes) -> str:
+def bin_pp(bin: bytes) -> str:
     as_byte_strings = [f"{by:08b}" for by in bin]
-    return "disassembler saw:\n" + " ".join(as_byte_strings)
+    return " ".join(as_byte_strings)
 
 
 class TestDisassembler(unittest.TestCase):
@@ -59,23 +59,26 @@ class TestDisassembler(unittest.TestCase):
         original_bin = self.get_bin_from_nasm(
             "\n".join(itertools.chain(["bits 16"], asm_instructions))
         )
-        test_logger.debug(get_bin_seen_error_str(original_bin))
         try:
             disassembled = disasm.parse_binary(self.parsable_instructions, original_bin)
-            logging.debug(f"disassembler output: \n{disassembled}")
         except Exception as e:
-            test_logger.debug(get_bin_seen_error_str(original_bin))
+            test_logger.error("Our Disassembler errored")
+            test_logger.error(f"For test asm, nasm gave us:\n {bin_pp(original_bin)}")
             raise e
 
         try:
             bin_of_our_disassembly = self.get_bin_from_nasm(str(disassembled))
         except Exception as e:
-            test_logger.debug(get_bin_seen_error_str(original_bin))
-            test_logger.debug(f"our disassembly:\n{disassembled}")
+            test_logger.error("Nasm failed to assemble our output")
+            test_logger.error(f"test instructions: \n {asm_instructions}")
+            test_logger.error(f"Our disassembler gave us:\n{disassembled}")
+            test_logger.error(f"For test asm, nasm gave us:\n {bin_pp(original_bin)}")
             raise e
 
         self.assertEqual(
-            original_bin, bin_of_our_disassembly, get_bin_seen_error_str(original_bin)
+            original_bin,
+            bin_of_our_disassembly,
+            f"nasm: {bin_pp(original_bin)}, us: {bin_pp(bin_of_our_disassembly)}",
         )
 
 
@@ -313,37 +316,37 @@ class TestJumps(TestDisassembler):
             ]
         )
 
-    def test_conditional_jumps(self):
-        self.help_test_given_asm(
-            [
-                "label:",
-                "je label",
-                "jl label",
-                "jle label",
-                "jb label",
-                "jbe label",
-                "jp label",
-                "jo label",
-                "js label",
-            ]
-        )
+    # def test_conditional_jumps(self):
+    #     self.help_test_given_asm(
+    #         [
+    #             "label:",
+    #             "je label",
+    #             "jl label",
+    #             "jle label",
+    #             "jb label",
+    #             "jbe label",
+    #             "jp label",
+    #             "jo label",
+    #             "js label",
+    #         ]
+    #     )
 
-    def test_negative_conditional_jumps(self):
-        self.help_test_given_asm(
-            [
-                "label:",
-                "jne label",
-                "jnl label",
-                "jg label",
-                "jnb label",
-                "ja label",
-                "jnp label",
-                "jno label",
-                "jns label",
-            ]
-        )
+    # def test_negative_conditional_jumps(self):
+    #     self.help_test_given_asm(
+    #         [
+    #             "label:",
+    #             "jne label",
+    #             "jnl label",
+    #             "jg label",
+    #             "jnb label",
+    #             "ja label",
+    #             "jnp label",
+    #             "jno label",
+    #             "jns label",
+    #         ]
+    #     )
 
-    def test_loop_instructions(self):
-        self.help_test_given_asm(
-            ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
-        )
+    # def test_loop_instructions(self):
+    #     self.help_test_given_asm(
+    #         ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
+    #     )

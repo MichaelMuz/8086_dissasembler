@@ -37,7 +37,7 @@ class DisassembledJumpInstruction:
     @override
     def __str__(self) -> str:
         destination = self.label or f"{self.disp:08b}"
-        return f"{self.mnemonic}, {destination}"
+        return f"{self.mnemonic} {destination}"
 
     def get_abs_label_offset(self, curr_byte_ind: int):
         return curr_byte_ind + self.inst_size + self.disp
@@ -85,4 +85,5 @@ class Disassembly:
 
     @override
     def __str__(self) -> str:
+        print(f"{self.instructions_with_labels = }")
         return "\n".join(["bits 16", *map(str, self.instructions_with_labels)])
