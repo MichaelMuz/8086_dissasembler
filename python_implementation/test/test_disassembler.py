@@ -369,3 +369,22 @@ class TestPush(TestDisassembler):
                 "push dx",
             ]
         )
+
+
+class TestPop(TestDisassembler):
+    def test_pop(self):
+        self.help_test_given_asm(
+            "pop sp",
+        )
+
+    def test_pops(self):
+        self.help_test_given_asm(
+            [
+                "pop word [bp + si]",
+                "pop word [3]",
+                "pop word [bx + di - 3000]",
+                "pop sp",
+                "pop di",
+                "pop si",
+            ]
+        )
