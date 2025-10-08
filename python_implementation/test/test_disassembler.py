@@ -368,4 +368,4 @@ class TestPush(TestDisassembler):
                 "push ax",
                 "push dx",
             ]
-        ),
+        )
