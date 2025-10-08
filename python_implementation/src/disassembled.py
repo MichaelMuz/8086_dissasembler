@@ -27,9 +27,8 @@ class DisassembledUnaryInstruction:
     @override
     def __str__(self) -> str:
         size_spec = ""
-        if self.mnemonic == "push":
-            # should change this later, just have word be an attr on all operands?
-            size_spec = "word "
+        if isinstance(self.op, MemoryOperand):
+            size_spec = "word " if self.op.word else "byte "
         return f"{self.mnemonic} {size_spec}{self.op}"
 
 

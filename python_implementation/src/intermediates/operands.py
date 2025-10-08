@@ -35,6 +35,7 @@ class RegisterOperand:
 class MemoryOperand:
     memory_base: int | None
     displacement: int
+    word: bool
 
     RM_TO_EFFECTIVE_ADDR_CALC = [
         # if there are two things in the list, the equation these bits code for are those added

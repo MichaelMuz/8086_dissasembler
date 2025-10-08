@@ -52,14 +52,16 @@
                     "description": "Register/Memory",
                     "format": "11111111, mod 110 rm, disp-lo, disp-hi",
                     "implied_values": {
-                        "d": 0
+                        "d": 0,
+                        "w": 1
                     }
                 },
                 {
                     "description": "Register",
                     "format": "01010 reg",
                     "implied_values": {
-                        "d": 0
+                        "d": 0,
+                        "w": 1
                     }
                 }
             ]

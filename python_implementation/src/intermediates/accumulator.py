@@ -117,6 +117,7 @@ class DecodeAccumulator:
                         None if self.mode.direct_memory_index else reg_or_mem_base
                     ),
                     displacement=self.displacement or 0,
+                    word=self.word,
                 )
         return rm_operand
 
