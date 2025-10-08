@@ -176,6 +176,11 @@ class TestMov(TestDisassembler):
     def test_accumulator_to_memories(self):
         self.help_test_given_asm(["mov [2554], ax", "mov [15], ax"])
 
+    # def test_mov_segment_registers(self):
+    #     self.help_test_given_asm(
+    #         ["mov ax, ds", "mov ds, ax", "mov es, bx", "mov cx, ss"]
+    #     )
+
 
 class TestSub(TestDisassembler):
     def test_sub_reg_from_memory(self):

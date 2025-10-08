@@ -42,6 +42,11 @@
                         "rm": 6,
                         "reg": 0
                     }
+                },
+                {
+                    "description": "Register/Memory to/from segment register",
+                    "format": "100011 d 0, mod 0 sr rm, disp-lo, disp-hi",
+                    "implied_values": {}
                 }
             ]
         },

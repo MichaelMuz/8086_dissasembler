@@ -278,3 +278,38 @@ class TestTrie(unittest.TestCase):
         l_leaf = l.right
         with self.assertRaises(StopIteration):
             next(l_leaf.token_iter)
+
+    def test_single(self):
+        head = insert_into_trie(
+            None,
+            BitModeSchemaIterator(
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b100011, 6),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.MOD,
+                        LiteralField(0b0, 1),
+                    ],
+                    {},
+                )
+            ),
+        )
+
+        head = insert_into_trie(
+            head,
+            BitModeSchemaIterator(
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.ADDR_LO,
+                        LiteralField(0b11, 2),
+                    ],
+                    {},
+                )
+            ),
+        )
