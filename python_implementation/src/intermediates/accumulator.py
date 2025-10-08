@@ -15,7 +15,9 @@ from python_implementation.src.intermediates.mode import Mode
 from python_implementation.src.intermediates.operands import (
     ImmediateOperand,
     MemoryOperand,
+    RegOperand,
     RegisterOperand,
+    SegmentRegOperand,
 )
 from python_implementation.src.utils import BITS_PER_BYTE, as_signed_int, combine_bytes
 
@@ -92,9 +94,12 @@ class DecodeAccumulator:
     def register_operand(self):
         reg_operand = None
         if NamedField.REG in self.parsed_fields:
-            reg_operand = RegisterOperand(
+            reg_operand = RegOperand(
                 register_index=self.parsed_fields[NamedField.REG], word=self.word
             )
+        elif NamedField.SR in self.parsed_fields:
+            reg_operand = SegmentRegOperand(sr_index=self.parsed_fields[NamedField.SR])
+
         return reg_operand
 
     def get_size(self):
@@ -108,9 +113,7 @@ class DecodeAccumulator:
         if NamedField.RM in self.parsed_fields:
             reg_or_mem_base = self.parsed_fields[NamedField.RM]
             if self.mode.type is Mode.Type.REGISTER_MODE:
-                rm_operand = RegisterOperand(
-                    register_index=reg_or_mem_base, word=self.word
-                )
+                rm_operand = RegOperand(register_index=reg_or_mem_base, word=self.word)
             else:
                 rm_operand = MemoryOperand(
                     memory_base=(

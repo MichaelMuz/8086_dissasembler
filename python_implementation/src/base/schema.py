@@ -28,6 +28,7 @@ class NamedField(Enum):
     W = ("w", 1, True)
     S = ("s", 1, True)
     REG = ("reg", 3, True)
+    SR = ("sr", 2, True)
     MOD = ("mod", 2, True)
     RM = ("rm", 3, True)
     DATA = ("data", 8, True)

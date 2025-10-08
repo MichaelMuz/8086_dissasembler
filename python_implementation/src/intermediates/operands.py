@@ -11,7 +11,7 @@ class ImmediateOperand:
 
 
 @dataclass(frozen=True)
-class RegisterOperand:
+class RegOperand:
     register_index: int
     word: bool
 
@@ -29,6 +29,20 @@ class RegisterOperand:
 
     def __str__(self) -> str:
         return self.REG_NAME_LOWER_AND_WORD[self.register_index][self.word]
+
+
+@dataclass(frozen=True)
+class SegmentRegOperand:
+    sr_index: int
+    word = True  # true by default
+
+    SEGMENT_NAMES = ["es", "cs", "ss", "ds"]
+
+    def __str__(self) -> str:
+        return self.SEGMENT_NAMES[self.sr_index]
+
+
+type RegisterOperand = RegOperand | SegmentRegOperand
 
 
 @dataclass(frozen=True)
