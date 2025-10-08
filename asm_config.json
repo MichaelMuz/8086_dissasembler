@@ -67,6 +67,27 @@
             ]
         },
         {
+            "mnemonic": "pop",
+            "variations": [
+                {
+                    "description": "Register/Memory",
+                    "format": "10001111, mod 000 rm, disp-lo, disp-hi",
+                    "implied_values": {
+                        "d": 0,
+                        "w": 1
+                    }
+                },
+                {
+                    "description": "Register",
+                    "format": "01011 reg",
+                    "implied_values": {
+                        "d": 0,
+                        "w": 1
+                    }
+                }
+            ]
+        },
+        {
             "mnemonic": "sub",
             "variations": [
                 {

@@ -364,5 +364,8 @@ class TestPush(TestDisassembler):
                 "push word [bp + si]",
                 "push word [3000]",
                 "push word [bx + di - 30]",
+                "push cx",
+                "push ax",
+                "push dx",
             ]
-        )
+        ),
