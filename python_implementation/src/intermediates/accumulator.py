@@ -1,5 +1,4 @@
 from functools import cached_property
-import logging
 from python_implementation.src.base.schema import (
     InstructionSchema,
     LiteralField,
@@ -10,6 +9,7 @@ from python_implementation.src.disassembled import (
     DisassembledBinaryInstruction,
     DisassembledInstruction,
     DisassembledJumpInstruction,
+    DisassembledUnaryInstruction,
 )
 from python_implementation.src.intermediates.mode import Mode
 from python_implementation.src.intermediates.operands import (
@@ -146,25 +146,27 @@ class DecodeAccumulator:
             return DisassembledJumpInstruction(
                 instruction_schema.mnemonic, self.ip_inc8, self.get_size()
             )
-
-        assert not (
-            self.data_operand and self.register_operand and self.rm_operand
-        ), "Too many operands"
-
-        if self.data_operand is not None:
-            operands = [self.data_operand, self.register_operand or self.rm_operand]
-        else:
-            operands = [self.register_operand, self.rm_operand]
-
-        if self.direction:
-            operands.reverse()
-
-        assert None not in operands, "Cannot have null source or dest"
-        source, dest = operands
-
-        return DisassembledBinaryInstruction(
-            mnemonic=instruction_schema.mnemonic,
-            source=source,
-            dest=dest,
-            inst_size=self.get_size(),
+        operands = list(
+            filter(None, [self.data_operand, self.register_operand, self.rm_operand])
         )
+
+        match operands:
+            case []:
+                raise NotImplementedError("Can't do nullary yet")
+            case [op]:
+                return DisassembledUnaryInstruction(
+                    mnemonic=instruction_schema.mnemonic,
+                    op=op,
+                    inst_size=self.get_size(),
+                )
+            case [source, dest]:
+                if self.direction:
+                    source, dest = dest, source
+                return DisassembledBinaryInstruction(
+                    mnemonic=instruction_schema.mnemonic,
+                    source=source,
+                    dest=dest,
+                    inst_size=self.get_size(),
+                )
+            case _:
+                raise ValueError(f"Unexpected operand count: {len(operands)}")

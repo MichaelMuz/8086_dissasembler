@@ -350,3 +350,19 @@ class TestJumps(TestDisassembler):
         self.help_test_given_asm(
             ["label:", "loop label", "loopz label", "loopnz label", "jcxz label"]
         )
+
+
+class TestPush(TestDisassembler):
+    def test_push(self):
+        self.help_test_given_asm(
+            "push word [3000]",
+        )
+
+    def test_pushes(self):
+        self.help_test_given_asm(
+            [
+                "push word [bp + si]",
+                "push word [3000]",
+                "push word [bx + di - 30]",
+            ]
+        )

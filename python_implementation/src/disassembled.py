@@ -3,12 +3,34 @@ from functools import cached_property
 from typing import override
 from venv import logger
 
+from python_implementation.src.base.schema import NamedField
 from python_implementation.src.intermediates.operands import (
     ImmediateOperand,
     MemoryOperand,
     Operand,
 )
 from python_implementation.src.utils import as_signed_int
+
+
+@dataclass(frozen=True)
+class DisassembledNullaryInstruction:
+    mnemonic: str
+    inst_size: int
+
+
+@dataclass(frozen=True)
+class DisassembledUnaryInstruction:
+    mnemonic: str
+    op: Operand
+    inst_size: int
+
+    @override
+    def __str__(self) -> str:
+        size_spec = ""
+        if self.mnemonic == "push":
+            # should change this later, just have word be an attr on all operands?
+            size_spec = "word "
+        return f"{self.mnemonic} {size_spec}{self.op}"
 
 
 @dataclass(frozen=True)
@@ -47,7 +69,7 @@ class DisassembledJumpInstruction:
         return curr_byte_ind + self.inst_size + self.displ
 
 
-type DisassembledInstruction = DisassembledBinaryInstruction | DisassembledJumpInstruction
+type DisassembledInstruction = DisassembledNullaryInstruction | DisassembledUnaryInstruction | DisassembledBinaryInstruction | DisassembledJumpInstruction
 
 
 @dataclass(frozen=True)
