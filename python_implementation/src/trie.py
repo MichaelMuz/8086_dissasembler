@@ -69,14 +69,17 @@ class BitModeSchemaIterator:
 
 @dataclass
 class BitNode:
-    left: "Node | None" = None
-    right: "Node | None" = None
+    left: "BitNode | LeafNode | None" = None
+    right: "BitNode | LeafNode | None" = None
+    next: "FieldNode | LeafNode | None" = None
 
 
 @dataclass
 class FieldNode:
     named_field: NamedField
-    next: "Node | None" = None
+    left: "BitNode | LeafNode | None" = None
+    right: "BitNode | LeafNode | None" = None
+    next: "FieldNode | LeafNode | None" = None
 
 
 @dataclass
@@ -85,6 +88,22 @@ class LeafNode:
 
 
 type Node = BitNode | FieldNode | LeafNode
+
+def create_node(curr: NamedField | bool):
+    if isinstance(curr, NamedField):
+        return FieldNode(curr)
+    else:
+        return BitNode()
+
+def attach_correctly(head: Node, curr: Node):
+    assert not isinstance(head, LeafNode), "Cannot attach to leaf node"
+    match curr:
+        case BitNode(True):
+            head.right = BitNode()
+        case False:
+            head.left = BitNode()
+        case NamedField() as x:
+            head.next = FieldNode(x)
 
 
 def insert_into_trie(
@@ -111,31 +130,30 @@ def insert_into_trie(
     elif isinstance(head, LeafNode):
         next_leaf_token = next(head.token_iter, None)
         assert next_leaf_token is not None, "Duplicate instruction detected"
-        assert isinstance(
-            next_leaf_token, NamedField
-        ), "First field in coiled leaf should be named"
-        next_leaf_node = FieldNode(next_leaf_token)
-        next_leaf_node.next = insert_into_trie(None, head.token_iter)
+        next_leaf_node = (
+            FieldNode(next_leaf_token)
+            if isinstance(next_leaf_token, NamedField)
+            else BitNode()
+        )
+        attach_correctly(next_leaf_node, insert_into_trie(None, head.token_iter))
+        next_leaf_node.next =
         head = next_leaf_node
 
     current_token = next(token_iter, None)
 
-    if isinstance(head, BitNode):
-        assert isinstance(
-            current_token, bool
-        ), f"Expected bit but got {type(current_token)}"
+    if isinstance(current_token, bool):
+        head = head or BitNode()
+        # notice current token is just used to decide the direction we take
         if current_token:
             head.right = insert_into_trie(head.right, token_iter)
         else:
             head.left = insert_into_trie(head.left, token_iter)
 
-    elif isinstance(head, FieldNode):
-        assert isinstance(
-            current_token, NamedField
-        ), f"Expected NamedField but got {type(current_token)}"
-        assert (
-            head.named_field == current_token
-        ), f"Incompatible named fields: {head.named_field} vs {current_token}"
+    elif isinstance(current_token, NamedField):
+        if isinstance(head, FieldNode) and head.named_field != current_token:
+            raise ValueError("Two FieldNodes at same place means ISA is ambiguous")
+        # notice we don't insert named fields into each other, we just assert they are the same
+        head = head or FieldNode(current_token)
         head.next = insert_into_trie(head.next, token_iter)
 
     return head
