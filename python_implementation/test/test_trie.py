@@ -145,58 +145,64 @@ class TestTrie(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(right.coil)
 
-    # def test_overlapping_path_insert(self):
-    #     head = insert_into_trie(
-    #         None,
-    #         BitModeSchemaIterator(
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [NamedField.D, LiteralField(0b1, 1), NamedField.ADDR_LO],
-    #                 {},
-    #             )
-    #         ),
-    #     )
+    def test_overlapping_path_insert(self):
 
-    #     # 1
-    #     assert isinstance(head, BitNode)
-    #     assert head.left is None
+        trie = Trie.from_parsable_instructions(
+            [
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [NamedField.D, LiteralField(0b1, 1), NamedField.ADDR_LO],
+                    {},
+                ),
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [NamedField.D, LiteralField(0b0, 1), NamedField.ADDR_HI],
+                    {},
+                ),
+            ]
+        )
+        head = trie.dummy_head
 
-    #     node = head.right
-    #     assert isinstance(node, LeafNode)
-    #     # curled up on named field
-    #     assert node.token_iter.is_next_named()
+        # dummy node
+        assert head is not None
+        assert head.children[0] is None and head.children[1] is None
 
-    #     head = insert_into_trie(
-    #         head,
-    #         BitModeSchemaIterator(
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [NamedField.D, LiteralField(0b0, 1), NamedField.ADDR_HI],
-    #                 {},
-    #             )
-    #         ),
-    #     )
+        # 1
+        head = head.children[2]
+        assert head is not None and isinstance(head.value, bool) and head.value is True
+        assert head.children[0] is None and head.children[2] is None
 
-    #     # 1
-    #     assert isinstance(head, BitNode)
-    #     assert head.left is None
+        # D
+        head = head.children[1]
+        assert head is not None and head.value is NamedField.D
+        assert head.children[1] is None
 
-    #     # the leaf node uncurled
-    #     node = head.right
-    #     assert isinstance(node, FieldNode)
-    #     assert node.named_field == NamedField.D
+        # 0/1 diverge
+        left = head.children[0]
+        right = head.children[2]
 
-    #     # 0/1 (diverge on second literal)
-    #     node = node.next
-    #     assert isinstance(node, BitNode)
-    #     old_leaf = node.right
-    #     new_leaf = node.left
-    #     assert isinstance(new_leaf, LeafNode)
-    #     assert isinstance(old_leaf, LeafNode)
-    #     assert next(old_leaf.token_iter) == NamedField.ADDR_LO
-    #     assert next(new_leaf.token_iter) == NamedField.ADDR_HI
+        # left is 0
+        assert left is not None and left.value is False
+        # its coiled up
+        assert left.coil is not None and not any(left.children)
+
+        # right is 1
+        assert right is not None and right.value is True
+        # its coiled up
+        assert right.coil is not None and not any(right.children)
+
+        assert next(left.coil) is False
+        assert next(right.coil) is True
+        assert next(left.coil) == NamedField.ADDR_HI
+        assert next(right.coil) == NamedField.ADDR_LO
+
+        with self.assertRaises(StopIteration):
+            next(left.coil)
+
+        with self.assertRaises(StopIteration):
+            next(right.coil)
 
     # def test_full_unroll(self):
     #     head = insert_into_trie(
