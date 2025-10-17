@@ -96,7 +96,7 @@ class TestTrie(unittest.TestCase):
         # its coiled up
         assert head.coil is not None and not any(head.children)
 
-    def test_overlapping_path_insert(self):
+    def test_short_overlapping_path_insert(self):
         trie = Trie.from_parsable_instructions(
             [
                 InstructionSchema("move", LiteralField(0b101, 3), [NamedField.D], {}),
@@ -144,7 +144,6 @@ class TestTrie(unittest.TestCase):
             next(right.coil)
 
     def test_overlapping_path_insert(self):
-
         trie = Trie.from_parsable_instructions(
             [
                 InstructionSchema(
@@ -202,76 +201,76 @@ class TestTrie(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(right.coil)
 
-    # def test_full_unroll(self):
-    #     trie = Trie.from_parsable_instructions(
-    #         [
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [
-    #                     NamedField.D,
-    #                     LiteralField(0b1, 1),
-    #                     NamedField.ADDR_LO,
-    #                     LiteralField(0b11, 2),
-    #                 ],
-    #                 {},
-    #             ),
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [
-    #                     NamedField.D,
-    #                     LiteralField(0b1, 1),
-    #                     NamedField.ADDR_LO,
-    #                     LiteralField(0b1, 1),
-    #                 ],
-    #                 {},
-    #             ),
-    #         ]
-    #     )
-    #     head = trie.dummy_head
+    def test_full_unroll(self):
+        trie = Trie.from_parsable_instructions(
+            [
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.ADDR_LO,
+                        LiteralField(0b11, 2),
+                    ],
+                    {},
+                ),
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.ADDR_LO,
+                        LiteralField(0b1, 1),
+                    ],
+                    {},
+                ),
+            ]
+        )
+        head = trie.dummy_head
 
-    #     # dummy node
-    #     assert head is not None
+        # dummy node
+        assert head is not None
 
-    #     # 1
-    #     assert head.children[0] is None and head.children[1] is None
-    #     head = head.children[2]
-    #     assert head is not None and head.value is True
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
 
-    #     # D
-    #     assert head.children[0] is None and head.children[2] is None
-    #     head = head.children[1]
-    #     assert head is not None and head.value is NamedField.D
+        # D
+        assert head.children[0] is None and head.children[2] is None
+        head = head.children[1]
+        assert head is not None and head.value is NamedField.D
 
-    #     # 1
-    #     assert head.children[0] is None and head.children[1] is None
-    #     head = head.children[2]
-    #     assert head is not None and head.value is True
-    #     assert head.children[0] is None and head.children[2] is None
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
+        assert head.children[0] is None and head.children[2] is None
 
-    #     # ADDR_LO
-    #     assert head.children[0] is None and head.children[2] is None
-    #     head = head.children[1]
-    #     assert head is not None and head.value is NamedField.ADDR_LO
+        # ADDR_LO
+        assert head.children[0] is None and head.children[2] is None
+        head = head.children[1]
+        assert head is not None and head.value is NamedField.ADDR_LO
 
-    #     # 1
-    #     assert head.children[0] is None and head.children[1] is None
-    #     head = head.children[2]
-    #     assert head is not None and head.value is True
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
 
-    #     # shorter inst ends here, what behavior do I want?
-    #     # short_inst_last_head = head
+        # shorter inst ends here, what behavior do I want?
+        # short_inst_last_head = head
 
-    #     # 1
-    #     assert head.children[0] is None and head.children[1] is None
-    #     head = head.children[2]
-    #     assert head is not None and head.value is True
-    #     assert not any(head.children)
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
+        assert not any(head.children)
 
-    #     assert next(head.coil) is True
-    #     with self.assertRaises(StopIteration):
-    #         next(head.coil)
+        assert next(head.coil) is True
+        with self.assertRaises(StopIteration):
+            next(head.coil)
 
     # def test_single(self):
     #     head = insert_into_trie(
