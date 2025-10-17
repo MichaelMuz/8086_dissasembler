@@ -202,6 +202,7 @@ class Node:
             new_child = Node(self.coil)
             ind = self.get_ind(new_child.value)
             self.children[ind] = new_child
+            self.coil = None
 
         ind = self.get_ind(inst.peek())
         if self.children[ind] is None:
@@ -227,7 +228,10 @@ class Trie:
     @classmethod
     def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
         head = DummyNode()
-        for instruction in instructions:
+        for ind, instruction in enumerate(instructions):
+            # if ind == 8:
+            # breakpoint()
+            print(f"on {ind = }, {instruction.identifier_literal = }")
             head.insert(BitModeSchemaIterator(instruction))
 
         return cls(head)

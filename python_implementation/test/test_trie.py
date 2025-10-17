@@ -309,5 +309,21 @@ class TestTrie(unittest.TestCase):
                     ],
                     {},
                 ),
+                InstructionSchema(
+                    "loopnz",
+                    LiteralField(0b11100000, 8),
+                    [
+                        NamedField.IP_INC8,
+                    ],
+                    {},
+                ),
+                InstructionSchema(
+                    "jcxz",
+                    LiteralField(0b11100011, 8),
+                    [
+                        NamedField.IP_INC8,
+                    ],
+                    {},
+                ),
             ]
         )
