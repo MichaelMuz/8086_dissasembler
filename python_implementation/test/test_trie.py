@@ -284,37 +284,30 @@ class TestTrie(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(right.coil)
 
-    # def test_single(self):
-    #     head = insert_into_trie(
-    #         None,
-    #         BitModeSchemaIterator(
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b100011, 6),
-    #                 [
-    #                     NamedField.D,
-    #                     LiteralField(0b1, 1),
-    #                     NamedField.MOD,
-    #                     LiteralField(0b0, 1),
-    #                 ],
-    #                 {},
-    #             )
-    #         ),
-    #     )
-
-    #     head = insert_into_trie(
-    #         head,
-    #         BitModeSchemaIterator(
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [
-    #                     NamedField.D,
-    #                     LiteralField(0b1, 1),
-    #                     NamedField.ADDR_LO,
-    #                     LiteralField(0b11, 2),
-    #                 ],
-    #                 {},
-    #             )
-    #         ),
-    #     )
+    def test_single(self):
+        Trie.from_parsable_instructions(
+            [
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b100011, 6),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.MOD,
+                        LiteralField(0b0, 1),
+                    ],
+                    {},
+                ),
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.ADDR_LO,
+                        LiteralField(0b11, 2),
+                    ],
+                    {},
+                ),
+            ]
+        )
