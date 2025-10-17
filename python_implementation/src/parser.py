@@ -53,7 +53,6 @@ class BitIterator:
 
 
 def parse(trie: Trie, bit_iter: BitIterator):
-    print(f"got trie")
     head = trie.dummy_head
     acc = DecodeAccumulator()
     while head is not None and head.coil is None:
@@ -70,12 +69,14 @@ def parse(trie: Trie, bit_iter: BitIterator):
         else:
             raise ValueError(f"Unexpected {head.value}")
 
-    print(f"above assertions")
     assert head is not None
-    assert head.coil is not None
+    rest_of_coil = head.get_rest_of_coil()
 
-    rest_of_coil = head.coil
-    while rest_of_coil.has_more() and isinstance(rest_of_coil.peek(), bool):
+    while (
+        rest_of_coil.has_more()
+        and isinstance(rest_of_coil.peek(), bool)
+        and not rest_of_coil.can_transition()
+    ):
         assert head is not None
         b = next(rest_of_coil)
         assert isinstance(b, bool)

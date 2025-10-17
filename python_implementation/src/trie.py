@@ -62,6 +62,9 @@ class BitModeSchemaIterator:
     def __next__(self) -> bool | NamedField:
         return self._next(True)
 
+    def can_transition(self):
+        return self.bit_ind == 0 or self.bit_ind == self._curr_inst.bit_width
+
     def to_whole_field_iter(self) -> Iterator[SchemaField]:
         match self._curr_inst:
             case LiteralField(bit_width=bw):
@@ -186,6 +189,11 @@ class Node:
         self.value = coil.peek()
         self.coil = coil
         self.children: list[Node | None] = [None, None, None]
+
+    def get_rest_of_coil(self):
+        assert self.coil is not None
+        _ = next(self.coil)  # they already saw this val
+        return self.coil
 
     def get_ind(self, val: bool | NamedField) -> int:
         match val:
