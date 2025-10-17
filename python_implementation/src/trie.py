@@ -216,7 +216,7 @@ class Node:
 
 class DummyNode(Node):
     def __init__(self) -> None:
-        self.value = -1
+        self.value = True
         self.coil = None
         self.children: list[Node | None] = [None, None, None]
 
@@ -228,10 +228,7 @@ class Trie:
     @classmethod
     def from_parsable_instructions(cls, instructions: list[InstructionSchema]) -> Self:
         head = DummyNode()
-        for ind, instruction in enumerate(instructions):
-            # if ind == 8:
-            # breakpoint()
-            print(f"on {ind = }, {instruction.identifier_literal = }")
+        for instruction in instructions:
             head.insert(BitModeSchemaIterator(instruction))
 
         return cls(head)

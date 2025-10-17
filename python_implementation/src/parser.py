@@ -53,20 +53,24 @@ class BitIterator:
 
 
 def parse(trie: Trie, bit_iter: BitIterator):
+    print(f"got trie")
     head = trie.dummy_head
     acc = DecodeAccumulator()
     while head is not None and head.coil is None:
-        match head.value:
-            case True:
-                acc.with_bit(True)
+        if isinstance(head.value, bool):
+            b = bool(bit_iter.next_bits(1))
+            acc.with_bit(b)
+            if b:
                 head = head.children[2]
-            case False:
-                acc.with_bit(False)
+            else:
                 head = head.children[0]
-            case NamedField():
-                acc.with_field(head.value, bit_iter.next_bits(head.value.bit_width))
-                head = head.children[1]
+        elif isinstance(head.value, NamedField):
+            acc.with_field(head.value, bit_iter.next_bits(head.value.bit_width))
+            head = head.children[1]
+        else:
+            raise ValueError(f"Unexpected {head.value}")
 
+    print(f"above assertions")
     assert head is not None
     assert head.coil is not None
 
