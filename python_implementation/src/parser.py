@@ -1,9 +1,9 @@
 import logging
 
-from python_implementation.src.base.schema import InstructionSchema
+from python_implementation.src.base.schema import InstructionSchema, NamedField
 from python_implementation.src.disassembled import Disassembly
 from python_implementation.src.intermediates.accumulator import DecodeAccumulator
-from python_implementation.src.trie import BitNode, FieldNode, LeafNode, Trie
+from python_implementation.src.trie import Trie
 from python_implementation.src.utils import BITS_PER_BYTE, get_sub_most_sig_bits
 
 
@@ -53,31 +53,42 @@ class BitIterator:
 
 
 def parse(trie: Trie, bit_iter: BitIterator):
-    head = trie.head
+    head = trie.dummy_head
     acc = DecodeAccumulator()
-    while head is not None and not isinstance(head, LeafNode):
-        if isinstance(head, BitNode):
-            b = bool(bit_iter.next_bits(1))
-            acc.with_bit(b)
-            if b:
-                head = head.right
-            else:
-                head = head.left
-        elif isinstance(head, FieldNode):
-            acc.with_field(
-                head.named_field, bit_iter.next_bits(head.named_field.bit_width)
-            )
-            head = head.next
+    while head is not None and head.coil is None:
+        match head.value:
+            case True:
+                acc.with_bit(True)
+                head = head.children[2]
+            case False:
+                acc.with_bit(False)
+                head = head.children[0]
+            case NamedField():
+                acc.with_field(head.value, bit_iter.next_bits(head.value.bit_width))
+                head = head.children[1]
 
-    assert head is not None, "Invalid Instruction"
-    acc.with_implied_fields(head.token_iter.instruction.implied_values)
-    whole_iter = head.token_iter.to_whole_field_iter()
+    assert head is not None
+    assert head.coil is not None
+
+    rest_of_coil = head.coil
+    while rest_of_coil.has_more() and isinstance(rest_of_coil.peek(), bool):
+        assert head is not None
+        b = next(rest_of_coil)
+        assert isinstance(b, bool)
+        acc.with_bit(b)
+        if b:
+            head = head.children[2]
+        else:
+            head = head.children[0]
+
+    acc.with_implied_fields(rest_of_coil.instruction.implied_values)
+    whole_iter = rest_of_coil.to_whole_field_iter()
     for e in whole_iter:
         if acc.is_needed(e):
             val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
 
-    return acc.build(head.token_iter.instruction)
+    return acc.build(rest_of_coil.instruction)
 
 
 def parse_binary(
