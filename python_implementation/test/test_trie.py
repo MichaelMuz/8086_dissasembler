@@ -204,77 +204,76 @@ class TestTrie(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(right.coil)
 
-    # def test_full_unroll(self):
-    #     head = insert_into_trie(
-    #         None,
-    #         BitModeSchemaIterator(
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [
-    #                     NamedField.D,
-    #                     LiteralField(0b1, 1),
-    #                     NamedField.ADDR_LO,
-    #                     LiteralField(0b011, 3),
-    #                 ],
-    #                 {},
-    #             )
-    #         ),
-    #     )
+    def test_full_unroll(self):
+        trie = Trie.from_parsable_instructions(
+            [
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.ADDR_LO,
+                        LiteralField(0b11, 2),
+                    ],
+                    {},
+                ),
+                InstructionSchema(
+                    "move",
+                    LiteralField(0b1, 1),
+                    [
+                        NamedField.D,
+                        LiteralField(0b1, 1),
+                        NamedField.ADDR_LO,
+                        LiteralField(0b1, 1),
+                    ],
+                    {},
+                ),
+            ]
+        )
+        head = trie.dummy_head
 
-    #     # 1
-    #     assert isinstance(head, BitNode)
-    #     assert head.left is None
+        # dummy node
+        assert head is not None
 
-    #     node = head.right
-    #     assert isinstance(node, LeafNode)
-    #     # curled up on named field
-    #     assert node.token_iter.is_next_named()
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
 
-    #     head = insert_into_trie(
-    #         head,
-    #         BitModeSchemaIterator(
-    #             InstructionSchema(
-    #                 "move",
-    #                 LiteralField(0b1, 1),
-    #                 [
-    #                     NamedField.D,
-    #                     LiteralField(0b1, 1),
-    #                     NamedField.ADDR_LO,
-    #                     LiteralField(0b11, 2),
-    #                 ],
-    #                 {},
-    #             )
-    #         ),
-    #     )
-    #     assert isinstance(head, BitNode)
-    #     assert head.left is None
-    #     node = head.right
-    #     assert isinstance(node, FieldNode)
-    #     assert node.named_field == NamedField.D
-    #     node = node.next
-    #     assert isinstance(node, BitNode)
-    #     assert node.left is None
-    #     node = node.right
-    #     assert isinstance(node, FieldNode)
-    #     assert node.named_field == NamedField.ADDR_LO
-    #     node = node.next
-    #     assert isinstance(node, BitNode)
-    #     assert isinstance(node.left, BitNode) and isinstance(node.right, BitNode)
+        # D
+        assert head.children[0] is None and head.children[2] is None
+        head = head.children[1]
+        assert head is not None and head.value is NamedField.D
 
-    #     l = node.left
-    #     r = node.right
-    #     assert r.left is None and isinstance(r.right, LeafNode)
-    #     r_leaf = r.right
-    #     with self.assertRaises(StopIteration):
-    #         next(r_leaf.token_iter)
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
+        assert head.children[0] is None and head.children[2] is None
 
-    #     assert l.left is None and isinstance(l.right, BitNode)
-    #     l = l.right
-    #     assert l.left is None and isinstance(l.right, LeafNode)
-    #     l_leaf = l.right
-    #     with self.assertRaises(StopIteration):
-    #         next(l_leaf.token_iter)
+        # ADDR_LO
+        assert head.children[0] is None and head.children[2] is None
+        head = head.children[1]
+        assert head is not None and head.value is NamedField.ADDR_LO
+
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
+
+        # shorter inst ends here, what behavior do I want?
+        # short_inst_last_head = head
+
+        # 1
+        assert head.children[0] is None and head.children[1] is None
+        head = head.children[2]
+        assert head is not None and head.value is True
+        assert not any(head.children)
+
+        assert next(head.coil) is True
+        with self.assertRaises(StopIteration):
+            next(head.coil)
 
     # def test_single(self):
     #     head = insert_into_trie(
