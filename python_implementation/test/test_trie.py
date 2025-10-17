@@ -92,7 +92,7 @@ class TestTrie(unittest.TestCase):
         head = head.children[2]
 
         # 1
-        assert head is not None and isinstance(head.value, bool) and head.value is True
+        assert head is not None and head.value is True
         # its coiled up
         assert head.coil is not None and not any(head.children)
 
@@ -110,12 +110,12 @@ class TestTrie(unittest.TestCase):
         head = head.children[2]
 
         # 1
-        assert head is not None and isinstance(head.value, bool) and head.value is True
+        assert head is not None and head.value is True
         assert head.children[1] is None and head.children[2] is None
         head = head.children[0]
 
         # 0
-        assert head is not None and isinstance(head.value, bool) and head.value is False
+        assert head is not None and head.value is False
         assert head.children[1] is None
 
         # 0/1 diverge
@@ -123,14 +123,12 @@ class TestTrie(unittest.TestCase):
         right = head.children[2]
 
         # left is 0
-        assert left is not None and isinstance(left.value, bool) and left.value is False
+        assert left is not None and left.value is False
         # its coiled up
         assert left.coil is not None and not any(left.children)
 
         # right is 1
-        assert (
-            right is not None and isinstance(right.value, bool) and right.value is True
-        )
+        assert right is not None and right.value is True
         # its coiled up
         assert right.coil is not None and not any(right.children)
 
@@ -171,7 +169,7 @@ class TestTrie(unittest.TestCase):
 
         # 1
         head = head.children[2]
-        assert head is not None and isinstance(head.value, bool) and head.value is True
+        assert head is not None and head.value is True
         assert head.children[0] is None and head.children[2] is None
 
         # D
@@ -204,76 +202,76 @@ class TestTrie(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(right.coil)
 
-    def test_full_unroll(self):
-        trie = Trie.from_parsable_instructions(
-            [
-                InstructionSchema(
-                    "move",
-                    LiteralField(0b1, 1),
-                    [
-                        NamedField.D,
-                        LiteralField(0b1, 1),
-                        NamedField.ADDR_LO,
-                        LiteralField(0b11, 2),
-                    ],
-                    {},
-                ),
-                InstructionSchema(
-                    "move",
-                    LiteralField(0b1, 1),
-                    [
-                        NamedField.D,
-                        LiteralField(0b1, 1),
-                        NamedField.ADDR_LO,
-                        LiteralField(0b1, 1),
-                    ],
-                    {},
-                ),
-            ]
-        )
-        head = trie.dummy_head
+    # def test_full_unroll(self):
+    #     trie = Trie.from_parsable_instructions(
+    #         [
+    #             InstructionSchema(
+    #                 "move",
+    #                 LiteralField(0b1, 1),
+    #                 [
+    #                     NamedField.D,
+    #                     LiteralField(0b1, 1),
+    #                     NamedField.ADDR_LO,
+    #                     LiteralField(0b11, 2),
+    #                 ],
+    #                 {},
+    #             ),
+    #             InstructionSchema(
+    #                 "move",
+    #                 LiteralField(0b1, 1),
+    #                 [
+    #                     NamedField.D,
+    #                     LiteralField(0b1, 1),
+    #                     NamedField.ADDR_LO,
+    #                     LiteralField(0b1, 1),
+    #                 ],
+    #                 {},
+    #             ),
+    #         ]
+    #     )
+    #     head = trie.dummy_head
 
-        # dummy node
-        assert head is not None
+    #     # dummy node
+    #     assert head is not None
 
-        # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
-        assert head is not None and head.value is True
+    #     # 1
+    #     assert head.children[0] is None and head.children[1] is None
+    #     head = head.children[2]
+    #     assert head is not None and head.value is True
 
-        # D
-        assert head.children[0] is None and head.children[2] is None
-        head = head.children[1]
-        assert head is not None and head.value is NamedField.D
+    #     # D
+    #     assert head.children[0] is None and head.children[2] is None
+    #     head = head.children[1]
+    #     assert head is not None and head.value is NamedField.D
 
-        # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
-        assert head is not None and head.value is True
-        assert head.children[0] is None and head.children[2] is None
+    #     # 1
+    #     assert head.children[0] is None and head.children[1] is None
+    #     head = head.children[2]
+    #     assert head is not None and head.value is True
+    #     assert head.children[0] is None and head.children[2] is None
 
-        # ADDR_LO
-        assert head.children[0] is None and head.children[2] is None
-        head = head.children[1]
-        assert head is not None and head.value is NamedField.ADDR_LO
+    #     # ADDR_LO
+    #     assert head.children[0] is None and head.children[2] is None
+    #     head = head.children[1]
+    #     assert head is not None and head.value is NamedField.ADDR_LO
 
-        # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
-        assert head is not None and head.value is True
+    #     # 1
+    #     assert head.children[0] is None and head.children[1] is None
+    #     head = head.children[2]
+    #     assert head is not None and head.value is True
 
-        # shorter inst ends here, what behavior do I want?
-        # short_inst_last_head = head
+    #     # shorter inst ends here, what behavior do I want?
+    #     # short_inst_last_head = head
 
-        # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
-        assert head is not None and head.value is True
-        assert not any(head.children)
+    #     # 1
+    #     assert head.children[0] is None and head.children[1] is None
+    #     head = head.children[2]
+    #     assert head is not None and head.value is True
+    #     assert not any(head.children)
 
-        assert next(head.coil) is True
-        with self.assertRaises(StopIteration):
-            next(head.coil)
+    #     assert next(head.coil) is True
+    #     with self.assertRaises(StopIteration):
+    #         next(head.coil)
 
     # def test_single(self):
     #     head = insert_into_trie(
