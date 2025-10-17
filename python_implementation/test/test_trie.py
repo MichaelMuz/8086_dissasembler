@@ -222,7 +222,7 @@ class TestTrie(unittest.TestCase):
                         NamedField.D,
                         LiteralField(0b1, 1),
                         NamedField.ADDR_LO,
-                        LiteralField(0b1, 1),
+                        LiteralField(0b10, 2),
                     ],
                     {},
                 ),
@@ -259,18 +259,30 @@ class TestTrie(unittest.TestCase):
         head = head.children[2]
         assert head is not None and head.value is True
 
-        # shorter inst ends here, what behavior do I want?
-        # short_inst_last_head = head
+        # 0/1 diverge
+        left = head.children[0]
+        right = head.children[2]
 
-        # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
-        assert head is not None and head.value is True
-        assert not any(head.children)
+        # left is 0
+        assert left is not None and left.value is False
+        # its coiled up
+        assert left.coil is not None and not any(left.children)
 
-        assert next(head.coil) is True
+        # right is 1
+        assert right is not None and right.value is True
+        # its coiled up
+        assert right.coil is not None and not any(right.children)
+
+        # they both still have their very last value
+        assert next(left.coil) is False
+        assert next(right.coil) is True
+
+        # their iterators are both spent
         with self.assertRaises(StopIteration):
-            next(head.coil)
+            next(left.coil)
+
+        with self.assertRaises(StopIteration):
+            next(right.coil)
 
     # def test_single(self):
     #     head = insert_into_trie(
