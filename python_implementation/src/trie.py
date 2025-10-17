@@ -178,6 +178,9 @@ class Node:
     1. when insert is called it is for the next level bc insert starts at the dummy head node so comparing value at dummy and the first thing makes no sense
     2. when being inserted into we know our val from peeking so throw out next in could and make node from rest. Attach it to the correct spot based on new child's value. This is how we lazily unroll, on insert.
     3. get correct direction from the thing we are inserting. If we don't have that direction, coil the rest of what we are inserting and attach it to us there. Otherwise call insert on what we already have in that direction
+
+    We can't have a situation where one shorter instruction is the exact prefix for a longer one
+    We can't have a situation where on one node there are multiple children of different NamedFields
     """
 
     def __init__(self, coil: BitModeSchemaIterator) -> None:
