@@ -176,11 +176,10 @@ class TestMov(TestDisassembler):
     def test_accumulator_to_memories(self):
         self.help_test_given_asm(["mov [2554], ax", "mov [15], ax"])
 
-
-# def test_mov_segment_registers(self):
-#     self.help_test_given_asm(
-#         ["mov ax, ds", "mov ds, ax", "mov es, bx", "mov cx, ss"]
-#     )
+    # def test_mov_segment_registers(self):
+    #     self.help_test_given_asm(
+    #         ["mov ax, ds", "mov ds, ax", "mov es, bx", "mov cx, ss"]
+    #     )
 
 
 class TestSub(TestDisassembler):
@@ -377,20 +376,20 @@ class TestPush(TestDisassembler):
         )
 
 
-# class TestPop(TestDisassembler):
-#     def test_pop(self):
-#         self.help_test_given_asm(
-#             "pop sp",
-#         )
+class TestPop(TestDisassembler):
+    def test_pop(self):
+        self.help_test_given_asm(
+            "pop sp",
+        )
 
-#     def test_pops(self):
-#         self.help_test_given_asm(
-#             [
-#                 "pop word [bp + si]",
-#                 "pop word [3]",
-#                 "pop word [bx + di - 3000]",
-#                 "pop sp",
-#                 "pop di",
-#                 "pop si",
-#             ]
-#         )
+    def test_pops(self):
+        self.help_test_given_asm(
+            [
+                "pop word [bp + si]",
+                "pop word [3]",
+                "pop word [bx + di - 3000]",
+                "pop sp",
+                "pop di",
+                "pop si",
+            ]
+        )
