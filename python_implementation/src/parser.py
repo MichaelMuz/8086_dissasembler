@@ -56,22 +56,25 @@ def parse(trie: Trie, bit_iter: BitIterator):
     head = trie.dummy_head
     acc = DecodeAccumulator()
     while head is not None and head.coil is None:
-        if isinstance(head.value, bool):
-            print("asking for 1 more")
+        print(f"{head.children = }")
+        if head.children[1] is not None:
+            child = head.children[1]
+            assert isinstance(child.value, NamedField)
+            print(f"Named Field! asking for {child.value.bit_width} more")
+            acc.with_field(child.value, bit_iter.next_bits(child.value.bit_width))
+            head = child
+        elif head.children[0] is not None or head.children[2] is not None:
+            print(f"Literal Bit! asking for {head.value} more")
             b = bool(bit_iter.next_bits(1))
             acc.with_bit(b)
             if b:
                 head = head.children[2]
             else:
                 head = head.children[0]
-        elif isinstance(head.value, NamedField):
-            print(f"asking for {head.value.bit_width} more")
-            acc.with_field(head.value, bit_iter.next_bits(head.value.bit_width))
-            head = head.children[1]
         else:
             raise ValueError(f"Unexpected {head.value}")
 
-    assert head is not None
+    assert head is not None, breakpoint()
     rest_of_coil = head.get_rest_of_coil()
 
     while rest_of_coil.has_more() and not rest_of_coil.can_transition():
