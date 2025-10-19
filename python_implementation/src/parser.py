@@ -56,10 +56,8 @@ def parse(trie: Trie, bit_iter: BitIterator):
     head = trie.dummy_head
     acc = DecodeAccumulator()
     while head is not None and head.coil is None:
-        print(f"{head.children = }")
         # We prefer matching the longest identifier literal first over going into named fields
         if head.children[0] is not None or head.children[2] is not None:
-            print(f"Literal Bit! asking for {head.value} more")
             b = bool(bit_iter.next_bits(1))
             acc.with_bit(b)
             if b:
@@ -69,7 +67,6 @@ def parse(trie: Trie, bit_iter: BitIterator):
         elif head.children[1] is not None:
             child = head.children[1]
             assert isinstance(child.value, NamedField)
-            print(f"Named Field! asking for {child.value.bit_width} more")
             acc.with_field(child.value, bit_iter.next_bits(child.value.bit_width))
             head = child
         else:
@@ -86,24 +83,14 @@ def parse(trie: Trie, bit_iter: BitIterator):
         read_bit = bool(bit_iter.next_bits(1))
         assert read_bit == coil_bit
         acc.with_bit(read_bit)
-        print(f"in the wrap up, asking for one more, {read_bit = }")
-
-    print(
-        f"done with trie now using the iter, {bit_iter.curr_byte = }, {bit_iter.msb_bit_ind = }"
-    )
-
-    print(f"done with trie now using the iter, {rest_of_coil.instruction = }")
 
     acc.with_implied_fields(rest_of_coil.instruction.implied_values)
     whole_iter = rest_of_coil.to_whole_field_iter()
     for e in whole_iter:
-        print(f"checking if {e} needed")
         if acc.is_needed(e):
             val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
-        print(f"after {e = }, {bit_iter.curr_byte = }, {bit_iter.msb_bit_ind = }")
 
-    print(f"\n building {rest_of_coil.instruction} \n")
     return acc.build(rest_of_coil.instruction)
 
 
