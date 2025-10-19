@@ -94,17 +94,17 @@ class Node:
     def __init__(
         self, coil: BitModeSchemaIterator, value: bool | NamedField | None = None
     ) -> None:
+        """
+        :param coil: Iterator over the instruction format
+        :param value: If provided, use this as the node's value instead of consuming from coil.
+            Used when the value was already consumed by the caller.
+        """
         if value is None:
             value = next(coil)
 
         self.value = value
         self.coil = coil
         self.children: list[Node | None] = [None, None, None]
-
-    def get_rest_of_coil(self):
-        assert self.coil is not None
-        new_coil = self.coil.clone()
-        return new_coil
 
     LEFT, NAMED, RIGHT = 0, 1, 2
 
@@ -118,6 +118,27 @@ class Node:
             case True:
                 return cls.RIGHT
 
+    @property
+    def left(self):
+        return self.children[self.LEFT]
+
+    @property
+    def right(self):
+        return self.children[self.RIGHT]
+
+    @property
+    def named(self):
+        return self.children[self.NAMED]
+
+    def get_rest_of_coil(self):
+        assert self.coil is not None
+        new_coil = self.coil.clone()
+        return new_coil
+
+    def get_child(self, val: bool | NamedField):
+        ind = self.get_ind(val)
+        return self.children[ind]
+
     def insert(self, inst: BitModeSchemaIterator):
         if self.coil is not None:
             new_child = Node(self.coil)
@@ -127,12 +148,13 @@ class Node:
 
         nxt = next(inst)
         ind = self.get_ind(nxt)
-        if self.children[ind] is None:
+        child = self.children[ind]
+        if child is None:
             self.children[ind] = Node(inst, value=nxt)
         else:
             if ind == self.NAMED:
-                assert self.children[self.NAMED].value == nxt, "Ambiguous ISA"
-            self.children[ind].insert(inst)
+                assert child.value == nxt, "Ambiguous ISA"
+            child.insert(inst)
 
 
 class DummyNode(Node):

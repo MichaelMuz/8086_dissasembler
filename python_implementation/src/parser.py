@@ -64,17 +64,17 @@ def parse(trie: Trie, bit_iter: BitIterator):
     while head is not None and head.coil is None:
         # We prefer matching the longest identifier literal first over going into named fields
         # prefer literal paths if they exist
-        if (head.children[0] is not None and not bit_iter.peek_bit()) or (
-            head.children[2] is not None and bit_iter.peek_bit()
+        if (head.left is not None and not bit_iter.peek_bit()) or (
+            head.right is not None and bit_iter.peek_bit()
         ):
             b = bool(bit_iter.next_bits(1))
             acc.with_bit(b)
             if b:
-                head = head.children[2]
+                head = head.right
             else:
-                head = head.children[0]
-        elif head.children[1] is not None:
-            child = head.children[1]
+                head = head.left
+        elif head.named is not None:
+            child = head.named
             assert isinstance(child.value, NamedField)
             acc.with_field(child.value, bit_iter.next_bits(child.value.bit_width))
             head = child

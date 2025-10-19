@@ -88,8 +88,8 @@ class TestTrie(unittest.TestCase):
         )
         head = trie.dummy_head
 
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
+        assert head.children[0] is None and head.named is None
+        head = head.right
 
         # 1
         assert head is not None and head.value is True
@@ -106,21 +106,21 @@ class TestTrie(unittest.TestCase):
         head = trie.dummy_head
 
         assert head is not None
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
+        assert head.left is None and head.named is None
+        head = head.right
 
         # 1
         assert head is not None and head.value is True
-        assert head.children[1] is None and head.children[2] is None
-        head = head.children[0]
+        assert head.named is None and head.right is None
+        head = head.left
 
         # 0
         assert head is not None and head.value is False
-        assert head.children[1] is None
+        assert head.named is None
 
         # 0/1 diverge
-        left = head.children[0]
-        right = head.children[2]
+        left = head.left
+        right = head.right
 
         # left is 0
         assert left is not None and left.value is False
@@ -164,21 +164,21 @@ class TestTrie(unittest.TestCase):
 
         # dummy node
         assert head is not None
-        assert head.children[0] is None and head.children[1] is None
+        assert head.left is None and head.named is None
 
         # 1
-        head = head.children[2]
+        head = head.right
         assert head is not None and head.value is True
-        assert head.children[0] is None and head.children[2] is None
+        assert head.left is None and head.right is None
 
         # D
-        head = head.children[1]
+        head = head.named
         assert head is not None and head.value is NamedField.D
-        assert head.children[1] is None
+        assert head.named is None
 
         # 0/1 diverge
-        left = head.children[0]
-        right = head.children[2]
+        left = head.left
+        right = head.right
 
         # left is 0
         assert left is not None and left.value is False
@@ -233,34 +233,34 @@ class TestTrie(unittest.TestCase):
         assert head is not None
 
         # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
+        assert head.left is None and head.named is None
+        head = head.right
         assert head is not None and head.value is True
 
         # D
-        assert head.children[0] is None and head.children[2] is None
-        head = head.children[1]
+        assert head.left is None and head.right is None
+        head = head.named
         assert head is not None and head.value is NamedField.D
 
         # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
+        assert head.left is None and head.named is None
+        head = head.right
         assert head is not None and head.value is True
-        assert head.children[0] is None and head.children[2] is None
+        assert head.left is None and head.right is None
 
         # ADDR_LO
-        assert head.children[0] is None and head.children[2] is None
-        head = head.children[1]
+        assert head.left is None and head.right is None
+        head = head.named
         assert head is not None and head.value is NamedField.ADDR_LO
 
         # 1
-        assert head.children[0] is None and head.children[1] is None
-        head = head.children[2]
+        assert head.left is None and head.named is None
+        head = head.right
         assert head is not None and head.value is True
 
         # 0/1 diverge
-        left = head.children[0]
-        right = head.children[2]
+        left = head.left
+        right = head.right
 
         # left is 0
         assert left is not None and left.value is False
