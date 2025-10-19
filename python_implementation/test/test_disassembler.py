@@ -83,27 +83,27 @@ class TestDisassembler(unittest.TestCase):
 
 
 class TestMov(TestDisassembler):
-    def test_reg_to_reg(self):
-        self.help_test_given_asm("mov cx, bx")
+    # def test_reg_to_reg(self):
+    #     self.help_test_given_asm("mov cx, bx")
 
+    def test_many_reg_to_reg(self):
+        self.help_test_given_asm(
+            [
+                "mov cx, bx",
+                "mov ch, ah",
+                "mov dx, bx",
+                "mov bx, di",
+                "mov al, cl",
+                "mov ch, ch",
+                "mov bx, ax",
+                "mov bx, si",
+                "mov sp, di",
+                "mov bp, ax",
+                "mov si, bx",
+                "mov dh, al",
+            ]
+        )
 
-#     def test_many_reg_to_reg(self):
-#         self.help_test_given_asm(
-#             [
-#                 "mov cx, bx",
-#                 "mov ch, ah",
-#                 "mov dx, bx",
-#                 "mov bx, di",
-#                 "mov al, cl",
-#                 "mov ch, ch",
-#                 "mov bx, ax",
-#                 "mov bx, si",
-#                 "mov sp, di",
-#                 "mov bp, ax",
-#                 "mov si, bx",
-#                 "mov dh, al",
-#             ]
-#         )
 
 #     def test_8bit_immediate_to_register(self):
 #         self.help_test_given_asm("mov bh, 12")

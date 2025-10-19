@@ -12,10 +12,18 @@ from python_implementation.src.utils import get_sub_most_sig_bits
 
 
 class BitModeSchemaIterator:
-    def __init__(self, instruction: InstructionSchema) -> None:
+    def __init__(
+        self,
+        instruction: InstructionSchema,
+        whole_ind: int | None = None,
+        bit_ind: int | None = None,
+    ) -> None:
         self.instruction = instruction
-        self.whole_ind = 0
-        self.bit_ind = 0
+        self.whole_ind = whole_ind or 0
+        self.bit_ind = bit_ind or 0
+
+    def clone(self):
+        return BitModeSchemaIterator(self.instruction, self.whole_ind, self.bit_ind)
 
     @cached_property
     def _fields(self):
@@ -192,8 +200,10 @@ class Node:
 
     def get_rest_of_coil(self):
         assert self.coil is not None
-        _ = next(self.coil)  # they already saw this val
-        return self.coil
+        new_coil = self.coil.clone()
+        popped = next(new_coil)  # they already saw this val
+        assert popped == self.value, "Somehow coil is out of sync"
+        return new_coil
 
     def get_ind(self, val: bool | NamedField) -> int:
         match val:

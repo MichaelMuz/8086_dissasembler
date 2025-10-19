@@ -72,11 +72,7 @@ def parse(trie: Trie, bit_iter: BitIterator):
     assert head is not None
     rest_of_coil = head.get_rest_of_coil()
 
-    while (
-        rest_of_coil.has_more()
-        and isinstance(rest_of_coil.peek(), bool)
-        and not rest_of_coil.can_transition()
-    ):
+    while rest_of_coil.has_more() and not rest_of_coil.can_transition():
         assert head is not None
         b = next(rest_of_coil)
         assert isinstance(b, bool)
