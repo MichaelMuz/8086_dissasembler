@@ -91,8 +91,13 @@ class Node:
     We can't have a situation where on one node there are multiple children of different NamedFields
     """
 
-    def __init__(self, coil: BitModeSchemaIterator) -> None:
-        self.value = next(coil)
+    def __init__(
+        self, coil: BitModeSchemaIterator, value: bool | NamedField | None = None
+    ) -> None:
+        if value is None:
+            value = next(coil)
+
+        self.value = value
         self.coil = coil
         self.children: list[Node | None] = [None, None, None]
 
@@ -120,13 +125,13 @@ class Node:
             self.children[ind] = new_child
             self.coil = None
 
-        ind = self.get_ind(inst.peek())
+        nxt = next(inst)
+        ind = self.get_ind(nxt)
         if self.children[ind] is None:
-            self.children[ind] = Node(inst)
+            self.children[ind] = Node(inst, value=nxt)
         else:
             if ind == self.NAMED:
-                assert self.children[self.NAMED].value == inst.peek(), "Ambiguous ISA"
-            _ = next(inst)
+                assert self.children[self.NAMED].value == nxt, "Ambiguous ISA"
             self.children[ind].insert(inst)
 
 
