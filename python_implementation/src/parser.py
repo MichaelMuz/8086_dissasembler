@@ -1,9 +1,9 @@
 import logging
 
-from python_implementation.src.base.schema import InstructionSchema
+from python_implementation.src.base.schema import InstructionSchema, NamedField
 from python_implementation.src.disassembled import Disassembly
 from python_implementation.src.intermediates.accumulator import DecodeAccumulator
-from python_implementation.src.trie import BitNode, FieldNode, LeafNode, Trie
+from python_implementation.src.trie import Trie
 from python_implementation.src.utils import BITS_PER_BYTE, get_sub_most_sig_bits
 
 
@@ -51,33 +51,56 @@ class BitIterator:
             raise ValueError("Tried to peek incomplete byte")
         return self.curr_byte
 
+    def peek_bit(self):
+        if self.msb_bit_ind == BITS_PER_BYTE:
+            self._grab_byte()
+        assert self.curr_byte is not None
+        return bool(get_sub_most_sig_bits(self.curr_byte, self.msb_bit_ind, 1))
+
 
 def parse(trie: Trie, bit_iter: BitIterator):
-    head = trie.head
+    head = trie.dummy_head
     acc = DecodeAccumulator()
-    while head is not None and not isinstance(head, LeafNode):
-        if isinstance(head, BitNode):
+    while head is not None and head.coil is None:
+        # We prefer matching the longest identifier literal first over going into named fields
+        # prefer literal paths if they exist
+        if (head.children[0] is not None and not bit_iter.peek_bit()) or (
+            head.children[2] is not None and bit_iter.peek_bit()
+        ):
             b = bool(bit_iter.next_bits(1))
             acc.with_bit(b)
             if b:
-                head = head.right
+                head = head.children[2]
             else:
-                head = head.left
-        elif isinstance(head, FieldNode):
-            acc.with_field(
-                head.named_field, bit_iter.next_bits(head.named_field.bit_width)
-            )
-            head = head.next
+                head = head.children[0]
+        elif head.children[1] is not None:
+            child = head.children[1]
+            assert isinstance(child.value, NamedField)
+            acc.with_field(child.value, bit_iter.next_bits(child.value.bit_width))
+            head = child
+        else:
+            raise ValueError(f"Unexpected {head.value}")
 
-    assert head is not None, "Invalid Instruction"
-    acc.with_implied_fields(head.token_iter.instruction.implied_values)
-    whole_iter = head.token_iter.to_whole_field_iter()
+    assert head is not None
+    rest_of_coil = head.get_rest_of_coil()
+
+    while rest_of_coil.has_more() and not rest_of_coil.can_transition():
+        coil_bit = next(rest_of_coil)
+        assert isinstance(
+            coil_bit, bool
+        ), "We know instruction but failing to match literal bits"
+        read_bit = bool(bit_iter.next_bits(1))
+        assert read_bit == coil_bit
+        acc.with_bit(read_bit)
+
+    acc.with_implied_fields(rest_of_coil.instruction.implied_values)
+    whole_iter = rest_of_coil.to_whole_field_iter()
     for e in whole_iter:
         if acc.is_needed(e):
             val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
 
-    return acc.build(head.token_iter.instruction)
+    return acc.build(rest_of_coil.instruction)
 
 
 def parse_binary(
