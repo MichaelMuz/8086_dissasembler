@@ -57,6 +57,7 @@ def parse(trie: Trie, bit_iter: BitIterator):
     acc = DecodeAccumulator()
     while head is not None and head.coil is None:
         if isinstance(head.value, bool):
+            print("asking for 1 more")
             b = bool(bit_iter.next_bits(1))
             acc.with_bit(b)
             if b:
@@ -64,6 +65,7 @@ def parse(trie: Trie, bit_iter: BitIterator):
             else:
                 head = head.children[0]
         elif isinstance(head.value, NamedField):
+            print(f"asking for {head.value.bit_width} more")
             acc.with_field(head.value, bit_iter.next_bits(head.value.bit_width))
             head = head.children[1]
         else:
@@ -73,22 +75,31 @@ def parse(trie: Trie, bit_iter: BitIterator):
     rest_of_coil = head.get_rest_of_coil()
 
     while rest_of_coil.has_more() and not rest_of_coil.can_transition():
-        assert head is not None
-        b = next(rest_of_coil)
-        assert isinstance(b, bool)
-        acc.with_bit(b)
-        if b:
-            head = head.children[2]
-        else:
-            head = head.children[0]
+        coil_bit = next(rest_of_coil)
+        assert isinstance(
+            coil_bit, bool
+        ), "We know instruction but failing to match literal bits"
+        read_bit = bool(bit_iter.next_bits(1))
+        assert read_bit == coil_bit
+        acc.with_bit(read_bit)
+        print(f"in the wrap up, asking for one more, {read_bit = }")
+
+    print(
+        f"done with trie now using the iter, {bit_iter.curr_byte = }, {bit_iter.msb_bit_ind = }"
+    )
+
+    print(f"done with trie now using the iter, {rest_of_coil.instruction = }")
 
     acc.with_implied_fields(rest_of_coil.instruction.implied_values)
     whole_iter = rest_of_coil.to_whole_field_iter()
     for e in whole_iter:
+        print(f"checking if {e} needed")
         if acc.is_needed(e):
             val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
+        print(f"after {e = }, {bit_iter.curr_byte = }, {bit_iter.msb_bit_ind = }")
 
+    print(f"\n building {rest_of_coil.instruction} \n")
     return acc.build(rest_of_coil.instruction)
 
 
