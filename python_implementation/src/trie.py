@@ -92,15 +92,13 @@ class Node:
     """
 
     def __init__(self, coil: BitModeSchemaIterator) -> None:
-        self.value = coil.peek()
+        self.value = next(coil)
         self.coil = coil
         self.children: list[Node | None] = [None, None, None]
 
     def get_rest_of_coil(self):
         assert self.coil is not None
         new_coil = self.coil.clone()
-        popped = next(new_coil)  # they already saw this val
-        assert popped == self.value, "Somehow coil is out of sync"
         return new_coil
 
     LEFT, NAMED, RIGHT = 0, 1, 2
@@ -117,7 +115,6 @@ class Node:
 
     def insert(self, inst: BitModeSchemaIterator):
         if self.coil is not None:
-            _ = next(self.coil)
             new_child = Node(self.coil)
             ind = self.get_ind(new_child.value)
             self.children[ind] = new_child
@@ -127,8 +124,8 @@ class Node:
         if self.children[ind] is None:
             self.children[ind] = Node(inst)
         else:
-            if ind == 1:
-                assert self.children[1].value == inst.peek(), "Ambiguous ISA"
+            if ind == self.NAMED:
+                assert self.children[self.NAMED].value == inst.peek(), "Ambiguous ISA"
             _ = next(inst)
             self.children[ind].insert(inst)
 

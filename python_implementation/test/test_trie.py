@@ -132,16 +132,16 @@ class TestTrie(unittest.TestCase):
         # its coiled up
         assert right.coil is not None and not any(right.children)
 
-        assert next(left.coil) is False
-        assert next(right.coil) is True
-        assert next(left.coil) == NamedField.D
-        assert next(right.coil) == NamedField.D
+        lc, rc = left.get_rest_of_coil(), right.get_rest_of_coil()
+
+        assert next(lc) == NamedField.D
+        assert next(rc) == NamedField.D
 
         with self.assertRaises(StopIteration):
-            next(left.coil)
+            next(lc)
 
         with self.assertRaises(StopIteration):
-            next(right.coil)
+            next(rc)
 
     def test_overlapping_path_insert(self):
         trie = Trie.from_parsable_instructions(
@@ -190,16 +190,15 @@ class TestTrie(unittest.TestCase):
         # its coiled up
         assert right.coil is not None and not any(right.children)
 
-        assert next(left.coil) is False
-        assert next(right.coil) is True
-        assert next(left.coil) == NamedField.ADDR_HI
-        assert next(right.coil) == NamedField.ADDR_LO
+        lc, rc = left.get_rest_of_coil(), right.get_rest_of_coil()
+        assert next(lc) == NamedField.ADDR_HI
+        assert next(rc) == NamedField.ADDR_LO
 
         with self.assertRaises(StopIteration):
-            next(left.coil)
+            next(lc)
 
         with self.assertRaises(StopIteration):
-            next(right.coil)
+            next(rc)
 
     def test_full_unroll(self):
         trie = Trie.from_parsable_instructions(
@@ -273,16 +272,12 @@ class TestTrie(unittest.TestCase):
         # its coiled up
         assert right.coil is not None and not any(right.children)
 
-        # they both still have their very last value
-        assert next(left.coil) is False
-        assert next(right.coil) is True
-
         # their iterators are both spent
         with self.assertRaises(StopIteration):
-            next(left.coil)
+            next(left.get_rest_of_coil())
 
         with self.assertRaises(StopIteration):
-            next(right.coil)
+            next(right.get_rest_of_coil())
 
     def test_single(self):
         Trie.from_parsable_instructions(
