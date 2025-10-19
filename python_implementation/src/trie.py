@@ -103,14 +103,17 @@ class Node:
         assert popped == self.value, "Somehow coil is out of sync"
         return new_coil
 
-    def get_ind(self, val: bool | NamedField) -> int:
+    LEFT, NAMED, RIGHT = 0, 1, 2
+
+    @classmethod
+    def get_ind(cls, val: bool | NamedField) -> int:
         match val:
             case False:
-                return 0
+                return cls.LEFT
             case NamedField():
-                return 1
+                return cls.NAMED
             case True:
-                return 2
+                return cls.RIGHT
 
     def insert(self, inst: BitModeSchemaIterator):
         if self.coil is not None:
