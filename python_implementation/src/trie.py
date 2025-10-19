@@ -4,7 +4,6 @@ from typing import Self
 
 from python_implementation.src.base.schema import (
     InstructionSchema,
-    LiteralField,
     NamedField,
     SchemaField,
 )
@@ -79,105 +78,6 @@ class BitModeSchemaIterator:
             assert self.bit_ind == 0, "Inconsistent bit index state"
 
         return (self._fields[i] for i in range(self.whole_ind, len(self._fields)))
-
-
-# a branch is a bundle of pointers and non-head nodes have values
-# branches will all be by default completely coiled until they are inserted into another branch
-# at that point the inserted into branch will uncoil one instruction
-# @dataclass
-# class _HeadNode:
-#     left: Any = None
-#     right: Any = None
-#     next: Any = None
-
-#     def insert(self, node):
-#         match node:
-#             case Node(True):
-#                 self.right = node
-#             case Node(False):
-#                 self.left = node
-#             case Node(NamedField()):
-#                 self.next = node
-#             case _:
-#                 raise ValueError("Unexpected node type")
-#         return node
-
-
-# @dataclass
-# class Node(_HeadNode):
-#     val: NamedField | bool = field(kw_only=True)
-
-
-# @dataclass
-# class Branch:
-#     coil: BitModeSchemaIterator
-
-#     def insert(self, other: Self):
-#         # self needs to uncoild once
-#         next_self = next(self.coil)
-#         next_other = next(other.coil)
-#         head = Node(val=next_self)
-#         new_node = head.insert(Node(val=next_other))
-
-#         if next_self == next_other:
-#             self.insert(other)
-
-
-# class Node:
-#     def __init__(self, coil: BitModeSchemaIterator) -> None:
-#         self.coil = coil
-#         self.value = next(self.coil)
-#         self._left: Any = None
-#         self._right: Any = None
-#         self._next: Any = None
-
-#     def _unroll_one(self):
-#         if self.coil is None:
-#             return
-#         unrolled_node = Node(self.coil)
-#         attr = f"_{self.get_correct_attr(unrolled_node.value)}"
-#         setattr(self, attr, unrolled_node)
-#         self.coil = None
-
-#     @cached_property
-#     def left(self):
-#         self._unroll_one()
-#         return self._left
-
-#     @cached_property
-#     def right(self):
-#         self._unroll_one()
-#         return self._right
-
-#     @cached_property
-#     def next(self):
-#         self._unroll_one()
-#         return self._next
-
-#     def get_correct_attr(self, val: NamedField | bool):
-#         match val:
-#             case True:
-#                 return "right"
-#             case False:
-#                 return "left"
-#             case NamedField():
-#                 return "next"
-#             # case _:
-#             #     raise ValueError("Unexpected node type")
-
-#     def insert(self, other_node: "BitModeSchemaIterator | Node"):
-#         # I assume the parent node did the right thing pairing us together
-#         # if we continue on the same path, that is fine it means we were prefixed the same so far
-#         # I may have the issue that I insert into my child the value of the current parent
-#         if not isinstance(other_node, Node):
-#             other_node = Node(other_node)
-
-#         att = self.get_correct_attr(other_node.value)
-#         att_val = getattr(self, att)
-#         if att_val is not None:
-#             att_val.insert(other_node)
-#         else:
-#             setattr(self, f"_{att}", other_node)
 
 
 class Node:
