@@ -51,14 +51,28 @@ class BitIterator:
             raise ValueError("Tried to peek incomplete byte")
         return self.curr_byte
 
+    def peek_bit(self):
+        if self.msb_bit_ind == BITS_PER_BYTE:
+            self._grab_byte()
+        assert self.curr_byte is not None
+        return bool(get_sub_most_sig_bits(self.curr_byte, self.msb_bit_ind, 1))
+
 
 def parse(trie: Trie, bit_iter: BitIterator):
     head = trie.dummy_head
     acc = DecodeAccumulator()
     while head is not None and head.coil is None:
+        print(f"{head = }, {head.children = }")
         # We prefer matching the longest identifier literal first over going into named fields
-        if head.children[0] is not None or head.children[2] is not None:
+        # prefer literal paths if they exist
+
+        if (head.children[0] is not None and not bit_iter.peek_bit()) or (
+            head.children[2] is not None and bit_iter.peek_bit()
+        ):
             b = bool(bit_iter.next_bits(1))
+            print(
+                f"Read bit: {b}, curr_byte: {bit_iter.curr_byte:08b}, msb_bit_ind: {bit_iter.msb_bit_ind}"
+            )
             acc.with_bit(b)
             if b:
                 head = head.children[2]
@@ -67,12 +81,13 @@ def parse(trie: Trie, bit_iter: BitIterator):
         elif head.children[1] is not None:
             child = head.children[1]
             assert isinstance(child.value, NamedField)
+            print(f"Named Field! asking for {child.value.bit_width} more")
             acc.with_field(child.value, bit_iter.next_bits(child.value.bit_width))
             head = child
         else:
             raise ValueError(f"Unexpected {head.value}")
 
-    assert head is not None, breakpoint()
+    assert head is not None
     rest_of_coil = head.get_rest_of_coil()
 
     while rest_of_coil.has_more() and not rest_of_coil.can_transition():
@@ -83,14 +98,24 @@ def parse(trie: Trie, bit_iter: BitIterator):
         read_bit = bool(bit_iter.next_bits(1))
         assert read_bit == coil_bit
         acc.with_bit(read_bit)
+        print(f"in the wrap up, asking for one more, {read_bit = }")
+
+    print(
+        f"done with trie now using the iter, {bit_iter.curr_byte = }, {bit_iter.msb_bit_ind = }"
+    )
+
+    print(f"done with trie now using the iter, {rest_of_coil.instruction = }")
 
     acc.with_implied_fields(rest_of_coil.instruction.implied_values)
     whole_iter = rest_of_coil.to_whole_field_iter()
     for e in whole_iter:
+        print(f"checking if {e} needed")
         if acc.is_needed(e):
             val = bit_iter.next_bits(e.bit_width)
             acc.with_field(e, val)
+        print(f"after {e = }, {bit_iter.curr_byte = }, {bit_iter.msb_bit_ind = }")
 
+    print(f"\n building {rest_of_coil.instruction} \n")
     return acc.build(rest_of_coil.instruction)
 
 
