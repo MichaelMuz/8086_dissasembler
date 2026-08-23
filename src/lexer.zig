@@ -153,15 +153,15 @@ const InstructionSchema = struct {
                 .fields = buffer,
                 .len = field_list.items.len,
             },
-            .skeleton = std.mem.readInt(u16, &skeleton_halfs, .little),
-            .mask = std.mem.readInt(u16, &mask_halfs, .little),
+            .skeleton = std.mem.readInt(u16, &skeleton_halfs, .big),
+            .mask = std.mem.readInt(u16, &mask_halfs, .big),
         };
     }
 
     pub fn matches(self: *const InstructionSchema, other_pattern: u16) bool {
         const zero_where_agree = other_pattern ^ self.skeleton;
         const zero_where_agree_and_variable = zero_where_agree & self.mask;
-        std.debug.print("zero_where_agree: {d}, zero_where_agree_and_variable: {d}\n", .{ zero_where_agree, zero_where_agree_and_variable });
+        std.debug.print("skeleton: {b:0>16}\nmask: {b:0>16}\nzero_where_agree: {b}\nzero_where_agree_and_variable: {b}\n", .{ self.skeleton, self.mask, zero_where_agree, zero_where_agree_and_variable });
         return 0 == zero_where_agree_and_variable;
     }
 };
