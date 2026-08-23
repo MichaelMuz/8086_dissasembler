@@ -108,8 +108,9 @@ const InstructionSchema = struct {
         var mask: u8 = 0;
         var next_msb: u4 = 0;
 
-        var segment_iter = std.mem.tokenizeAny(u8, byte, " ");
+        var segment_iter = std.mem.tokenizeSequence(u8, byte, " ");
         while (segment_iter.next()) |seg| {
+            std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
             const curr_field, const add_to_skeleton, const add_to_mask = InstructionSchema.parseSegment(seg);
             field_list.appendAssumeCapacity(curr_field);
             skeleton = utils.insertMostSigBits(u8, skeleton, @truncate(next_msb), add_to_skeleton, curr_field.width());
@@ -117,7 +118,7 @@ const InstructionSchema = struct {
             next_msb += curr_field.width();
         }
 
-        std.debug.print("byte: {s}, next_msb: {d}", .{ byte, next_msb });
+        std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
         std.debug.assert(next_msb == 8);
 
         return .{ skeleton, mask };
@@ -131,7 +132,7 @@ const InstructionSchema = struct {
         var mask_halfs: [2]u8 = [_]u8{0} ** 2;
         var i: u8 = 0;
 
-        var byte_iter = std.mem.tokenizeAny(u8, pattern, ", ");
+        var byte_iter = std.mem.tokenizeSequence(u8, pattern, ", ");
         while (byte_iter.next()) |byte| : (i += 1) {
             const byte_skeleton, const byte_mask = InstructionSchema.parseByte(byte, &field_list);
             if (i < 2) {
