@@ -1,5 +1,5 @@
 const std = @import("std");
-const utils = @import("utils.zig");
+const utils = @import("../utils.zig");
 const schema = @import("schema.zig");
 
 fn isLiteral(str: []const u8) bool {
@@ -78,9 +78,6 @@ pub fn parseInstructionSchema(name: []const u8, pattern: []const u8) !schema.Ins
             std.debug.assert(byte_mask == 0);
         }
     }
-
-    // std.debug.print("skeleton: {s}\n", .{skeleton});
-    // std.debug.print("mask: {s}\n", .{mask});
 
     return schema.InstructionSchema{
         .name = name,

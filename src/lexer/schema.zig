@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const NamedField = enum {
+pub const NamedField = enum {
     d,
     w,
     s,
@@ -69,11 +69,11 @@ const NamedField = enum {
     }
 };
 
-const LiteralField = struct {
+pub const LiteralField = struct {
     width: u4,
 };
 
-const SchemaField = union(enum) {
+pub const SchemaField = union(enum) {
     literal_field: LiteralField,
     named_field: NamedField,
 
@@ -85,9 +85,9 @@ const SchemaField = union(enum) {
     }
 };
 
-const MaxFieldsPerInstruction = 8 * 6; // At most 8 one bit things, at most 6 bytes
+pub const MaxFieldsPerInstruction = 8 * 6; // At most 8 one bit things, at most 6 bytes
 
-const InstructionSchema = struct {
+pub const InstructionSchema = struct {
     name: []const u8,
     fixed_list: struct {
         fields: [MaxFieldsPerInstruction]SchemaField,

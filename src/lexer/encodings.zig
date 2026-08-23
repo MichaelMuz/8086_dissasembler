@@ -7,7 +7,7 @@ const RawInstructionEncoding = struct {
 };
 
 // Intel 8086 Family User's Manual, October 1979, table 4-12, pages 4-22--4-27.
-const instruction_encodings = [_]RawInstructionEncoding{
+pub const instruction_encodings = [_]RawInstructionEncoding{
     // Data transfer
     .{ .name = "mov", .pattern = "100010 d w, mod reg rm, disp_lo, disp_hi" },
     .{ .name = "mov", .pattern = "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1" },
