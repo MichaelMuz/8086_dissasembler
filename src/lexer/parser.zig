@@ -59,7 +59,7 @@ fn parseByte(byte: []const u8, field_list: *std.ArrayList(schema.SchemaField)) s
     return .{ skeleton, mask };
 }
 
-pub fn parseInstructionSchema(name: []const u8, pattern: []const u8) !schema.InstructionSchema {
+pub fn instructionSchema(name: []const u8, pattern: []const u8) !schema.InstructionSchema {
     var buffer: [schema.MaxFieldsPerInstruction]schema.SchemaField = undefined;
     var field_list = std.ArrayList(schema.SchemaField).initBuffer(&buffer);
 
