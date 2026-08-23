@@ -48,9 +48,10 @@ pub fn insertMostSigBits(T: type, insert_into: T, start_ind: IndexT(T), to_inser
 
     const container_width: NumBitsT(T) = @typeInfo(T).int.bits;
     const to_insert_width: NumBitsT(I) = num_bits orelse @typeInfo(I).int.bits;
+    std.debug.assert(to_insert_width <= @typeInfo(I).int.bits);
 
     const highest_least_sig_start_ind: IndexT(T) = container_width - 1;
-    const insert_width_index_offset: IndexT(I) = to_insert_width - 1;
+    const insert_width_index_offset: IndexT(I) = @truncate(to_insert_width - 1);
 
     const least_sig_start_ind: IndexT(T) = highest_least_sig_start_ind - start_ind - insert_width_index_offset;
 

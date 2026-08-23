@@ -12,15 +12,14 @@ const NamedField = enum {
     data,
     data_if_w_eq_1,
 
-    pub fn of(s: []u8) NamedField {
-        const variant = std.meta.stringToEnum(NamedField, s);
-        if (variant == null) unreachable;
+    pub fn of(s: []const u8) NamedField {
+        const variant = std.meta.stringToEnum(NamedField, s) orelse unreachable;
         return variant;
     }
 
     // should I make this a u3? That only gets to 7 we should use u4? Maybe comptime to be int size needed for variants?
     // figure cpu wants 8 aligned anyhow
-    pub fn width(self: NamedField) u8 {
+    pub fn width(self: NamedField) u4 {
         return switch (self) {
             .d => 1,
             .w => 1,
@@ -36,14 +35,14 @@ const NamedField = enum {
 };
 
 const LiteralField = struct {
-    width: u8,
+    width: u4,
 };
 
 const SchemaField = union(enum) {
     literal_field: LiteralField,
     named_field: NamedField,
 
-    pub fn width(self: SchemaField) u8 {
+    pub fn width(self: SchemaField) u4 {
         return switch (self) {
             .literal_field => |lit| lit.width,
             .named_field => |named| named.width(),
@@ -76,19 +75,25 @@ const InstructionSchema = struct {
     }
 
     fn parseSegment(segment: []const u8) struct { SchemaField, u8, u8 } {
-        const curr_field = undefined;
-        const add_to_skeleton: u8 = 0;
-        const add_to_mask: u8 = 0;
+        var curr_field: SchemaField = undefined;
+        var add_to_skeleton: u8 = 0;
+        var add_to_mask: u8 = 0;
 
         if (InstructionSchema.isLiteral(segment)) {
-            curr_field = LiteralField(add_to_skeleton);
+            curr_field = .{
+                .literal_field = .{
+                    .width = @intCast(segment.len),
+                },
+            };
             // want to copy these bits to the skeleton and make mask have 1s here
             // mask gets 1s here
-            add_to_skeleton = std.fmt.parseInt(u8, segment, 2);
-            add_to_mask = (1 << curr_field.width) - 1;
+            add_to_skeleton = std.fmt.parseInt(u8, segment, 2) catch unreachable;
+            add_to_mask = (@as(u8, 1) << @truncate(curr_field.width())) - 1;
         } else {
-            curr_field = NamedField.of(segment);
-            // skeleton and mask get 0s here
+            curr_field = .{
+                .named_field = NamedField.of(segment),
+            };
+            // skeleton and mask keep 0s here
         }
 
         return .{
@@ -98,20 +103,21 @@ const InstructionSchema = struct {
         };
     }
 
-    fn parseByte(byte: []const u8, field_list: *std.ArrayList) struct { u8, u8 } {
+    fn parseByte(byte: []const u8, field_list: *std.ArrayList(SchemaField)) struct { u8, u8 } {
         var skeleton: u8 = 0;
         var mask: u8 = 0;
-        var next_msb: u8 = 0;
+        var next_msb: u4 = 0;
 
         var segment_iter = std.mem.tokenizeAny(u8, byte, " ");
         while (segment_iter.next()) |seg| {
             const curr_field, const add_to_skeleton, const add_to_mask = InstructionSchema.parseSegment(seg);
-            field_list.append(curr_field);
-            skeleton = utils.insertMostSigBits(u8, skeleton, next_msb, add_to_skeleton, curr_field.width);
-            mask = utils.insertMostSigBits(u8, mask, next_msb, add_to_mask, curr_field.width);
+            field_list.appendAssumeCapacity(curr_field);
+            skeleton = utils.insertMostSigBits(u8, skeleton, @truncate(next_msb), add_to_skeleton, curr_field.width());
+            mask = utils.insertMostSigBits(u8, mask, @truncate(next_msb), add_to_mask, curr_field.width());
             next_msb += curr_field.width();
         }
 
+        std.debug.print("byte: {s}, next_msb: {d}", .{ byte, next_msb });
         std.debug.assert(next_msb == 8);
 
         return .{ skeleton, mask };
@@ -119,11 +125,11 @@ const InstructionSchema = struct {
 
     pub fn parseInstructionSchema(name: []const u8, pattern: []const u8) !InstructionSchema {
         var buffer: [MaxFieldsPerInstruction]SchemaField = undefined;
-        const field_list = std.ArrayList(SchemaField).initBuffer(&buffer);
+        var field_list = std.ArrayList(SchemaField).initBuffer(&buffer);
 
-        var skeleton_halfs: [2]u8 = 0;
-        var mask_halfs: [2]u8 = 0;
-        var i = 0;
+        var skeleton_halfs: [2]u8 = [_]u8{0} ** 2;
+        var mask_halfs: [2]u8 = [_]u8{0} ** 2;
+        var i: u8 = 0;
 
         var byte_iter = std.mem.tokenizeAny(u8, pattern, ", ");
         while (byte_iter.next()) |byte| : (i += 1) {
@@ -142,12 +148,12 @@ const InstructionSchema = struct {
 
         return InstructionSchema{
             .name = name,
-            .fields = .{
+            .fixed_list = .{
                 .fields = buffer,
                 .len = field_list.items.len,
             },
-            .skeleton = std.mem.readInt(u16, skeleton_halfs, .little),
-            .mask = std.mem.readInt(u16, mask_halfs, .little),
+            .skeleton = std.mem.readInt(u16, &skeleton_halfs, .little),
+            .mask = std.mem.readInt(u16, &mask_halfs, .little),
         };
     }
 
@@ -159,10 +165,9 @@ const InstructionSchema = struct {
     }
 };
 
-const mov0 = InstructionSchema.parseInstructionSchema("mov0", "100010dw") catch unreachable;
-// const mov1 = Instruction.init("mov1", "1100011w") catch unreachable;
-
 test "check that things match" {
+    const mov0 = InstructionSchema.parseInstructionSchema("mov0", "100010 d w") catch unreachable;
+    // const mov1 = Instruction.init("mov1", "1100011w") catch unreachable;
     try std.testing.expect(mov0.matches(0b10001011 << 8));
     try std.testing.expect(mov0.matches(0b10001000 << 8));
     try std.testing.expect(!mov0.matches(0b10011011 << 8));
