@@ -146,7 +146,7 @@ const InstructionSchema = struct {
 
         var segment_iter = std.mem.tokenizeSequence(u8, byte, " ");
         while (segment_iter.next()) |seg| {
-            std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
+            // std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
             const curr_field, const add_to_skeleton, const add_to_mask = InstructionSchema.parseSegment(seg);
             field_list.appendAssumeCapacity(curr_field);
             skeleton = utils.insertMostSigBits(u8, skeleton, @truncate(next_msb), add_to_skeleton, curr_field.width());
@@ -154,7 +154,7 @@ const InstructionSchema = struct {
             next_msb += curr_field.width();
         }
 
-        std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
+        // std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
         std.debug.assert(next_msb == 8);
 
         return .{ skeleton, mask };
@@ -197,7 +197,7 @@ const InstructionSchema = struct {
     pub fn matches(self: *const InstructionSchema, other_pattern: u16) bool {
         const zero_where_agree = other_pattern ^ self.skeleton;
         const zero_where_agree_and_variable = zero_where_agree & self.mask;
-        std.debug.print("skeleton: {b:0>16}\nmask: {b:0>16}\nzero_where_agree: {b}\nzero_where_agree_and_variable: {b}\n", .{ self.skeleton, self.mask, zero_where_agree, zero_where_agree_and_variable });
+        // std.debug.print("skeleton: {b:0>16}\nmask: {b:0>16}\nzero_where_agree: {b}\nzero_where_agree_and_variable: {b}\n", .{ self.skeleton, self.mask, zero_where_agree, zero_where_agree_and_variable });
         return 0 == zero_where_agree_and_variable;
     }
 };
