@@ -1,33 +1,99 @@
 const std = @import("std");
 
+const NamedField = enum {
+    d,
+    w,
+    mod,
+    reg,
+    rm,
+    disp_lo,
+    disp_hi,
+    data,
+    data_if_w_eq_1,
+
+    pub fn of(s: []u8) NamedField {
+        const variant = std.meta.stringToEnum(NamedField, s);
+        if (variant == null) unreachable;
+        return variant;
+    }
+
+    // should I make this a u3? That only gets to 7 we should use u4? Maybe comptime to be int size needed for variants?
+    // figure cpu wants 8 aligned anyhow
+    pub fn width(self: NamedField) u8 {
+        return switch (self) {
+            .d => 1,
+            .w => 1,
+            .mod => 3,
+            .reg => 3,
+            .rm => 2,
+            .disp_lo => 8,
+            .disp_hi => 8,
+            .data => 8,
+            .data_if_w_eq_1 => 8,
+        };
+    }
+};
+
+const LiteralField = struct {
+    width: u8,
+};
+
+const SchemaField = union(enum) {
+    literal_field: LiteralField,
+    named_field: NamedField,
+
+    pub fn width(self: SchemaField) u8 {
+        return switch (self) {
+            .literal_field => |lit| lit.width,
+            .named_field => |named| named.width(),
+        };
+    }
+};
+
 // TODO I can comptime this so it knows if it is 8 or 16 bits prob?
 const Instruction = struct {
     name: []const u8,
-    pattern: []const u8,
+    fields: []SchemaField,
     /// the literal bits preserved and 0s for the variable bits
     skeleton: u16,
     /// the literal bits have 1s and the variable bits get 0s
     mask: u16,
 
     pub fn init(name: []const u8, pattern: []const u8) !Instruction {
-        var skeleton: [16]u8 = [_]u8{'0'} ** 16;
-        var mask: [16]u8 = [_]u8{'0'} ** 16;
+        var skeleton: u16 = 0;
+        var mask: u16 = 0;
+        var next_bit: u8 = 15; // find way to ask zig for this
+        var sliding_or: u8 = 0xf;
 
-        // TODO ugly and inefficient. Can just do bit manip later
-        for (0.., pattern) |i, c| {
-            if (c == '1' or c == '0') {
-                skeleton[i] = c;
-                mask[i] = '1';
-            } else {
-                skeleton[i] = '0';
-                mask[i] = '0';
+        var fields: [100]SchemaField = [_]SchemaField{0} ** (8 * 6); // overallocate then we cut it down. At most 8 one bit things, at most 6 bytes
+        var next_field: u8 = 0;
+
+        for (std.mem.tokenizeAny(u8, pattern, ", ")) |by| {
+            for (std.mem.tokenizeAny(u8, by, " ")) |seg| {
+                const curr_field = undefined;
+                const add_to_skeleton: u8 = undefined;
+                const add_to_mask: u8 = undefined;
+                if (std.ascii.isDigit(seg)) {
+                    add_to_skeleton = std.fmt.parseInt(u8, seg, 2);
+                    curr_field = LiteralField(add_to_skeleton);
+                    mask |= 
+                    add_to_mask = 0xf >> (8 - curr_field.width);
+                    add_to_mask = 0xf >> (8 - curr_field.width);
+                } else {
+                    curr_field = NamedField.of(seg);
+                }
+                fields[next_field] = curr_field;
+
+                next_bit -= curr_field.width();
+
+                next_field += 1;
             }
         }
 
-        std.debug.print("skeleton: {s}\n", .{skeleton});
-        std.debug.print("mask: {s}\n", .{mask});
+        // std.debug.print("skeleton: {s}\n", .{skeleton});
+        // std.debug.print("mask: {s}\n", .{mask});
 
-        return Instruction{ .name = name, .pattern = pattern, .skeleton = try (std.fmt.parseInt(u16, &skeleton, 2)), .mask = try (std.fmt.parseInt(u16, &mask, 2)) };
+        return Instruction{ .name = name, .fields = pattern[0..next_field], .skeleton = skeleton, .mask = mask };
     }
 
     pub fn matches(self: Instruction, other_pattern: u16) bool {
