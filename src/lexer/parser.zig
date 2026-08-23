@@ -1,0 +1,94 @@
+const std = @import("std");
+const utils = @import("utils.zig");
+const schema = @import("schema.zig");
+
+fn isLiteral(str: []const u8) bool {
+    for (str) |c| {
+        if (c != '1' and c != '0') return false;
+    }
+    return true;
+}
+
+fn parseSegment(segment: []const u8) struct { schema.SchemaField, u8, u8 } {
+    var curr_field: schema.SchemaField = undefined;
+    var add_to_skeleton: u8 = 0;
+    var add_to_mask: u8 = 0;
+
+    if (isLiteral(segment)) {
+        curr_field = .{
+            .literal_field = .{
+                .width = @intCast(segment.len),
+            },
+        };
+        // want to copy these bits to the skeleton and make mask have 1s here
+        // mask gets 1s here
+        add_to_skeleton = std.fmt.parseInt(u8, segment, 2) catch unreachable;
+        add_to_mask = (@as(u8, 1) << @truncate(curr_field.width())) - 1;
+    } else {
+        curr_field = .{
+            .named_field = schema.NamedField.of(segment),
+        };
+        // skeleton and mask keep 0s here
+    }
+
+    return .{
+        curr_field,
+        add_to_skeleton,
+        add_to_mask,
+    };
+}
+
+fn parseByte(byte: []const u8, field_list: *std.ArrayList(schema.SchemaField)) struct { u8, u8 } {
+    var skeleton: u8 = 0;
+    var mask: u8 = 0;
+    var next_msb: u4 = 0;
+
+    var segment_iter = std.mem.tokenizeSequence(u8, byte, " ");
+    while (segment_iter.next()) |seg| {
+        // std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
+        const curr_field, const add_to_skeleton, const add_to_mask = parseSegment(seg);
+        field_list.appendAssumeCapacity(curr_field);
+        skeleton = utils.insertMostSigBits(u8, skeleton, @truncate(next_msb), add_to_skeleton, curr_field.width());
+        mask = utils.insertMostSigBits(u8, mask, @truncate(next_msb), add_to_mask, curr_field.width());
+        next_msb += curr_field.width();
+    }
+
+    // std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
+    std.debug.assert(next_msb == 8);
+
+    return .{ skeleton, mask };
+}
+
+pub fn parseInstructionSchema(name: []const u8, pattern: []const u8) !schema.InstructionSchema {
+    var buffer: [schema.MaxFieldsPerInstruction]schema.SchemaField = undefined;
+    var field_list = std.ArrayList(schema.SchemaField).initBuffer(&buffer);
+
+    var skeleton_halfs: [2]u8 = [_]u8{0} ** 2;
+    var mask_halfs: [2]u8 = [_]u8{0} ** 2;
+    var i: u8 = 0;
+
+    var byte_iter = std.mem.tokenizeSequence(u8, pattern, ", ");
+    while (byte_iter.next()) |byte| : (i += 1) {
+        const byte_skeleton, const byte_mask = parseByte(byte, &field_list);
+        if (i < 2) {
+            skeleton_halfs[i] = byte_skeleton;
+            mask_halfs[i] = byte_mask;
+        } else {
+            std.debug.assert(byte_skeleton == 0);
+            std.debug.assert(byte_mask == 0);
+        }
+    }
+
+    // std.debug.print("skeleton: {s}\n", .{skeleton});
+    // std.debug.print("mask: {s}\n", .{mask});
+
+    return schema.InstructionSchema{
+        .name = name,
+        .fixed_list = .{
+            .fields = buffer,
+            .len = field_list.items.len,
+        },
+        .skeleton = std.mem.readInt(u16, &skeleton_halfs, .big),
+        .mask = std.mem.readInt(u16, &mask_halfs, .big),
+    };
+}
