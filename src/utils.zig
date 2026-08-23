@@ -31,7 +31,7 @@ pub fn insertBits(T: type, insert_into: T, start_ind: IndexT(T), to_insert: anyt
     const I = @TypeOf(to_insert);
 
     const width: NumBitsT(I) = num_bits orelse @typeInfo(I).int.bits;
-    std.debug.assert(width < @typeInfo(T).int.bits);
+    std.debug.assert(width <= @typeInfo(T).int.bits);
 
     const mask_of_width: T = @truncate((@as(WideT(T), 1) << width) - 1);
     const mask: T = mask_of_width << start_ind;
