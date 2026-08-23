@@ -27,6 +27,29 @@ pub fn getSubMostSigBits(T: type, to_index: T, msb_start_ind: IndexT(T), num_bit
     return getSubBits(T, to_index, start_ind, num_bits);
 }
 
+pub fn insertBits(T: type, insert_into: T, start_ind: IndexT(T), to_insert: anytype) T {
+    const mask_of_width: T = (@as(WideT(T), 1) << @typeInfo(@TypeOf(to_insert)).int.bits) - 1;
+    const mask: T = mask_of_width << start_ind;
+    const insert_into_target_cleared = insert_into & ~mask;
+
+    const to_insert_shifted: T = (@as(T, to_insert) << start_ind);
+    const post_insert: T = insert_into_target_cleared | to_insert_shifted;
+    return post_insert;
+}
+
+pub fn insertMostSigBits(T: type, insert_into: T, start_ind: IndexT(T), to_insert: anytype) T {
+    const I = @TypeOf(to_insert);
+    const container_width: NumBitsT(T) = @typeInfo(T).int.bits;
+    const to_insert_width: NumBitsT(I) = @typeInfo(I).int.bits;
+
+    const highest_least_sig_start_ind: IndexT(T) = container_width - 1;
+    const insert_width_index_offset: IndexT(I) = to_insert_width - 1;
+
+    const least_sig_start_ind: IndexT(T) = highest_least_sig_start_ind - start_ind - insert_width_index_offset;
+
+    return insertBits(T, insert_into, least_sig_start_ind, to_insert);
+}
+
 test "get sub bits basic" {
     try std.testing.expect(getSubBits(u8, 0b11010110, 2, 3) == 0b101);
 }
@@ -62,4 +85,24 @@ test "get sub sig bits last bits" {
 }
 test "get sub sig bits all bits" {
     try std.testing.expect(getSubMostSigBits(u8, 0b11010110, 0, 8) == 0b11010110);
+}
+
+test "insert bits start" {
+    try std.testing.expect(insertBits(u5, 0b10101, 0, @as(u3, 0b010)) == 0b10010);
+}
+test "insert bits end" {
+    try std.testing.expect(insertBits(u5, 0b10101, 2, @as(u3, 0b010)) == 0b01001);
+}
+test "insert bits middle" {
+    try std.testing.expect(insertBits(u8, 0b10101010, 2, @as(u3, 0b110)) == 0b10111010);
+}
+
+test "insert sig bits start" {
+    try std.testing.expect(insertMostSigBits(u5, 0b10101, 0, @as(u3, 0b010)) == 0b01001);
+}
+test "insert sig bits end" {
+    try std.testing.expect(insertMostSigBits(u5, 0b10101, 2, @as(u3, 0b010)) == 0b10010);
+}
+test "insert sig bits middle" {
+    try std.testing.expect(insertMostSigBits(u8, 0b10101010, 2, @as(u3, 0b110)) == 0b10110010);
 }

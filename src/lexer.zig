@@ -50,6 +50,8 @@ const SchemaField = union(enum) {
     }
 };
 
+const MaxFieldsPerInstruction = 8 * 6; // At most 8 one bit things, at most 6 bytes
+
 // TODO I can comptime this so it knows if it is 8 or 16 bits prob?
 const Instruction = struct {
     name: []const u8,
@@ -62,11 +64,11 @@ const Instruction = struct {
     pub fn init(name: []const u8, pattern: []const u8) !Instruction {
         var skeleton: u16 = 0;
         var mask: u16 = 0;
-        var next_bit: u8 = 15; // find way to ask zig for this
+        var next_bit: u8 = @typeInfo(@Int(unsigned, u16)).int.bits - 1; // find way to ask zig for this
         var sliding_or: u8 = 0xf;
 
-        var fields: [100]SchemaField = [_]SchemaField{0} ** (8 * 6); // overallocate then we cut it down. At most 8 one bit things, at most 6 bytes
-        var next_field: u8 = 0;
+        var buffer: [MaxFieldsPerInstruction]SchemaField = undefined;
+        var fields= std.ArrayList(SchemaField).initBuffer(buffer);
 
         for (std.mem.tokenizeAny(u8, pattern, ", ")) |by| {
             for (std.mem.tokenizeAny(u8, by, " ")) |seg| {
@@ -76,13 +78,16 @@ const Instruction = struct {
                 if (std.ascii.isDigit(seg)) {
                     add_to_skeleton = std.fmt.parseInt(u8, seg, 2);
                     curr_field = LiteralField(add_to_skeleton);
+                    // I need to make a mask that has 1 on next_bit - field.width
+                    // if next bit is 15 and field is 3 long I need (1 << 3) - 1 so
+                    // 0b1 << 3 == 1000 then -1 so 111 then I need to put it in the right spot
                     mask |= 
                     add_to_mask = 0xf >> (8 - curr_field.width);
                     add_to_mask = 0xf >> (8 - curr_field.width);
                 } else {
                     curr_field = NamedField.of(seg);
                 }
-                fields[next_field] = curr_field;
+                fields.append(curr_field)
 
                 next_bit -= curr_field.width();
 
