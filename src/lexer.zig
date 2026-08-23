@@ -65,9 +65,9 @@ const Instruction = struct {
     pub fn init(name: []const u8, pattern: []const u8) !Instruction {
         var skeleton: u16 = 0;
         var mask: u16 = 0;
-        var next_bit: u8 = @typeInfo(@Int(.unsigned, u16)).int.bits - 1;
+        var next_msb: u8 = 0;
 
-        var buffer: [MaxFieldsPerInstruction]SchemaField = undefined;
+        const buffer: [MaxFieldsPerInstruction]SchemaField = undefined;
         var fields = std.ArrayList(SchemaField).initBuffer(buffer);
 
         for (std.mem.tokenizeAny(u8, pattern, ", ")) |by| {
@@ -86,18 +86,16 @@ const Instruction = struct {
                     // skeleton and mask get 0s here
                 }
                 fields.append(curr_field);
-                utils.insertMostSigBits(u16, skeleton, next_bit, add_to_skeleton);
-
-                next_bit -= curr_field.width();
-
-                next_field += 1;
+                skeleton = utils.insertMostSigBits(u16, skeleton, next_msb, add_to_skeleton, curr_field.width);
+                mask = utils.insertMostSigBits(u16, mask, next_msb, add_to_mask, curr_field.width);
+                next_msb += curr_field.width();
             }
         }
 
         // std.debug.print("skeleton: {s}\n", .{skeleton});
         // std.debug.print("mask: {s}\n", .{mask});
 
-        return Instruction{ .name = name, .fields = pattern[0..next_field], .skeleton = skeleton, .mask = mask };
+        return Instruction{ .name = name, .fields = fields.items, .skeleton = skeleton, .mask = mask };
     }
 
     pub fn matches(self: Instruction, other_pattern: u16) bool {
