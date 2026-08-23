@@ -56,11 +56,20 @@ const MaxFieldsPerInstruction = 8 * 6; // At most 8 one bit things, at most 6 by
 // TODO I can comptime this so it knows if it is 8 or 16 bits prob?
 const Instruction = struct {
     name: []const u8,
-    fields: []SchemaField,
+    fixed_list: struct {
+        fields: [MaxFieldsPerInstruction]SchemaField,
+        len: usize,
+    },
+
+    // fields: []SchemaField,
     /// the literal bits preserved and 0s for the variable bits
     skeleton: u16,
     /// the literal bits have 1s and the variable bits get 0s
     mask: u16,
+
+    pub fn fields(self: Instruction) []SchemaField {
+        return self.fixed_list.fields[0..self.fixed_list.len];
+    }
 
     pub fn init(name: []const u8, pattern: []const u8) !Instruction {
         var skeleton: u16 = 0;
@@ -68,9 +77,10 @@ const Instruction = struct {
         var next_msb: u8 = 0;
 
         const buffer: [MaxFieldsPerInstruction]SchemaField = undefined;
-        var fields = std.ArrayList(SchemaField).initBuffer(buffer);
+        var field_list = std.ArrayList(SchemaField).initBuffer(buffer);
 
         for (std.mem.tokenizeAny(u8, pattern, ", ")) |by| {
+            // TODO: refactor this by pulling the inner thing out to a function
             for (std.mem.tokenizeAny(u8, by, " ")) |seg| {
                 const curr_field = undefined;
                 const add_to_skeleton: u8 = 0;
@@ -85,7 +95,7 @@ const Instruction = struct {
                     curr_field = NamedField.of(seg);
                     // skeleton and mask get 0s here
                 }
-                fields.append(curr_field);
+                field_list.append(curr_field);
                 skeleton = utils.insertMostSigBits(u16, skeleton, next_msb, add_to_skeleton, curr_field.width);
                 mask = utils.insertMostSigBits(u16, mask, next_msb, add_to_mask, curr_field.width);
                 next_msb += curr_field.width();
@@ -95,7 +105,15 @@ const Instruction = struct {
         // std.debug.print("skeleton: {s}\n", .{skeleton});
         // std.debug.print("mask: {s}\n", .{mask});
 
-        return Instruction{ .name = name, .fields = fields.items, .skeleton = skeleton, .mask = mask };
+        return Instruction{
+            .name = name,
+            .fields = .{
+                .fields = buffer,
+                .len = field_list.items.len,
+            },
+            .skeleton = skeleton,
+            .mask = mask,
+        };
     }
 
     pub fn matches(self: Instruction, other_pattern: u16) bool {
