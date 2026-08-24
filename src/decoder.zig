@@ -11,8 +11,34 @@ const DecodeError = error{
 
 // }
 
-fn extract(reader: *std.Io.Reader, schema: lexer.schema.InstructionSchema) !void {
-    var extracted = std.EnumArray(u8, lexer.schema.NamedField);
+fn how_much_disp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
+    const mod = extracted.get(.mod);
+    if (mod == null) {
+        return .none;
+    } else if (mod > 0b11) {
+        unreachable;
+    } else if (mod == 0b00) {
+        const rm = extracted.get(.rm);
+        if (rm == null) {
+            unreachable;
+        } else if (rm > 8) {
+            unreachable;
+        } else if (rm == 0b110) {
+            return .two_bytes;
+        } else {
+            return .one_byte;
+        }
+    } else if (mod == 0b01) {
+        return .one_byte;
+    } else if (mod == 0b10) {
+        return .two_bytes;
+    } else if (mod == 0b11) {
+        return .none;
+    }
+}
+
+fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !void {
+    var extracted = std.EnumArray(lexer.schema.NamedField, ?u8).initFill(null);
     const curr_byte = try reader.takeByte(); // TODO: end of stream is unexpected for us. Can turn into our own 'expected more bytes error' in theory
     const next_msb: u4 = 0; // TODO can change this to u3 if I guard the additions closely
     for (schema.fields()) |f| {
@@ -22,35 +48,35 @@ fn extract(reader: *std.Io.Reader, schema: lexer.schema.InstructionSchema) !void
             f.named_field => f.named_field,
         };
 
-        const should_take = switch (named_field) |nf| {
+        const should_take = switch (named_field) {
             .d => true,
             .w => true,
-            .s => 1,
-            .v => 1,
-            .z => 1,
-            .mod => 2,
-            .reg => 3,
-            .rm => 3,
-            .sr => 2,
-            .esc_opcode_hi => 3,
-            .esc_opcode_lo => 3,
+            .s => true,
+            .v => true,
+            .z => true,
+            .mod => true,
+            .reg => true,
+            .rm => true,
+            .sr => true,
+            .esc_opcode_hi => true,
+            .esc_opcode_lo => true,
             .disp_lo => 8,
             .disp_hi => 8,
-            .data => 8,
-            .data_if_w_eq_1 => 8,
-            .data_if_sw_eq_01 => 8,
-            .data_8 => 8,
-            .data_lo => 8,
-            .data_hi => 8,
-            .addr_lo => 8,
-            .addr_hi => 8,
-            .ip_lo => 8,
-            .ip_hi => 8,
-            .ip_inc_lo => 8,
-            .ip_inc_hi => 8,
-            .ip_inc8 => 8,
-            .cs_lo => 8,
-            .cs_hi => 8,
+            .data => true,
+            .data_if_w_eq_1 => extracted.get(.w).? != 0,
+            .data_if_sw_eq_01 => extracted.get(.s).? == 0 and extracted.get(.w).? != 0,
+            .data_8 => true,
+            .data_lo => true,
+            .data_hi => true,
+            .addr_lo => true,
+            .addr_hi => true,
+            .ip_lo => true,
+            .ip_hi => true,
+            .ip_inc_lo => true,
+            .ip_inc_hi => true,
+            .ip_inc8 => true,
+            .cs_lo => true,
+            .cs_hi => true,
         };
     }
 }
@@ -82,6 +108,6 @@ pub fn decode(reader: *std.Io.Reader) !void {
             }
         } else return error.NoSuchInstruction;
 
-        return extract(reader, matched_schema);
+        return extract(reader, &matched_schema);
     }
 }
