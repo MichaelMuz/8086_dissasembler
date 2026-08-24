@@ -7,34 +7,19 @@ const DecodeError = error{
     NoSuchInstruction,
 };
 
-// fn should_take(field: lexer.schema.SchemaField){
-
-// }
-
-fn how_much_disp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
-    const mod = extracted.get(.mod);
-    if (mod == null) {
-        return .none;
-    } else if (mod > 0b11) {
-        unreachable;
-    } else if (mod == 0b00) {
-        const rm = extracted.get(.rm);
-        if (rm == null) {
-            unreachable;
-        } else if (rm > 8) {
-            unreachable;
-        } else if (rm == 0b110) {
-            return .two_bytes;
-        } else {
-            return .one_byte;
-        }
-    } else if (mod == 0b01) {
-        return .one_byte;
-    } else if (mod == 0b10) {
-        return .two_bytes;
-    } else if (mod == 0b11) {
-        return .none;
-    }
+fn calc_disp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
+    const max_u8 = std.math.maxInt(u8);
+    return switch (extracted.get(.mod) orelse return .none) {
+        0b100...max_u8 => unreachable,
+        0b00 => switch (extracted.get(.rm) orelse unreachable) {
+            0b1000...max_u8 => unreachable,
+            0b110 => .two_bytes,
+            else => .none,
+        },
+        0b01 => .one_byte,
+        0b10 => .two_bytes,
+        0b11 => .none,
+    };
 }
 
 fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !void {
