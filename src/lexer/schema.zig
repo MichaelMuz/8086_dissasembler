@@ -1,4 +1,5 @@
 const std = @import("std");
+const utils = @import("../utils.zig");
 
 pub const NamedField = enum {
     d,
@@ -97,6 +98,10 @@ pub const InstructionSchema = struct {
     skeleton: u16,
     /// the literal bits have 1s and the variable bits get 0s
     mask: u16,
+
+    pub fn isOneByteIdentified(self: *const InstructionSchema) bool {
+        return utils.getSubBits(u16, self.mask, 0, 8) == 0;
+    }
 
     pub fn fields(self: *const InstructionSchema) []SchemaField {
         return self.fixed_list.fields[0..self.fixed_list.len];

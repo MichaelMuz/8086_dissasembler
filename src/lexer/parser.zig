@@ -96,3 +96,15 @@ test "check that things match" {
     try std.testing.expect(mov0.matches(0b10001000 << 8));
     try std.testing.expect(!mov0.matches(0b10011011 << 8));
 }
+test "is one bit identified if I fill just first byte" {
+    const mov = instructionSchema("mov0", "100010 d w");
+    try std.testing.expect(mov.isOneByteIdentified());
+}
+test "is one bit identified if I fill just first byte and second is just vars" {
+    const mov = instructionSchema("mov0", "100010 d w, reg mod rm");
+    try std.testing.expect(mov.isOneByteIdentified());
+}
+test "is not one bit identified if I fill just one bit in second byte" {
+    const mov = instructionSchema("mov0", "100010 d w, reg rm 0 d");
+    try std.testing.expect(!mov.isOneByteIdentified());
+}
