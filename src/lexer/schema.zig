@@ -104,7 +104,7 @@ pub const InstructionSchema = struct {
         return utils.getSubBits(u16, self.mask, 0, 8) == 0;
     }
 
-    pub fn fields(self: *const InstructionSchema) []SchemaField {
+    pub fn fields(self: *const InstructionSchema) []const SchemaField {
         return self.fixed_list.fields[0..self.fixed_list.len];
     }
 
