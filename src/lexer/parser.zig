@@ -59,7 +59,7 @@ fn parseByte(byte: []const u8, field_list: *std.ArrayList(schema.SchemaField)) s
     return .{ skeleton, mask };
 }
 
-pub fn instructionSchema(name: []const u8, pattern: []const u8) !schema.InstructionSchema {
+pub fn instructionSchema(name: []const u8, pattern: []const u8) schema.InstructionSchema {
     var buffer: [schema.MaxFieldsPerInstruction]schema.SchemaField = undefined;
     var field_list = std.ArrayList(schema.SchemaField).initBuffer(&buffer);
 
@@ -88,4 +88,11 @@ pub fn instructionSchema(name: []const u8, pattern: []const u8) !schema.Instruct
         .skeleton = std.mem.readInt(u16, &skeleton_halfs, .big),
         .mask = std.mem.readInt(u16, &mask_halfs, .big),
     };
+}
+
+test "check that things match" {
+    const mov0 = instructionSchema("mov0", "100010 d w");
+    try std.testing.expect(mov0.matches(0b10001011 << 8));
+    try std.testing.expect(mov0.matches(0b10001000 << 8));
+    try std.testing.expect(!mov0.matches(0b10011011 << 8));
 }
