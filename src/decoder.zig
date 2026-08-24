@@ -14,7 +14,7 @@ fn extract(reader: *std.Io.Reader, schema: lexer.schema.InstructionSchema) !void
     for (schema.fields()) |f| {
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
         switch (f) {
-            f.literal_field => if (f.literal_field.value != sub_bits) @panic("Extract called on schema with incompatible fixed fields"),
+            f.literal_field => if (f.literal_field.value != sub_bits) unreachable,
             f.named_field => extracted.set(f.named_field, sub_bits),
         }
 
