@@ -7,18 +7,51 @@ const DecodeError = error{
     NoSuchInstruction,
 };
 
+// fn should_take(field: lexer.schema.SchemaField){
+
+// }
+
 fn extract(reader: *std.Io.Reader, schema: lexer.schema.InstructionSchema) !void {
     var extracted = std.EnumArray(u8, lexer.schema.NamedField);
     const curr_byte = try reader.takeByte(); // TODO: end of stream is unexpected for us. Can turn into our own 'expected more bytes error' in theory
     const next_msb: u4 = 0; // TODO can change this to u3 if I guard the additions closely
     for (schema.fields()) |f| {
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
-        switch (f) {
-            f.literal_field => if (f.literal_field.value != sub_bits) unreachable,
-            f.named_field => extracted.set(f.named_field, sub_bits),
-        }
+        const named_field = switch (f) {
+            f.literal_field => if (f.literal_field.value == sub_bits) continue else unreachable,
+            f.named_field => f.named_field,
+        };
 
-        // TODO: something should decide if we continue or this instruction is done
+        const should_take = switch (named_field) |nf| {
+            .d => true,
+            .w => true,
+            .s => 1,
+            .v => 1,
+            .z => 1,
+            .mod => 2,
+            .reg => 3,
+            .rm => 3,
+            .sr => 2,
+            .esc_opcode_hi => 3,
+            .esc_opcode_lo => 3,
+            .disp_lo => 8,
+            .disp_hi => 8,
+            .data => 8,
+            .data_if_w_eq_1 => 8,
+            .data_if_sw_eq_01 => 8,
+            .data_8 => 8,
+            .data_lo => 8,
+            .data_hi => 8,
+            .addr_lo => 8,
+            .addr_hi => 8,
+            .ip_lo => 8,
+            .ip_hi => 8,
+            .ip_inc_lo => 8,
+            .ip_inc_hi => 8,
+            .ip_inc8 => 8,
+            .cs_lo => 8,
+            .cs_hi => 8,
+        };
     }
 }
 
