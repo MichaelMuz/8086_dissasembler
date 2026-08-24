@@ -18,6 +18,7 @@ fn parseSegment(segment: []const u8) struct { schema.SchemaField, u8, u8 } {
         curr_field = .{
             .literal_field = .{
                 .width = @intCast(segment.len),
+                .value = std.fmt.parseInt(u8, segment, 2) catch unreachable,
             },
         };
         // want to copy these bits to the skeleton and make mask have 1s here
@@ -107,4 +108,8 @@ test "is one bit identified if I fill just first byte and second is just vars" {
 test "is not one bit identified if I fill just one bit in second byte" {
     const mov = instructionSchema("mov0", "100010 d w, reg rm 0 d");
     try std.testing.expect(!mov.isOneByteIdentified());
+}
+test "check that the literal field has the right value" {
+    const mov = instructionSchema("mov0", "100010 d w, reg rm 0 d");
+    try std.testing.expect(mov.fields()[0].literal_field.value == 0b100010);
 }

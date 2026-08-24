@@ -72,6 +72,7 @@ pub const NamedField = enum {
 
 pub const LiteralField = struct {
     width: u4,
+    value: u8,
 };
 
 pub const SchemaField = union(enum) {
