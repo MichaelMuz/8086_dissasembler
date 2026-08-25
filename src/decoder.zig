@@ -75,12 +75,12 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
 
         switch (f) {
-            f.literal_field => |l| if (l.value == sub_bits) continue else unreachable,
-            f.named_field => |n| parsedInst.set(n, sub_bits),
+            .literal_field => |l| if (l.value == sub_bits) continue else unreachable,
+            .named_field => |n| parsedInst.set(n, sub_bits),
         }
 
         if (next_msb + f.width() > 8) unreachable;
-        next_msb +% f.width();
+        next_msb +%= f.width();
     }
     return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
