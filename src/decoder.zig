@@ -68,7 +68,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
     for (schema.fields()) |f| {
         if (next_msb == 0) {
             if (!shouldTake(&parsedInst, &f)) {
-                if (f.width() != 8) unreachable;
+                if (next_msb != 0 or f.width() != 8) unreachable;
                 continue;
             }
 
@@ -78,16 +78,22 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             };
         }
 
+        std.debug.print("HERE curr_byte: {b}, next_msb: {d}, f.width: {d}\n", .{ curr_byte, next_msb, f.width() });
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
 
         switch (f) {
-            .literal_field => |l| if (l.value == sub_bits) continue else unreachable,
+            .literal_field => |l| if (l.value != sub_bits) unreachable,
             .named_field => |n| parsedInst.set(n, sub_bits),
         }
 
         const new_next_msb: u4 = next_msb + f.width();
-        if (new_next_msb > 8) unreachable;
-        next_msb = @truncate(new_next_msb);
+        if (new_next_msb > 8) {
+            unreachable;
+        } else if (new_next_msb == 8) {
+            next_msb = 0;
+        } else {
+            next_msb = @truncate(new_next_msb);
+        }
     }
     return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
