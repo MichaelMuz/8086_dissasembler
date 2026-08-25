@@ -2,12 +2,11 @@ const std = @import("std");
 const utils = @import("utils.zig");
 const lexer = @import("lexer.zig");
 
-// TODO: maybe this this is the recognizer/matcher and the thing that does the extraction is the decoder?
 const DecodeError = error{
     NoSuchInstruction,
 };
 
-fn calc_disp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
+fn calcDisp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
     const max_u8 = std.math.maxInt(u8);
     return switch (extracted.get(.mod) orelse return .none) {
         0b100...max_u8 => unreachable,
@@ -22,18 +21,10 @@ fn calc_disp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum
     };
 }
 
-fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !void {
-    var extracted = std.EnumArray(lexer.schema.NamedField, ?u8).initFill(null);
-    const curr_byte = try reader.takeByte(); // TODO: end of stream is unexpected for us. Can turn into our own 'expected more bytes error' in theory
-    const next_msb: u4 = 0; // TODO can change this to u3 if I guard the additions closely
-    for (schema.fields()) |f| {
-        const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
-        const named_field = switch (f) {
-            f.literal_field => if (f.literal_field.value == sub_bits) continue else unreachable,
-            f.named_field => f.named_field,
-        };
-
-        const should_take = switch (named_field) {
+fn shouldTake(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8), curr_field: *const lexer.schema.InstructionSchema) bool {
+    return switch (curr_field) {
+        .literal_field => true,
+        .named_field => |n| switch (n) {
             .d => true,
             .w => true,
             .s => true,
@@ -45,8 +36,8 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             .sr => true,
             .esc_opcode_hi => true,
             .esc_opcode_lo => true,
-            .disp_lo => calc_disp(&extracted) != .none,
-            .disp_hi => calc_disp(extracted) == .two_bytes,
+            .disp_lo => calcDisp(&extracted) != .none,
+            .disp_hi => calcDisp(extracted) == .two_bytes,
             .data => true,
             .data_if_w_eq_1 => extracted.get(.w).? != 0,
             .data_if_sw_eq_01 => extracted.get(.s).? == 0 and extracted.get(.w).? != 0,
@@ -62,7 +53,31 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             .ip_inc8 => true,
             .cs_lo => true,
             .cs_hi => true,
+        },
+    };
+}
+
+fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !void {
+    var extracted = std.EnumArray(lexer.schema.NamedField, ?u8).initFill(null);
+    const next_msb: u3 = 0;
+
+    for (schema.fields()) |f| {
+        if (!shouldTake(extracted, f)) break;
+
+        const curr_byte = reader.takeByte() catch |err| switch (err) {
+            error.EndOfStream => error.InvalidInstruction,
+            error.ReadFailed => err,
         };
+
+        const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
+
+        switch (f) {
+            f.literal_field => |l| if (l.value == sub_bits) continue else unreachable,
+            f.named_field => |n| extracted.set(n, sub_bits),
+        }
+
+        if (next_msb + f.width() > 8) unreachable;
+        next_msb +% f.width();
     }
 }
 
