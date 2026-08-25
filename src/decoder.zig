@@ -87,10 +87,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
 
 fn decode(reader: *std.Io.Reader) !ParsedInstruction {
     const peeked_bytes = reader.peek(2) catch |err| switch (err) {
-        error.EndOfStream => (reader.peek(1) catch |inner_err| switch (inner_err) {
-            error.EndOfStream => return inner_err,
-            error.ReadFailed => return inner_err,
-        }),
+        error.EndOfStream => try reader.peek(1),
         error.ReadFailed => return err,
     };
 
