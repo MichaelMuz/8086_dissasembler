@@ -122,3 +122,14 @@ fn decode(reader: *std.Io.Reader) !ParsedInstruction {
 //         // try writer.write(s);
 //     }
 // }
+
+test "basic mov" {
+    const ac = decode(std.Io.Reader.fixed([_]u8{ 0b10001011, 0b11001001 }));
+    var exp = ParsedInstruction.initFill(null);
+    exp.set(.d, 0b1);
+    exp.set(.w, 0b1);
+    exp.set(.mod, 0b11);
+    exp.set(.reg, 0b001);
+    exp.set(.rm, 0b01);
+    std.testing.expectEqualSlices(ac, exp);
+}
