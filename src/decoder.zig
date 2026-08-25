@@ -61,6 +61,7 @@ fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.sche
 }
 
 fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !ParsedInstruction {
+    // std.debug.print("starting\n", .{});
     var parsedInst = ParsedInstruction.initFill(null);
     var next_msb: u3 = 0;
     var curr_byte: u8 = 0;
@@ -78,7 +79,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             };
         }
 
-        std.debug.print("HERE curr_byte: {b}, next_msb: {d}, f.width: {d}\n", .{ curr_byte, next_msb, f.width() });
+        // std.debug.print("HERE curr_byte: {b}, next_msb: {d}, f.width: {d}\n", .{ curr_byte, next_msb, f.width() });
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
 
         switch (f) {
@@ -130,6 +131,7 @@ fn decode(reader: *std.Io.Reader) !ParsedInstruction {
 // }
 
 test "basic mov" {
+    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi"
     var reader = std.Io.Reader.fixed(&[_]u8{ 0b10001011, 0b11001001 });
     const ac = try decode(&reader);
     var exp = ParsedInstruction.initFill(null);
@@ -138,5 +140,33 @@ test "basic mov" {
     exp.set(.mod, 0b11);
     exp.set(.reg, 0b001);
     exp.set(.rm, 0b01);
+    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+}
+
+test "mov with no disp_hi and w=0 conditional fixins" {
+    // 1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1
+    var reader = std.Io.Reader.fixed(&[_]u8{ 0b11000110, 0b01000000, 0b11110000, 0b00001111 });
+    const ac = try decode(&reader);
+    var exp = ParsedInstruction.initFill(null);
+    exp.set(.w, 0b0);
+    exp.set(.mod, 0b01);
+    exp.set(.rm, 0b00);
+    exp.set(.disp_lo, 0b11110000);
+    exp.set(.data, 0b00001111);
+    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+}
+
+test "mov with all conditional fixins" {
+    // 1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1
+    var reader = std.Io.Reader.fixed(&[_]u8{ 0b11000111, 0b10000000, 0b11110000, 0b00001111, 0b10101010, 0b01010101 });
+    const ac = try decode(&reader);
+    var exp = ParsedInstruction.initFill(null);
+    exp.set(.w, 0b1);
+    exp.set(.mod, 0b10);
+    exp.set(.rm, 0b00);
+    exp.set(.disp_lo, 0b11110000);
+    exp.set(.disp_hi, 0b00001111);
+    exp.set(.data, 0b10101010);
+    exp.set(.data_if_w_eq_1, 0b01010101);
     try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
 }
