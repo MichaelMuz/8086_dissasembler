@@ -63,14 +63,20 @@ fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.sche
 fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !ParsedInstruction {
     var parsedInst = ParsedInstruction.initFill(null);
     var next_msb: u3 = 0;
+    var curr_byte: u8 = 0;
 
     for (schema.fields()) |f| {
-        if (!shouldTake(&parsedInst, &f)) break;
+        if (next_msb == 0) {
+            if (!shouldTake(&parsedInst, &f)) {
+                if (f.width() != 8) unreachable;
+                continue;
+            }
 
-        const curr_byte = reader.takeByte() catch |err| switch (err) {
-            error.EndOfStream => return error.InvalidInstruction,
-            error.ReadFailed => return err,
-        };
+            curr_byte = reader.takeByte() catch |err| switch (err) {
+                error.EndOfStream => return error.InvalidInstruction,
+                error.ReadFailed => return err,
+            };
+        }
 
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
 
