@@ -7,6 +7,7 @@ const DecodeError = error{
 };
 
 fn calcDisp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
+    // note could just make this a static lookup table, prob faster at runtime. Will check asm zig generates.
     const max_u8 = std.math.maxInt(u8);
     return switch (extracted.get(.mod) orelse return .none) {
         0b100...max_u8 => unreachable,
@@ -57,7 +58,7 @@ fn shouldTake(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8), cur
     };
 }
 
-fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !void {
+fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) ![]u8 {
     var extracted = std.EnumArray(lexer.schema.NamedField, ?u8).initFill(null);
     const next_msb: u3 = 0;
 
@@ -79,35 +80,42 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
         if (next_msb + f.width() > 8) unreachable;
         next_msb +% f.width();
     }
+    // TODO: call some method that will turn extracted into a string and return it to decode
+    return "hello";
 }
 
-pub fn decode(reader: *std.Io.Reader) !void {
-    while (true) {
-        const peeked_bytes = reader.peek(2) catch |err| switch (err) {
-            error.EndOfStream => (reader.peek(1) catch |inner_err| switch (inner_err) {
-                error.EndOfStream => return,
-                error.ReadFailed => return inner_err,
-            }),
-            error.ReadFailed => return err,
-        };
+fn decode(reader: *std.Io.Reader) ![]u8 {
+    const peeked_bytes = reader.peek(2) catch |err| switch (err) {
+        error.EndOfStream => (reader.peek(1) catch |inner_err| switch (inner_err) {
+            error.EndOfStream => return,
+            error.ReadFailed => return inner_err,
+        }),
+        error.ReadFailed => return err,
+    };
 
-        var stamp: u16 = 0;
-        var stamp_is_one_byte: bool = undefined;
-        if (peeked_bytes.len == 1) {
-            stamp_is_one_byte = true;
-            stamp = utils.insertBits(u16, stamp, 0, peeked_bytes[0], 8);
-        } else {
-            stamp_is_one_byte = false;
-            stamp = std.mem.readInt(u16, &peeked_bytes, .big);
+    var stamp: u16 = 0;
+    var stamp_is_one_byte: bool = undefined;
+    if (peeked_bytes.len == 1) {
+        stamp_is_one_byte = true;
+        stamp = utils.insertBits(u16, stamp, 0, peeked_bytes[0], 8);
+    } else {
+        stamp_is_one_byte = false;
+        stamp = std.mem.readInt(u16, &peeked_bytes, .big);
+    }
+
+    const matched_schema: lexer.schema.InstructionSchema = for (lexer.encodings.instruction_encodings) |err| {
+        if (stamp_is_one_byte and !err.isOneByteIdentified()) {
+            continue;
+        } else if (err.matches(stamp)) {
+            break err;
         }
+    } else return error.NoSuchInstruction;
 
-        const matched_schema: lexer.schema.InstructionSchema = for (lexer.encodings.instruction_encodings) |err| {
-            if (stamp_is_one_byte and !err.isOneByteIdentified()) continue;
-            if (err.matches(stamp)) {
-                break err;
-            }
-        } else return error.NoSuchInstruction;
+    return extract(reader, &matched_schema);
+}
 
-        return extract(reader, &matched_schema);
+pub fn decodeStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
+    while (true) {
+        try writer.write(decode(reader));
     }
 }
