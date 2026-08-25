@@ -3,7 +3,7 @@ const utils = @import("utils.zig");
 const lexer = @import("lexer.zig");
 
 const DecodeError = error{
-    NoSuchInstruction,
+    InvalidInstruction,
 };
 
 const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
@@ -24,8 +24,8 @@ fn calcDisp(extracted: *const ParsedInstruction) enum { none, one_byte, two_byte
     };
 }
 
-fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.schema.InstructionSchema) bool {
-    return switch (curr_field) {
+fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.schema.SchemaField) bool {
+    return switch (curr_field.*) {
         .literal_field => true,
         .named_field => |n| switch (n) {
             .d => true,
@@ -39,7 +39,7 @@ fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.sche
             .sr => true,
             .esc_opcode_hi => true,
             .esc_opcode_lo => true,
-            .disp_lo => calcDisp(&extracted) != .none,
+            .disp_lo => calcDisp(extracted) != .none,
             .disp_hi => calcDisp(extracted) == .two_bytes,
             .data => true,
             .data_if_w_eq_1 => extracted.get(.w).? != 0,
@@ -65,11 +65,11 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
     const next_msb: u3 = 0;
 
     for (schema.fields()) |f| {
-        if (!shouldTake(parsedInst, f)) break;
+        if (!shouldTake(&parsedInst, &f)) break;
 
         const curr_byte = reader.takeByte() catch |err| switch (err) {
-            error.EndOfStream => error.InvalidInstruction,
-            error.ReadFailed => err,
+            error.EndOfStream => return error.InvalidInstruction,
+            error.ReadFailed => return err,
         };
 
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
@@ -103,7 +103,7 @@ fn decode(reader: *std.Io.Reader) !ParsedInstruction {
         } else if (err.matches(stamp)) {
             break err;
         }
-    } else return error.NoSuchInstruction;
+    } else return error.InvalidInstruction;
 
     return extract(reader, &matched_schema);
 }
