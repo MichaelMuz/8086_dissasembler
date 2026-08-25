@@ -88,7 +88,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
 fn decode(reader: *std.Io.Reader) !ParsedInstruction {
     const peeked_bytes = reader.peek(2) catch |err| switch (err) {
         error.EndOfStream => (reader.peek(1) catch |inner_err| switch (inner_err) {
-            error.EndOfStream => return,
+            error.EndOfStream => return inner_err,
             error.ReadFailed => return inner_err,
         }),
         error.ReadFailed => return err,
@@ -124,7 +124,8 @@ fn decode(reader: *std.Io.Reader) !ParsedInstruction {
 // }
 
 test "basic mov" {
-    const ac = decode(std.Io.Reader.fixed([_]u8{ 0b10001011, 0b11001001 }));
+    var reader = std.Io.Reader.fixed(&[_]u8{ 0b10001011, 0b11001001 });
+    const ac = decode(&reader);
     var exp = ParsedInstruction.initFill(null);
     exp.set(.d, 0b1);
     exp.set(.w, 0b1);
