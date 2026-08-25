@@ -6,7 +6,9 @@ const DecodeError = error{
     NoSuchInstruction,
 };
 
-fn calcDisp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum { none, one_byte, two_bytes } {
+const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
+
+fn calcDisp(extracted: *const ParsedInstruction) enum { none, one_byte, two_bytes } {
     // note could just make this a static lookup table, prob faster at runtime. Will check asm zig generates.
     const max_u8 = std.math.maxInt(u8);
     return switch (extracted.get(.mod) orelse return .none) {
@@ -22,7 +24,7 @@ fn calcDisp(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8)) enum 
     };
 }
 
-fn shouldTake(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8), curr_field: *const lexer.schema.InstructionSchema) bool {
+fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.schema.InstructionSchema) bool {
     return switch (curr_field) {
         .literal_field => true,
         .named_field => |n| switch (n) {
@@ -58,12 +60,12 @@ fn shouldTake(extracted: *const std.EnumArray(lexer.schema.NamedField, ?u8), cur
     };
 }
 
-fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) ![]u8 {
-    var extracted = std.EnumArray(lexer.schema.NamedField, ?u8).initFill(null);
+fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !ParsedInstruction {
+    var parsedInst = ParsedInstruction.initFill(null);
     const next_msb: u3 = 0;
 
     for (schema.fields()) |f| {
-        if (!shouldTake(extracted, f)) break;
+        if (!shouldTake(parsedInst, f)) break;
 
         const curr_byte = reader.takeByte() catch |err| switch (err) {
             error.EndOfStream => error.InvalidInstruction,
@@ -74,17 +76,16 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
 
         switch (f) {
             f.literal_field => |l| if (l.value == sub_bits) continue else unreachable,
-            f.named_field => |n| extracted.set(n, sub_bits),
+            f.named_field => |n| parsedInst.set(n, sub_bits),
         }
 
         if (next_msb + f.width() > 8) unreachable;
         next_msb +% f.width();
     }
-    // TODO: call some method that will turn extracted into a string and return it to decode
-    return "hello";
+    return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
 
-fn decode(reader: *std.Io.Reader) ![]u8 {
+fn decode(reader: *std.Io.Reader) !ParsedInstruction {
     const peeked_bytes = reader.peek(2) catch |err| switch (err) {
         error.EndOfStream => (reader.peek(1) catch |inner_err| switch (inner_err) {
             error.EndOfStream => return,
@@ -114,8 +115,10 @@ fn decode(reader: *std.Io.Reader) ![]u8 {
     return extract(reader, &matched_schema);
 }
 
-pub fn decodeStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
-    while (true) {
-        try writer.write(decode(reader));
-    }
-}
+// pub fn disassembleStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
+//     while (true) {
+//         // const d = decode(reader);
+//         // const s = format(d);
+//         // try writer.write(s);
+//     }
+// }
