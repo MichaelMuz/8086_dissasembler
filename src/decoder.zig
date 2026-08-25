@@ -86,23 +86,19 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
 }
 
 fn decode(reader: *std.Io.Reader) !ParsedInstruction {
-    const peeked_bytes = reader.peek(2) catch |err| switch (err) {
+    const peeked = reader.peek(2) catch |err| switch (err) {
         error.EndOfStream => try reader.peek(1),
         error.ReadFailed => return err,
     };
 
-    var stamp: u16 = 0;
-    var stamp_is_one_byte: bool = undefined;
-    if (peeked_bytes.len == 1) {
-        stamp_is_one_byte = true;
-        stamp = utils.insertBits(u16, stamp, 0, peeked_bytes[0], 8);
-    } else {
-        stamp_is_one_byte = false;
-        stamp = std.mem.readInt(u16, &peeked_bytes, .big);
-    }
+    const is_last_byte: bool = peeked.len == 1;
+    const stamp: u16 = switch (is_last_byte) {
+        true => std.mem.readInt(u16, &[_]u8{ peeked[0], 0 }, .big),
+        false => std.mem.readInt(u16, &[_]u8{ peeked[0], peeked[1] }, .big),
+    };
 
     const matched_schema: lexer.schema.InstructionSchema = for (lexer.encodings.instruction_encodings) |err| {
-        if (stamp_is_one_byte and !err.isOneByteIdentified()) {
+        if (is_last_byte and !err.isOneByteIdentified()) {
             continue;
         } else if (err.matches(stamp)) {
             break err;
