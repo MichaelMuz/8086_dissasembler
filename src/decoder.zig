@@ -62,7 +62,7 @@ fn shouldTake(extracted: *const ParsedInstruction, curr_field: *const lexer.sche
 
 fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema) !ParsedInstruction {
     var parsedInst = ParsedInstruction.initFill(null);
-    const next_msb: u3 = 0;
+    var next_msb: u3 = 0;
 
     for (schema.fields()) |f| {
         if (!shouldTake(&parsedInst, &f)) break;
@@ -79,8 +79,9 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             .named_field => |n| parsedInst.set(n, sub_bits),
         }
 
-        if (next_msb + f.width() > 8) unreachable;
-        next_msb +%= f.width();
+        const new_next_msb: u4 = next_msb + f.width();
+        if (new_next_msb > 8) unreachable;
+        next_msb = @truncate(new_next_msb);
     }
     return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
@@ -118,12 +119,12 @@ fn decode(reader: *std.Io.Reader) !ParsedInstruction {
 
 test "basic mov" {
     var reader = std.Io.Reader.fixed(&[_]u8{ 0b10001011, 0b11001001 });
-    const ac = decode(&reader);
+    const ac = try decode(&reader);
     var exp = ParsedInstruction.initFill(null);
     exp.set(.d, 0b1);
     exp.set(.w, 0b1);
     exp.set(.mod, 0b11);
     exp.set(.reg, 0b001);
     exp.set(.rm, 0b01);
-    std.testing.expectEqualSlices(ac, exp);
+    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
 }
