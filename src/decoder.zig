@@ -101,10 +101,10 @@ pub fn decode(reader: *std.Io.Reader) !void {
             stamp = std.mem.readInt(u16, &peeked_bytes, .big);
         }
 
-        const matched_schema: lexer.schema.InstructionSchema = for (lexer.encodings.instruction_encodings) |e| {
-            if (stamp_is_one_byte and !e.isOneByteIdentified()) continue;
-            if (e.matches(stamp)) {
-                break e;
+        const matched_schema: lexer.schema.InstructionSchema = for (lexer.encodings.instruction_encodings) |err| {
+            if (stamp_is_one_byte and !err.isOneByteIdentified()) continue;
+            if (err.matches(stamp)) {
+                break err;
             }
         } else return error.NoSuchInstruction;
 
