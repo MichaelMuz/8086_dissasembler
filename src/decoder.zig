@@ -6,7 +6,7 @@ const DecodeError = error{
     InvalidInstruction,
 };
 
-const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
+pub const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
 
 fn calcDisp(extracted: *const ParsedInstruction) enum { none, one_byte, two_bytes } {
     // note could just make this a static lookup table, prob faster at runtime. Will check asm zig generates.
