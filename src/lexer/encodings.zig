@@ -11,19 +11,19 @@ pub const instruction_encodings = encodings: {
     break :encodings [_]schema.InstructionSchema{
         // Data transfer
         parser.instSch("mov", "100010 d w, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1", .{}),
-        parser.instSch("mov", "1011 w reg, data, data_if_w_eq_1", .{}),
-        parser.instSch("mov", "1010000 w, addr_lo, addr_hi", .{}),
-        parser.instSch("mov", "1010001 w, addr_lo, addr_hi", .{}),
-        parser.instSch("mov", "10001110, mod 0 sr rm, disp_lo, disp_hi", .{}),
-        parser.instSch("mov", "10001100, mod 0 sr rm, disp_lo, disp_hi", .{}),
+        parser.instSch("mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1", .{ .d = 0 }),
+        parser.instSch("mov", "1011 w reg, data, data_if_w_eq_1", .{ .d = 0, .mod = 3 }),
+        parser.instSch("mov", "1010000 w, addr_lo, addr_hi", .{ .d = 1, .mod = 0, .rm = 6, .reg = 0 }),
+        parser.instSch("mov", "1010001 w, addr_lo, addr_hi", .{ .d = 0, .mod = 0, .rm = 6, .reg = 0 }),
+        parser.instSch("mov", "10001110, mod 0 sr rm, disp_lo, disp_hi", .{ .d = 1, .w = 1 }),
+        parser.instSch("mov", "10001100, mod 0 sr rm, disp_lo, disp_hi", .{ .d = 0, .w = 1 }),
 
-        parser.instSch("push", "11111111, mod 110 rm, disp_lo, disp_hi", .{}),
-        parser.instSch("push", "01010 reg", .{}),
+        parser.instSch("push", "11111111, mod 110 rm, disp_lo, disp_hi", .{ .d = 0, .w = 1 }),
+        parser.instSch("push", "01010 reg", .{ .d = 0, .w = 1 }),
         parser.instSch("push", "000 sr 110", .{}),
 
-        parser.instSch("pop", "10001111, mod 000 rm, disp_lo, disp_hi", .{}),
-        parser.instSch("pop", "01011 reg", .{}),
+        parser.instSch("pop", "10001111, mod 000 rm, disp_lo, disp_hi", .{ .d = 0, .w = 1 }),
+        parser.instSch("pop", "01011 reg", .{ .d = 0, .w = 1 }),
         parser.instSch("pop", "000 sr 111", .{}),
 
         parser.instSch("xchg", "1000011 w, mod reg rm, disp_lo, disp_hi", .{}),
@@ -45,8 +45,8 @@ pub const instruction_encodings = encodings: {
 
         // Arithmetic
         parser.instSch("add", "000000 d w, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("add", "100000 s w, mod 000 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
-        parser.instSch("add", "0000010 w, data, data_if_w_eq_1", .{}),
+        parser.instSch("add", "100000 s w, mod 000 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{ .d = 0 }),
+        parser.instSch("add", "0000010 w, data, data_if_w_eq_1", .{ .d = 0, .reg = 0 }),
 
         parser.instSch("adc", "000100 d w, mod reg rm, disp_lo, disp_hi", .{}),
         parser.instSch("adc", "100000 s w, mod 010 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
@@ -58,8 +58,8 @@ pub const instruction_encodings = encodings: {
         parser.instSch("daa", "00100111", .{}),
 
         parser.instSch("sub", "001010 d w, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("sub", "100000 s w, mod 101 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
-        parser.instSch("sub", "0010110 w, data, data_if_w_eq_1", .{}),
+        parser.instSch("sub", "100000 s w, mod 101 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{ .d = 0 }),
+        parser.instSch("sub", "0010110 w, data, data_if_w_eq_1", .{ .d = 0, .reg = 0 }),
 
         parser.instSch("sbb", "000110 d w, mod reg rm, disp_lo, disp_hi", .{}),
         parser.instSch("sbb", "100000 s w, mod 011 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
@@ -70,8 +70,8 @@ pub const instruction_encodings = encodings: {
         parser.instSch("neg", "1111011 w, mod 011 rm, disp_lo, disp_hi", .{}),
 
         parser.instSch("cmp", "001110 d w, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("cmp", "100000 s w, mod 111 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
-        parser.instSch("cmp", "0011110 w, data, data_if_w_eq_1", .{}),
+        parser.instSch("cmp", "100000 s w, mod 111 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{ .d = 0 }),
+        parser.instSch("cmp", "0011110 w, data, data_if_w_eq_1", .{ .d = 0, .reg = 0 }),
 
         parser.instSch("aas", "00111111", .{}),
         parser.instSch("das", "00101111", .{}),
