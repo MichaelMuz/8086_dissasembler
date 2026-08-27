@@ -53,8 +53,8 @@ pub fn formatInst(schema: *const lexer.schema.InstructionSchema, extracted: *con
     var src_struct = try getSrc(extracted);
     var dst_struct = try getDst(extracted);
 
-    // std.debug.print("src: {s}, dst: {s}\n", .{ src, dst, d });
     if (extracted.get(.d) != 0) {
+        // std.debug.print("flipping!d: {b}\n", .{extracted.get(.d).?});
         const tmp = src_struct;
         src_struct = dst_struct;
         dst_struct = tmp;
@@ -98,15 +98,15 @@ test "simple reg to reg with d set" {
     try std.testing.expectEqualStrings("mov bx, cx", ac);
 }
 
-// this is our first 'implicit' instruction. The direction is implied to be 0. We can orelse this for now
-// test "8 bit immediate to register" {
-//     // "mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1"
-//     const encoding = lexer.encodings.instruction_encodings[1];
-//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
-//     parsed_inst.set(.w, 0b0);
-//     parsed_inst.set(.mod, 0b11);
-//     parsed_inst.set(.rm, 1);
-//     parsed_inst.set(.data, 12);
-//     const ac = try formatInst(&encoding, &parsed_inst);
-//     try std.testing.expectEqualStrings("mov cl, 12", ac);
-// }
+test "8 bit immediate to register uses implicit direction" {
+    // "mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1" implied: { .d = 0 }
+    const encoding = lexer.encodings.instruction_encodings[1];
+    var parsed_inst = decoder.ParsedInstruction.initFill(null);
+    parsed_inst.set(.w, 0b0);
+    parsed_inst.set(.mod, 0b11);
+    parsed_inst.set(.rm, 1);
+    parsed_inst.set(.data, 12);
+    parsed_inst.set(.d, 0); // implied
+    const ac = try formatInst(&encoding, &parsed_inst);
+    try std.testing.expectEqualStrings("mov cl, 12", ac);
+}
