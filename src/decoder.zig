@@ -96,6 +96,17 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             next_msb = @truncate(new_next_msb);
         }
     }
+
+    for (std.enums.values(lexer.schema.NamedField)) |field| {
+        if (schema.implied_values.get(field)) |implied_val| {
+            if (parsedInst.get(field)) |_| {
+                unreachable;
+            } else {
+                parsedInst.set(field, implied_val);
+            }
+        }
+    }
+
     return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
 
@@ -144,7 +155,7 @@ test "basic mov" {
 }
 
 test "mov with no disp_hi and w=0 conditional fixins" {
-    // 1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1
+    // 1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1 implied: .{ .d = 0 }
     var reader = std.Io.Reader.fixed(&[_]u8{ 0b11000110, 0b01000000, 0b11110000, 0b00001111 });
     const ac = try decode(&reader);
     var exp = ParsedInstruction.initFill(null);
@@ -153,11 +164,12 @@ test "mov with no disp_hi and w=0 conditional fixins" {
     exp.set(.rm, 0b00);
     exp.set(.disp_lo, 0b11110000);
     exp.set(.data, 0b00001111);
+    exp.set(.d, 0);
     try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
 }
 
 test "mov with all conditional fixins" {
-    // 1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1
+    // 1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1 implied: .{ .d = 0 }
     var reader = std.Io.Reader.fixed(&[_]u8{ 0b11000111, 0b10000000, 0b11110000, 0b00001111, 0b10101010, 0b01010101 });
     const ac = try decode(&reader);
     var exp = ParsedInstruction.initFill(null);
@@ -168,5 +180,19 @@ test "mov with all conditional fixins" {
     exp.set(.disp_hi, 0b00001111);
     exp.set(.data, 0b10101010);
     exp.set(.data_if_w_eq_1, 0b01010101);
+    exp.set(.d, 0);
+    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+}
+
+test "mov with multiple implied values" {
+    // 1011 w reg, data, data_if_w_eq_1 implied: { .d = 0, .mod = 3 }),
+    var reader = std.Io.Reader.fixed(&[_]u8{ 0b10110001, 0b10000000 });
+    const ac = try decode(&reader);
+    var exp = ParsedInstruction.initFill(null);
+    exp.set(.w, 0b0);
+    exp.set(.reg, 0b001);
+    exp.set(.data, 0b10000000);
+    exp.set(.d, 0);
+    exp.set(.mod, 3);
     try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
 }
