@@ -63,7 +63,7 @@ fn parseByte(byte: []const u8, field_list: *std.ArrayList(schema.SchemaField)) s
 const NotImplied = @as(?u8, null);
 const ImplicitInitKwargs = std.enums.EnumFieldStruct(schema.NamedField, ?u8, NotImplied);
 
-pub fn instructionSchema(name: []const u8, pattern: []const u8, implied_values: ImplicitInitKwargs) schema.InstructionSchema {
+pub fn instSch(name: []const u8, pattern: []const u8, implied_values: ImplicitInitKwargs) schema.InstructionSchema {
     var buffer: [schema.MaxFieldsPerInstruction]schema.SchemaField = undefined;
     var field_list = std.ArrayList(schema.SchemaField).initBuffer(&buffer);
 
@@ -96,29 +96,29 @@ pub fn instructionSchema(name: []const u8, pattern: []const u8, implied_values: 
 }
 
 test "check that things match" {
-    const mov0 = instructionSchema("mov0", "100010 d w", .{});
+    const mov0 = instSch("mov0", "100010 d w", .{});
     try std.testing.expect(mov0.matches(0b10001011 << 8));
     try std.testing.expect(mov0.matches(0b10001000 << 8));
     try std.testing.expect(!mov0.matches(0b10011011 << 8));
 }
 test "is one bit identified if I fill just first byte" {
-    const mov = instructionSchema("mov0", "100010 d w", .{});
+    const mov = instSch("mov0", "100010 d w", .{});
     try std.testing.expect(mov.isOneByteIdentified());
 }
 test "is one bit identified if I fill just first byte and second is just vars" {
-    const mov = instructionSchema("mov0", "100010 d w, reg mod rm", .{});
+    const mov = instSch("mov0", "100010 d w, reg mod rm", .{});
     try std.testing.expect(mov.isOneByteIdentified());
 }
 test "is not one bit identified if I fill just one bit in second byte" {
-    const mov = instructionSchema("mov0", "100010 d w, reg rm 0 d", .{});
+    const mov = instSch("mov0", "100010 d w, reg rm 0 d", .{});
     try std.testing.expect(!mov.isOneByteIdentified());
 }
 test "check that the literal field has the right value" {
-    const mov = instructionSchema("mov0", "100010 d w, reg rm 0 d", .{});
+    const mov = instSch("mov0", "100010 d w, reg rm 0 d", .{});
     try std.testing.expect(mov.fields()[0].literal_field.value == 0b100010);
 }
 test "check that implied values are populated" {
-    const mov = instructionSchema("mov0", "100010 d w", .{ .data = 1, .z = 5 });
+    const mov = instSch("mov0", "100010 d w", .{ .data = 1, .z = 5 });
     try std.testing.expect(mov.fields()[0].literal_field.value == 0b100010);
     try std.testing.expect(mov.implied_values.get(.data) == 1);
     try std.testing.expect(mov.implied_values.get(.z) == 5);
