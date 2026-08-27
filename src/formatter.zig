@@ -22,9 +22,9 @@ fn getSrc(extracted: *const decoder.ParsedInstruction) !struct { [16]u8, u5 } {
     if (extracted.get(.data)) |data| {
         if (extracted.get(.data_if_w_eq_1)) |diw1| {
             const both_data = std.mem.readInt(u16, &[_]u8{ diw1, data }, .big);
-            bytes = (try std.fmt.bufPrint(&buf, "{b}", .{both_data})).len;
+            bytes = (try std.fmt.bufPrint(&buf, "{d}", .{both_data})).len;
         } else {
-            bytes = (try std.fmt.bufPrint(&buf, "{b}", .{data})).len;
+            bytes = (try std.fmt.bufPrint(&buf, "{d}", .{data})).len;
         }
     } else if (extracted.get(.reg)) |reg| {
         const w = extracted.get(.w) orelse 0;
@@ -106,6 +106,7 @@ test "simple reg to reg with d set" {
 //     parsed_inst.set(.w, 0b0);
 //     parsed_inst.set(.mod, 0b11);
 //     parsed_inst.set(.rm, 1);
+//     parsed_inst.set(.data, 12);
 //     const ac = try formatInst(&encoding, &parsed_inst);
 //     try std.testing.expectEqualStrings("mov cl, 12", ac);
 // }
