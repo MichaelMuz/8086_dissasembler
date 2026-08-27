@@ -97,6 +97,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
         }
     }
 
+    // this whole thing can be eliminated if I just start parsedInst with a copy by value of the implied values in schema
     for (std.enums.values(lexer.schema.NamedField)) |field| {
         if (schema.implied_values.get(field)) |implied_val| {
             if (parsedInst.get(field)) |_| {
