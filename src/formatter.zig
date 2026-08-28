@@ -2,53 +2,6 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const decoder = @import("decoder.zig");
 
-const reg_and_word_to_reg_name = [_][2]*const [2:0]u8{
-    // 8 bit reg, 16 bit reg
-    .{ "al", "ax" },
-    .{ "cl", "cx" },
-    .{ "dl", "dx" },
-    .{ "bl", "bx" },
-    .{ "ah", "sp" },
-    .{ "ch", "bp" },
-    .{ "dh", "si" },
-    .{ "bh", "di" },
-};
-
-fn getSrc(extracted: *const decoder.ParsedInstruction) !struct { [16]u8, u5 } {
-    // can prob replace manual bookkeeping with arraylist given this buf
-    var buf = [_]u8{0} ** 16;
-    var bytes: usize = 0;
-
-    if (extracted.get(.data)) |data| {
-        if (extracted.get(.data_if_w_eq_1)) |diw1| {
-            const both_data = std.mem.readInt(u16, &[_]u8{ diw1, data }, .big);
-            bytes = (try std.fmt.bufPrint(&buf, "{d}", .{both_data})).len;
-        } else {
-            bytes = (try std.fmt.bufPrint(&buf, "{d}", .{data})).len;
-        }
-    } else if (extracted.get(.reg)) |reg| {
-        const w = extracted.get(.w) orelse 0;
-        const register = reg_and_word_to_reg_name[@truncate(reg)][w];
-        bytes = (try std.fmt.bufPrint(&buf, "{s}", .{register})).len;
-    } else {
-        unreachable;
-    }
-    return .{ buf, @truncate(bytes) };
-}
-
-fn getDst(extracted: *const decoder.ParsedInstruction) !struct { [16]u8, u5 } {
-    var buf = [_]u8{0} ** 16;
-    var bytes: usize = 0;
-    if (extracted.get(.rm)) |rm| {
-        const w = extracted.get(.w) orelse 0;
-        const reg = reg_and_word_to_reg_name[@truncate(rm)][w];
-        bytes = (try std.fmt.bufPrint(&buf, "{s}", .{reg})).len;
-    } else {
-        unreachable;
-    }
-    return .{ buf, @truncate(bytes) };
-}
-
 pub fn formatInst(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) ![]u8 {
     var src_struct = try getSrc(extracted);
     var dst_struct = try getDst(extracted);
