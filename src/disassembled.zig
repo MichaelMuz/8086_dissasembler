@@ -70,12 +70,14 @@ const JumpInstruction = struct {
     // }
 };
 
+const DisasmInstr = union(enum) {
+    nullary_instruction: NullaryInstruction,
+    unary_instruction: UnaryInstruction,
+    binary_instruction: BinaryInstruction,
+    jump_instruction: JumpInstruction,
+};
+
 // --- naturally above here is instruction types ---
-// Note that a lot of stuff below here could be part of the operand type that is creating it
-// also if we had a struct with the particular types filled in then we could avoid truncate bc it would know
-// w is a u1. Also we could have getMode be a method which would be convenient. The enum array representation
-// is fine for when we are simply jamming the numbers we found while decoding the instruction but when
-// we start to use that it is a bit cumbersome as the canonical type for a decoded instruction
 
 const ModeType = enum {
     no_displacement_mode,
@@ -89,97 +91,99 @@ const Mode = struct {
     direct_memory_index: bool,
 };
 
-fn getMode(extracted: *const decoder.ParsedInstruction) Mode {
-    const mod_val = if (extracted.get(.mod)) |m| m else unreachable;
-    return switch (mod_val) {
-        0b100...std.math.maxInt(@TypeOf(mod_val)) => unreachable,
-        0b00 => if (extracted.get(.rm) == 0b110) .{ .mode = .word_displacement_mode, .direct_memory_index = true } else .{ .mode = .no_displacement_mode, .direct_memory_index = false },
+fn getMode(mod: ?u2, rm: ?u3) ?Mode {
+    if ((mod == null) ^ (rm == null)) {
+        // either have both or missing both
+        unreachable;
+    }
+
+    const m = mod orelse return null;
+    const r = rm orelse return null;
+
+    return switch (m) {
+        0b00 => if ((r) == 0b110) .{ .mode = .word_displacement_mode, .direct_memory_index = true } else .{ .mode = .no_displacement_mode, .direct_memory_index = false },
         0b01 => .{ .mode = .byte_displacement_mode, .direct_memory_index = false },
         0b10 => .{ .mode = .word_displacement_mode, .direct_memory_index = false },
         0b11 => .{ .mode = .register_mode, .direct_memory_index = false },
     };
 }
 
-fn getDataOperand(extracted: *const decoder.ParsedInstruction) ?operands.ImmediateOperand {
-    if (extracted.get(.data)) |dl| {
-        var data = [_]u8{ 0, dl };
-        if (extracted.get(.data_if_w_eq_1)) |dh| {
-            data = [_]u8{ dh, dl };
-        }
-
-        if (extracted.get(.w)) |w| {
-            return operands.ImmediateOperand{ .value = std.mem.readInt(u16, data, .big), .word = w };
-        } else unreachable;
+fn getDataOperand(hasData: bool, data: u16, word: bool) ?operands.ImmediateOperand {
+    if (hasData) {
+        return operands.ImmediateOperand{ .value = data, .word = word };
     } else {
         return null;
     }
 }
 
-fn getRegOperand(extracted: *const decoder.ParsedInstruction) ?operands.RegisterOperand {
-    if (extracted.get(.reg)) |r| {
-        if (extracted.get(.w)) |w| {
-            return operands.RegOperand{ .reg_ind = @truncate(r), .word = w == 1 };
-        } else unreachable;
-    } else if (extracted.get(.sr)) |sr| {
-        return operands.SegmentRegOperand{ .reg_ind = @truncate(sr) };
+fn getRegOperand(reg: ?u3, sr: ?u2, word: bool) ?operands.RegisterOperand {
+    if (reg) |r| {
+        return operands.RegOperand{ .reg_ind = r, .word = word };
+    } else if (sr) |s| {
+        return operands.SegmentRegOperand{ .reg_ind = s };
     } else {
         return null;
     }
 }
 
-fn getRmOperand(extracted: *const decoder.ParsedInstruction) ?operands.RegisterOperand {
-    const word = if (extracted.get(.w)) |w| w == 1 else unreachable;
-    if (extracted.get(.rm)) |reg_or_mem_base| {
-        const mode = getMode(extracted);
-        if (mode.mode == .register_mode) {
-            return operands.RegOperand{ .reg_ind = @truncate(reg_or_mem_base), .word = word };
+fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.RegisterOperand {
+    const m = mode orelse return null; // can't have rm operand without mode
+
+    if (rm) |reg_or_mem_base| {
+        if (m.mode == .register_mode) {
+            return operands.RegOperand{ .reg_ind = reg_or_mem_base, .word = word };
         } else {
-            const dl = extracted.get(.disp_lo) orelse 0;
-            var disp = [_]u8{ 0, dl };
-            if (extracted.get(.disp_hi)) |dh| {
-                disp = [_]u8{ dh, dl };
-            }
-            return operands.MemoryOperand{ .memory_base = if (mode.direct_memory_index) null else reg_or_mem_base, .displacement = disp, .word = word };
+            return operands.MemoryOperand{
+                .memory_base = if (m.direct_memory_index) null else reg_or_mem_base,
+                .displacement = disp,
+                .word = word,
+            };
         }
     } else {
         return null;
     }
 }
 
-const DisasmInstr = union(enum) {
-    nullary_instruction: NullaryInstruction,
-    unary_instruction: UnaryInstruction,
-    binary_instruction: BinaryInstruction,
-    jump_instruction: JumpInstruction,
-
-    pub fn construct(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) @This() {
-        if (extracted.get(.ip_inc8)) |inc_8| {
-            return JumpInstruction{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null };
-        }
-
-        const data = getDataOperand(extracted);
-        const register = getRegOperand(extracted);
-        const rm = getRmOperand(extracted);
-
-        const operand_buffer = [_]@This(){undefined} ** 3;
-        const op_arr = std.ArrayList(operands.Operand).initBuffer(operand_buffer);
-        for ([_]operands.Operands{ data, register, rm }) |op| {
-            if (op) |o| {
-                op_arr.appendBounded(o);
-            }
-        }
-
-        const d: u8 = @truncate(extracted.get(.d) orelse 0);
-
-        return switch (op_arr.len) {
-            0 => NullaryInstruction{ .mnemonic = schema.name },
-            1 => UnaryInstruction{ .mnemonic = schema.name, .op = op_arr[0] },
-            2 => BinaryInstruction{
-                .mnemonic = schema.name,
-                .src = op_arr[0 ^ d],
-                .dst = op_arr[1 ^ d],
-            },
-            else => unreachable,
-        };
+pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) @This() {
+    if (extracted.get(.ip_inc8)) |inc_8| {
+        return JumpInstruction{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null };
     }
-};
+
+    const hasData: bool = extracted.get(.data) != null;
+    const data: u16 = std.mem.readInt(u16, [_]u8{ extracted.get(.data_if_w_eq_1) orelse 0, extracted.get(.data) orelse 0 }, .big);
+    const word: bool = if (extracted.get(.w)) |w| w == 1 else unreachable; // no idea what to do with instructions that don't have a w. Prob unary but idk yet
+
+    const data_operand = getDataOperand(hasData, data, word);
+
+    const reg: ?u3 = @truncate(extracted.get(.reg));
+    const sr: ?u2 = @truncate(extracted.get(.sr));
+
+    const reg_operand = getRegOperand(reg, sr, word);
+
+    const rm: ?u3 = @truncate(extracted.get(.rm));
+    const mode: ?Mode = getMode(extracted.get(.mod), rm);
+    const disp: u16 = std.mem.readInt(u16, [_]u8{ extracted.get(.disp_lo) orelse 0, extracted.get(.disp_hi) orelse 0 }, .big);
+
+    const rm_operand = getRmOperand(rm, mode, word, disp);
+
+    const operand_buffer = [_]@This(){undefined} ** 3;
+    const op_arr = std.ArrayList(operands.Operand).initBuffer(operand_buffer);
+    for ([_]operands.Operands{ data_operand, reg_operand, rm_operand }) |op| {
+        if (op) |o| {
+            op_arr.appendBounded(o);
+        }
+    }
+
+    const d: u1 = @truncate(extracted.get(.d) orelse 0);
+
+    return switch (op_arr.len) {
+        0 => NullaryInstruction{ .mnemonic = schema.name },
+        1 => UnaryInstruction{ .mnemonic = schema.name, .op = op_arr[0] },
+        2 => BinaryInstruction{
+            .mnemonic = schema.name,
+            .src = op_arr[0 ^ d],
+            .dst = op_arr[1 ^ d],
+        },
+        else => unreachable,
+    };
+}
