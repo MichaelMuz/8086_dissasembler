@@ -6,7 +6,12 @@ const DecodeError = error{
     InvalidInstruction,
 };
 
-pub const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
+const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
+
+pub const DecodedInstruction = struct {
+    parsed: ParsedInstruction,
+    schema: *const lexer.schema.InstructionSchema,
+};
 
 fn calcDisp(extracted: *const ParsedInstruction) enum { none, one_byte, two_bytes } {
     // note could just make this a static lookup table, prob faster at runtime. Will check asm zig generates.
@@ -111,7 +116,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
     return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
 
-fn decode(reader: *std.Io.Reader) !ParsedInstruction {
+fn decode(reader: *std.Io.Reader) !DecodedInstruction {
     const peeked = reader.peek(2) catch |err| switch (err) {
         error.EndOfStream => try reader.peek(1),
         error.ReadFailed => return err,
@@ -131,16 +136,8 @@ fn decode(reader: *std.Io.Reader) !ParsedInstruction {
         }
     } else return error.InvalidInstruction;
 
-    return extract(reader, &matched_schema);
+    return DecodedInstruction{ .parsed = extract(reader, &matched_schema), .schema = matched_schema };
 }
-
-// pub fn disassembleStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
-//     while (true) {
-//         // const d = decode(reader);
-//         // const s = format(d);
-//         // try writer.write(s);
-//     }
-// }
 
 test "basic mov" {
     // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi"
@@ -152,7 +149,7 @@ test "basic mov" {
     exp.set(.mod, 0b11);
     exp.set(.reg, 0b001);
     exp.set(.rm, 0b01);
-    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+    try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
 }
 
 test "mov with no disp_hi and w=0 conditional fixins" {
@@ -166,7 +163,7 @@ test "mov with no disp_hi and w=0 conditional fixins" {
     exp.set(.disp_lo, 0b11110000);
     exp.set(.data, 0b00001111);
     exp.set(.d, 0);
-    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+    try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
 }
 
 test "mov with all conditional fixins" {
@@ -182,7 +179,7 @@ test "mov with all conditional fixins" {
     exp.set(.data, 0b10101010);
     exp.set(.data_if_w_eq_1, 0b01010101);
     exp.set(.d, 0);
-    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+    try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
 }
 
 test "mov with multiple implied values" {
@@ -195,5 +192,5 @@ test "mov with multiple implied values" {
     exp.set(.data, 0b10000000);
     exp.set(.d, 0);
     exp.set(.mod, 3);
-    try std.testing.expectEqualSlices(?u8, &ac.values, &exp.values);
+    try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
 }
