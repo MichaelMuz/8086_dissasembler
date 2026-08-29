@@ -6,7 +6,7 @@ const DecodeError = error{
     InvalidInstruction,
 };
 
-const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
+pub const ParsedInstruction = std.EnumArray(lexer.schema.NamedField, ?u8);
 
 pub const DecodedInstruction = struct {
     parsed: ParsedInstruction,
@@ -136,7 +136,7 @@ fn decode(reader: *std.Io.Reader) !DecodedInstruction {
         }
     } else return error.InvalidInstruction;
 
-    return DecodedInstruction{ .parsed = extract(reader, &matched_schema), .schema = matched_schema };
+    return DecodedInstruction{ .parsed = try extract(reader, &matched_schema), .schema = &matched_schema };
 }
 
 test "basic mov" {
