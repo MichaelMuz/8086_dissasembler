@@ -51,15 +51,15 @@ pub fn build(b: *std.Build) void {
     const run_mod_unit_tests = b.addRunArtifact(mod_unit_tests);
     const run_mod_integration_tests = b.addRunArtifact(mod_integration_tests);
 
-    const exe_tests = b.addTest(.{
+    const exe_unit_tests = b.addTest(.{
         .root_module = exe.root_module,
     });
 
-    const run_exe_tests = b.addRunArtifact(exe_tests);
+    const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
     const unit_test_step = b.step("unit", "Run unit tests");
     unit_test_step.dependOn(&run_mod_unit_tests.step);
-    unit_test_step.dependOn(&run_exe_tests.step);
+    unit_test_step.dependOn(&run_exe_unit_tests.step);
 
     const integration_test_step = b.step("integration", "Run integration tests");
     integration_test_step.dependOn(&run_mod_integration_tests.step);
