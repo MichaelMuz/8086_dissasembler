@@ -76,7 +76,7 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
 
     const hasData: bool = extracted.get(.data) != null;
     const data: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.data_if_w_eq_1) orelse 0, extracted.get(.data) orelse 0 }, .big);
-    const word: bool = if (extracted.get(.w)) |w| w == 1 else unreachable; // no idea what to do with instructions that don't have a w. Prob unary but idk yet
+    const word: bool = if (extracted.get(.w)) |w| w == 1 else false; // no idea what to do with instructions that don't have a w. Prob unary but idk yet
 
     const data_operand = getDataOperand(hasData, data, word);
 
@@ -112,22 +112,36 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
     };
 }
 
+const TestSchemas = struct {
+    const mov_reg_mem = &lexer.encodings.instruction_encodings[0];
+    const mov_immediate_rm = &lexer.encodings.instruction_encodings[1];
+    const mov_segment_from_rm = &lexer.encodings.instruction_encodings[5];
+    const add_immediate_accumulator = &lexer.encodings.instruction_encodings[29];
+    const cwd = &lexer.encodings.instruction_encodings[58];
+    const jmp_short = &lexer.encodings.instruction_encodings[90];
+};
+
 fn test_disassemble_helper(expected: []const u8, schema: *const lexer.schema.InstructionSchema, fields: std.enums.EnumFieldStruct(lexer.schema.NamedField, ?u8, @as(?u8, null))) !void {
     var buf = [_]u8{0} ** 64;
     var arr = std.ArrayList(u8).initBuffer(&buf);
 
-    const parsed_inst = decoder.ParsedInstruction.initDefault(@as(?u8, null), fields);
+    var parsed_inst = schema.implied_values;
+    const explicit_fields = decoder.ParsedInstruction.initDefault(@as(?u8, null), fields);
+    for (std.enums.values(lexer.schema.NamedField)) |field| {
+        if (explicit_fields.get(field)) |value| {
+            parsed_inst.set(field, value);
+        }
+    }
     const disasm_instr = disassemble(schema, &parsed_inst);
 
     disasm_instr.fmt(&arr);
     try std.testing.expectEqualStrings(expected, arr.items);
 }
 
-test "simple reg to reg" {
-    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+test "register mode d is 0" {
     try test_disassemble_helper(
         "mov cx, bx",
-        &lexer.encodings.instruction_encodings[0],
+        TestSchemas.mov_reg_mem,
         .{
             .d = 0b0,
             .w = 0b1,
@@ -137,11 +151,10 @@ test "simple reg to reg" {
         },
     );
 }
-test "simple reg to reg with d set" {
-    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+test "register mode d is 1" {
     try test_disassemble_helper(
         "mov bx, cx",
-        &lexer.encodings.instruction_encodings[0],
+        TestSchemas.mov_reg_mem,
         .{
             .d = 0b1,
             .w = 0b1,
@@ -151,17 +164,83 @@ test "simple reg to reg with d set" {
         },
     );
 }
-test "8 bit immediate to register uses implicit direction" {
-    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+test "memory mode no direct index" {
     try test_disassemble_helper(
-        "mov cl, 12",
-        &lexer.encodings.instruction_encodings[0],
+        "mov es, [bx + si]",
+        TestSchemas.mov_segment_from_rm,
         .{
-            .w = 0b0,
-            .mod = 0b11,
-            .rm = 1,
-            .data = 12,
-            .d = 0, // would be decoded with implied
+            .sr = 0,
+            .mod = 0b00,
+            .rm = 0,
+        },
+    );
+}
+test "memory mode direct index" {
+    try test_disassemble_helper(
+        "mov cl, [512]",
+        TestSchemas.mov_reg_mem,
+        .{
+            .d = 1,
+            .w = 0,
+            .reg = 1,
+            .mod = 0b00,
+            .rm = 0b110,
+            .disp_lo = 0,
+            .disp_hi = 2,
+        },
+    );
+}
+test "byte displacement mode" {
+    try test_disassemble_helper(
+        "mov [bx + si + 5], byte 50",
+        TestSchemas.mov_immediate_rm,
+        .{
+            .w = 0,
+            .mod = 0b01,
+            .data = 50,
+            .rm = 0,
+            .disp_lo = 5,
+        },
+    );
+}
+test "word displacement mode" {
+    try test_disassemble_helper(
+        "mov [bx + si + 512], word 50",
+        TestSchemas.mov_immediate_rm,
+        .{
+            .w = 1,
+            .mod = 0b10,
+            .data = 50,
+            .rm = 0,
+            .disp_lo = 0,
+            .disp_hi = 2,
+            .data_if_w_eq_1 = 0,
+        },
+    );
+}
+test "immediate to accumulator has no mod" {
+    try test_disassemble_helper(
+        "add al, 50",
+        TestSchemas.add_immediate_accumulator,
+        .{
+            .w = 0,
+            .data = 50,
+        },
+    );
+}
+test "nullary" {
+    try test_disassemble_helper(
+        "cwd",
+        TestSchemas.cwd,
+        .{},
+    );
+}
+test "jump" {
+    try test_disassemble_helper(
+        "jmp 5",
+        TestSchemas.jmp_short,
+        .{
+            .ip_inc8 = 5,
         },
     );
 }
