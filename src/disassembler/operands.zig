@@ -39,7 +39,7 @@ const RegOperand = struct {
     word: bool,
 
     pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
-        arr.printAssumeCapacity("{s}", .{reg_and_word_to_reg_name[self.reg_ind]});
+        arr.printAssumeCapacity("{s}", .{reg_and_word_to_reg_name[self.reg_ind][@intFromBool(self.word)]});
     }
 };
 
@@ -57,8 +57,14 @@ const RegisterOperand = union(enum) {
     seg_operand: SegmentRegOperand,
 
     pub fn word(self: *const @This()) bool {
-        return switch (self) {
-            inline else => self.word,
+        return switch (self.*) {
+            inline else => |op| op.word,
+        };
+    }
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        return switch (self.*) {
+            inline else => |op| op.fmt(arr),
         };
     }
 };
@@ -112,7 +118,7 @@ const Operand = union(enum) {
     memory_operand: MemoryOperand,
 
     pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
-        return switch (self) {
+        return switch (self.*) {
             inline else => |op| op.fmt(arr),
         };
     }
@@ -141,7 +147,7 @@ test "segment reg operand" {
 }
 
 test "register operand is reg operand" {
-    try test_fmt_helper("bp", &RegisterOperand{ .reg_operand = .{ .reg_ind = 5, .word = false } });
+    try test_fmt_helper("bp", &RegisterOperand{ .reg_operand = .{ .reg_ind = 5, .word = true } });
 }
 test "register operand is seg operand" {
     try test_fmt_helper("cs", &RegisterOperand{ .seg_operand = .{ .reg_ind = 1, .word = false } });
@@ -151,7 +157,7 @@ test "memory operand partial null base only" {
     try test_fmt_helper("[di]", &MemoryOperand{ .memory_base = 5, .displacement = 0, .word = false });
 }
 test "memory operand no null base only" {
-    try test_fmt_helper("[bx + si]", &MemoryOperand{ .memory_base = 5, .displacement = 0, .word = false });
+    try test_fmt_helper("[bp + di]", &MemoryOperand{ .memory_base = 3, .displacement = 0, .word = false });
 }
 test "memory operand displacement only" {
     try test_fmt_helper("[4]", &MemoryOperand{ .memory_base = null, .displacement = 4, .word = false });
@@ -160,15 +166,15 @@ test "memory operand partial null base and displacement" {
     try test_fmt_helper("[di + 4]", &MemoryOperand{ .memory_base = 5, .displacement = 4, .word = false });
 }
 test "memory operand no null base and displacement" {
-    try test_fmt_helper("[bx + si + 4]", &MemoryOperand{ .memory_base = 5, .displacement = 4, .word = false });
+    try test_fmt_helper("[bp + si + 4]", &MemoryOperand{ .memory_base = 2, .displacement = 4, .word = false });
 }
 
 test "operand immediate" {
     try test_fmt_helper("12", &Operand{ .immediate_operand = .{ .value = 12, .word = false } });
 }
 test "operand register" {
-    try test_fmt_helper("bp", &Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 5, .word = false } } });
+    try test_fmt_helper("bp", &Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 5, .word = true } } });
 }
 test "operand memory" {
-    try test_fmt_helper("[bx + si + 4]", &Operand{ .memory_operand = .{ .memory_base = 5, .displacement = 4, .word = false } });
+    try test_fmt_helper("[bp + si + 4]", &Operand{ .memory_operand = .{ .memory_base = 2, .displacement = 4, .word = false } });
 }
