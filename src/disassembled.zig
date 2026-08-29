@@ -78,7 +78,7 @@ const DisasmInstr = union(enum) {
 
     pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
         return switch (self) {
-            inline else => self.fmt(arr),
+            inline else => |inst| inst.fmt(arr),
         };
     }
 };
