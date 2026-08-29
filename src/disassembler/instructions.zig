@@ -1,6 +1,6 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const decoder = @import("decoder.zig");
+const lexer = @import("../lexer.zig");
+const decoder = @import("../decoder.zig");
 const operands = @import("operands.zig");
 
 const NullaryInstruction = struct {

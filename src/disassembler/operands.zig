@@ -1,5 +1,5 @@
 const std = @import("std");
-const decoder = @import("decoder.zig");
+const decoder = @import("../decoder.zig");
 
 const reg_and_word_to_reg_name = [_][2]*const [2:0]u8{
     // 8 bit reg, 16 bit reg

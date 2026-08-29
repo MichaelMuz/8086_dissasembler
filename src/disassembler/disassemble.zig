@@ -1,7 +1,8 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const decoder = @import("decoder.zig");
+const lexer = @import("../lexer.zig");
+const decoder = @import("../decoder.zig");
 const operands = @import("operands.zig");
+const instructions = @import("instructions.zig");
 
 const ModeType = enum {
     no_displacement_mode,
@@ -70,7 +71,7 @@ fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.RegisterO
 
 pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) @This() {
     if (extracted.get(.ip_inc8)) |inc_8| {
-        return JumpInstruction{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null };
+        return instructions.JumpInstruction{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null };
     }
 
     const hasData: bool = extracted.get(.data) != null;
@@ -101,9 +102,9 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
     const d: u1 = @truncate(extracted.get(.d) orelse 0);
 
     return switch (op_arr.len) {
-        0 => NullaryInstruction{ .mnemonic = schema.name },
-        1 => UnaryInstruction{ .mnemonic = schema.name, .op = op_arr[0] },
-        2 => BinaryInstruction{
+        0 => instructions.NullaryInstruction{ .mnemonic = schema.name },
+        1 => instructions.UnaryInstruction{ .mnemonic = schema.name, .op = op_arr[0] },
+        2 => instructions.BinaryInstruction{
             .mnemonic = schema.name,
             .src = op_arr[0 ^ d],
             .dst = op_arr[1 ^ d],
