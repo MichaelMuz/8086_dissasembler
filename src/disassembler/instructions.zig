@@ -7,8 +7,8 @@ const NullaryInstruction = struct {
     mnemonic: []const u8,
     // inst_size: u8, this is for when jumps need to calculate their offsets
 
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        arr.printBounded("{s}", .{self.mnemonic});
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("{s}", .{self.mnemonic});
     }
 };
 
@@ -17,14 +17,14 @@ const UnaryInstruction = struct {
     op: operands.Operand,
     // inst_size: u8, this is for when jumps need to calculate their offsets
 
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
         // "{self.mnemonic} {size_spec}{self.op}"
 
-        arr.printBounded("{s} ", .{self.mnemonic});
-        if (self.op == .memory_operand) |m| {
-            arr.printBounded("{s} ", .{m.getSizeSpec()});
+        arr.printAssumeCapacity("{s} ", .{self.mnemonic});
+        if (self.op == .memory_operand) {
+            arr.printAssumeCapacity("{s} ", .{self.op.memory_operand.getSizeSpec()});
         }
-        arr.printBounded("{d}", self.op.fmt());
+        self.op.fmt(arr);
     }
 };
 
@@ -34,18 +34,18 @@ const BinaryInstruction = struct {
     src: operands.Operand,
     // inst_size: u8, this is for when jumps need to calculate their offsets
 
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
         // "{self.mnemonic} {self.dest}, {size_spec}{self.source}"
 
-        arr.printBounded("{s} ", .{self.mnemonic});
+        arr.printAssumeCapacity("{s} ", .{self.mnemonic});
         self.dst.fmt(arr);
-        arr.printBounded(", ", .{});
+        arr.printAssumeCapacity(", ", .{});
         if (self.src == .immediate_operand) {
-            if (self.dst == .memory_operand) |m| {
-                arr.printBounded("{s}", .{m.getSizeSpec(arr)});
+            if (self.dst == .memory_operand) {
+                arr.printAssumeCapacity("{s} ", .{self.dst.memory_operand.getSizeSpec()});
             }
         }
-        arr.printBounded("{s}", .{self.src.fmt()});
+        self.src.fmt(arr);
     }
 };
 
@@ -55,17 +55,18 @@ const JumpInstruction = struct {
     // inst_size: u8, this is for when jumps need to calculate their offsets
     label: ?[]const u8,
 
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
         // "{self.mnemonic} {destination}"
 
+        arr.printAssumeCapacity("{s} ", .{self.mnemonic});
         if (self.label) |l| {
-            arr.printBounded("{s}", .{l});
+            arr.printAssumeCapacity("{s}", .{l});
         } else {
-            arr.printBounded("{s}", .{self.disp});
+            arr.printAssumeCapacity("{d}", .{self.disp});
         }
     }
 
-    // pub fn getAbsLabelOffset(self: *@This(), curr_byte_ind: anytype) @TypeOf(curr_byte_ind) {
+    // pub fn getAbsLabelOffset( self: *const @This(), curr_byte_ind: anytype) @TypeOf(curr_byte_ind) {
     //     return curr_byte_ind + self.inst_size + self.dip;
     // }
 };
@@ -76,8 +77,8 @@ const DisasmInstr = union(enum) {
     binary_instruction: BinaryInstruction,
     jump_instruction: JumpInstruction,
 
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        return switch (self) {
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        return switch (self.*) {
             inline else => |inst| inst.fmt(arr),
         };
     }
@@ -95,7 +96,7 @@ test "nullary instruction" {
 }
 
 test "unary instruction register operand" {
-    try test_fmt_helper("unar ax", &UnaryInstruction{ .mnemonic = "unar", .op = operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 1, .word = true } } } });
+    try test_fmt_helper("unar cx", &UnaryInstruction{ .mnemonic = "unar", .op = operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 1, .word = true } } } });
 }
 test "unary instruction memory operand byte" {
     try test_fmt_helper("unar byte [bx + si + 200]", &UnaryInstruction{ .mnemonic = "unar", .op = operands.Operand{ .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = false } } });
@@ -105,7 +106,7 @@ test "unary instruction memory operand word" {
 }
 
 test "binary instruction mem to reg" {
-    try test_fmt_helper("binar cx, [bx + si + 200]", &BinaryInstruction{
+    try test_fmt_helper("binar bx, [bx + si + 200]", &BinaryInstruction{
         .mnemonic = "binar",
         .src = operands.Operand{
             .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = true },
@@ -116,7 +117,7 @@ test "binary instruction mem to reg" {
     });
 }
 test "binary instruction immediate to reg" {
-    try test_fmt_helper("binar cl, 5", &BinaryInstruction{
+    try test_fmt_helper("binar bl, 5", &BinaryInstruction{
         .mnemonic = "binar",
         .src = operands.Operand{
             .immediate_operand = .{ .value = 5, .word = false },
@@ -150,11 +151,11 @@ test "binary instruction immediate to mem word" {
 }
 
 test "jump instruction no label" {
-    const jmp = &JumpInstruction{ .mnemonic = "jmp", .disp = "5", .label = null };
+    const jmp = JumpInstruction{ .mnemonic = "jmp", .disp = 5, .label = null };
     try test_fmt_helper("jmp 5", &jmp);
 }
 test "jump instruction with label" {
-    const jmp = &JumpInstruction{ .mnemonic = "jmp", .disp = "5", .label = null };
+    const jmp = JumpInstruction{ .mnemonic = "jmp", .disp = 5, .label = "lab" };
     try test_fmt_helper("jmp lab", &jmp);
 }
 
@@ -162,10 +163,10 @@ test "disasm nullary" {
     try test_fmt_helper("nul", &DisasmInstr{ .nullary_instruction = .{ .mnemonic = "nul" } });
 }
 test "disasm unary" {
-    try test_fmt_helper("unar ax", &DisasmInstr{ .unary_instruction = .{ .mnemonic = "unar", .op = operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 1, .word = true } } } } });
+    try test_fmt_helper("unar cx", &DisasmInstr{ .unary_instruction = .{ .mnemonic = "unar", .op = operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 1, .word = true } } } } });
 }
 test "disasm binary" {
-    try test_fmt_helper("binar cx, [bx + si + 200]", &DisasmInstr{ .binary_instruction = .{
+    try test_fmt_helper("binar bx, [bx + si + 200]", &DisasmInstr{ .binary_instruction = .{
         .mnemonic = "binar",
         .src = operands.Operand{
             .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = true },
@@ -176,5 +177,5 @@ test "disasm binary" {
     } });
 }
 test "disasm jump" {
-    try test_fmt_helper("jmp lab", &DisasmInstr{ .jump_instruction = .{ .mnemonic = "jmp", .disp = "5", .label = null } });
+    try test_fmt_helper("jmp lab", &DisasmInstr{ .jump_instruction = .{ .mnemonic = "jmp", .disp = 5, .label = "lab" } });
 }

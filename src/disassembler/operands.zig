@@ -74,11 +74,8 @@ const MemoryOperand = struct {
     displacement: u16,
     word: bool,
 
-    pub fn getSizeSpec(self: *const @This()) [4]u8 {
-        return switch (self.word) {
-            true => "word",
-            false => "byte",
-        };
+    pub fn getSizeSpec(self: *const @This()) []const u8 {
+        return if (self.word) "word" else "byte";
     }
 
     pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
@@ -112,7 +109,7 @@ const MemoryOperand = struct {
     }
 };
 
-const Operand = union(enum) {
+pub const Operand = union(enum) {
     immediate_operand: ImmediateOperand,
     register_operand: RegisterOperand,
     memory_operand: MemoryOperand,
