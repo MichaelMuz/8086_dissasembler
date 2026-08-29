@@ -75,6 +75,12 @@ const DisasmInstr = union(enum) {
     unary_instruction: UnaryInstruction,
     binary_instruction: BinaryInstruction,
     jump_instruction: JumpInstruction,
+
+    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
+        return switch (self) {
+            inline else => self.fmt(arr),
+        };
+    }
 };
 
 // --- naturally above here is instruction types ---
