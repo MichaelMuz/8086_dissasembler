@@ -41,6 +41,14 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const integration_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/test_root.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "_8086_dissasembler", .module = mod },
+        },
+    });
+
     // Here we define an executable. An executable needs to have a root module
     // which needs to expose a `main` function. While we could add a main function
     // to the module defined above, it's sometimes preferable to split business
@@ -118,12 +126,16 @@ pub fn build(b: *std.Build) void {
     // Creates an executable that will run `test` blocks from the provided module.
     // Here `mod` needs to define a target, which is why earlier we made sure to
     // set the releative field.
-    const mod_tests = b.addTest(.{
+    const mod_unit_tests = b.addTest(.{
         .root_module = mod,
+    });
+    const mod_integration_tests = b.addTest(.{
+        .root_module = integration_test_mod,
     });
 
     // A run step that will run the test executable.
-    const run_mod_tests = b.addRunArtifact(mod_tests);
+    const run_mod_unit_tests = b.addRunArtifact(mod_unit_tests);
+    const run_mod_integration_tests = b.addRunArtifact(mod_integration_tests);
 
     // Creates an executable that will run `test` blocks from the executable's
     // root module. Note that test executables only test one module at a time,
@@ -138,9 +150,16 @@ pub fn build(b: *std.Build) void {
     // A top level step for running all tests. dependOn can be called multiple
     // times and since the two run steps do not depend on one another, this will
     // make the two of them run in parallel.
-    const test_step = b.step("test", "Run tests");
-    test_step.dependOn(&run_mod_tests.step);
-    test_step.dependOn(&run_exe_tests.step);
+    const unit_test_step = b.step("unit", "Run unit tests");
+    unit_test_step.dependOn(&run_mod_unit_tests.step);
+    unit_test_step.dependOn(&run_exe_tests.step);
+
+    const integration_test_step = b.step("integration", "Run integration tests");
+    integration_test_step.dependOn(&run_mod_integration_tests.step);
+
+    const all_test_step = b.step("test", "Run all tests");
+    all_test_step.dependOn(integration_test_step);
+    all_test_step.dependOn(unit_test_step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
