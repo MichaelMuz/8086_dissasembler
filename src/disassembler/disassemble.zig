@@ -33,36 +33,36 @@ fn getMode(mod: ?u2, rm: ?u3) ?Mode {
     };
 }
 
-fn getDataOperand(hasData: bool, data: u16, word: bool) ?operands.ImmediateOperand {
+fn getDataOperand(hasData: bool, data: u16, word: bool) ?operands.Operand {
     if (hasData) {
-        return operands.ImmediateOperand{ .value = data, .word = word };
+        return operands.Operand{ .immediate_operand = .{ .value = data, .word = word } };
     } else {
         return null;
     }
 }
 
-fn getRegOperand(reg: ?u3, sr: ?u2, word: bool) ?operands.RegisterOperand {
+fn getRegOperand(reg: ?u3, sr: ?u2, word: bool) ?operands.Operand {
     if (reg) |r| {
-        return operands.RegOperand{ .reg_ind = r, .word = word };
+        return operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = r, .word = word } } };
     } else if (sr) |s| {
-        return operands.SegmentRegOperand{ .reg_ind = s };
+        return operands.Operand{ .register_operand = .{ .seg_operand = .{ .reg_ind = s } } };
     } else {
         return null;
     }
 }
 
-fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.RegisterOperand {
+fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.Operand {
     const m = mode orelse return null; // can't have rm operand without mode
 
     if (rm) |reg_or_mem_base| {
         if (m.mode == .register_mode) {
-            return operands.RegOperand{ .reg_ind = reg_or_mem_base, .word = word };
+            return operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = reg_or_mem_base, .word = word } } };
         } else {
-            return operands.MemoryOperand{
+            return operands.Operand{ .memory_operand = .{
                 .memory_base = if (m.direct_memory_index) null else reg_or_mem_base,
                 .displacement = disp,
                 .word = word,
-            };
+            } };
         }
     } else {
         return null;
@@ -80,34 +80,33 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
 
     const data_operand = getDataOperand(hasData, data, word);
 
-    const reg: ?u3 = @truncate(extracted.get(.reg));
-    const sr: ?u2 = @truncate(extracted.get(.sr));
-
+    const reg: ?u3 = if (extracted.get(.reg)) |r| @intCast(r) else null;
+    const sr: ?u2 = if (extracted.get(.sr)) |sr| @intCast(sr) else null;
     const reg_operand = getRegOperand(reg, sr, word);
 
-    const rm: ?u3 = @truncate(extracted.get(.rm));
-    const mode: ?Mode = getMode(extracted.get(.mod), rm);
-    const disp: u16 = std.mem.readInt(u16, [_]u8{ extracted.get(.disp_lo) orelse 0, extracted.get(.disp_hi) orelse 0 }, .big);
+    const rm: ?u3 = if (extracted.get(.rm)) |rm| @intCast(rm) else null;
+    const mode: ?Mode = getMode(if (extracted.get(.mod)) |m| @intCast(m) else null, rm);
+    const disp: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.disp_lo) orelse 0, extracted.get(.disp_hi) orelse 0 }, .big);
 
     const rm_operand = getRmOperand(rm, mode, word, disp);
 
-    const operand_buffer = [_]@This(){undefined} ** 3;
-    const op_arr = std.ArrayList(operands.Operand).initBuffer(operand_buffer);
-    for ([_]operands.Operands{ data_operand, reg_operand, rm_operand }) |op| {
+    var operand_buffer = [_]operands.Operand{undefined} ** 3;
+    var op_arr = std.ArrayList(operands.Operand).initBuffer(&operand_buffer);
+    for ([_]?operands.Operand{ data_operand, reg_operand, rm_operand }) |op| {
         if (op) |o| {
-            op_arr.appendBounded(o);
+            op_arr.appendAssumeCapacity(o);
         }
     }
 
-    const d: u1 = @truncate(extracted.get(.d) orelse 0);
+    const d: u1 = @intCast(extracted.get(.d) orelse 0);
 
-    return switch (op_arr.len) {
+    return switch (op_arr.items.len) {
         0 => instructions.DisasmInstr{ .nullary_instruction = .{ .mnemonic = schema.name } },
-        1 => instructions.DisasmInstr{ .unary_instruction = .{ .mnemonic = schema.name, .op = op_arr[0] } },
+        1 => instructions.DisasmInstr{ .unary_instruction = .{ .mnemonic = schema.name, .op = op_arr.items[0] } },
         2 => instructions.DisasmInstr{ .binary_instruction = .{
             .mnemonic = schema.name,
-            .src = op_arr[0 ^ d],
-            .dst = op_arr[1 ^ d],
+            .src = op_arr.items[0 ^ d],
+            .dst = op_arr.items[1 ^ d],
         } },
         else => unreachable,
     };
@@ -155,7 +154,7 @@ test "simple reg to reg with d set" {
 test "8 bit immediate to register uses implicit direction" {
     // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
     try test_disassemble_helper(
-        "mov bx, cx",
+        "mov cl, 12",
         &lexer.encodings.instruction_encodings[0],
         .{
             .w = 0b0,
