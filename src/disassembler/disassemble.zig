@@ -69,7 +69,7 @@ fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.RegisterO
     }
 }
 
-pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) @This() {
+pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) instructions.DisasmInstr {
     if (extracted.get(.ip_inc8)) |inc_8| {
         return instructions.JumpInstruction{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null };
     }
@@ -111,6 +111,17 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
         },
         else => unreachable,
     };
+}
+
+fn test_disassemble_helper(expected: []const u8, schema: *const lexer.schema.InstructionSchema, fields: std.enums.EnumFieldStruct(lexer.schema.NamedField, ?u8, @as(?u8, null))) !void {
+    var buf = [_]u8{0} ** 64;
+    var arr = std.ArrayList(u8).initBuffer(&buf);
+
+    const parsed_inst = decoder.ParsedInstruction.initDefault(?u8, fields);
+    const disasm_instr = disassemble(schema, parsed_inst);
+
+    disasm_instr.fmt(&arr);
+    try std.testing.expectEqualStrings(expected, arr.items);
 }
 
 // test "simple reg to reg" {
