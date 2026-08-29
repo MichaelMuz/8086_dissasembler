@@ -3,88 +3,6 @@ const lexer = @import("lexer.zig");
 const decoder = @import("decoder.zig");
 const operands = @import("operands.zig");
 
-const NullaryInstruction = struct {
-    mnemonic: []const u8,
-    // inst_size: u8, this is for when jumps need to calculate their offsets
-
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        arr.printBounded("{s}", .{self.mnemonic});
-    }
-};
-
-const UnaryInstruction = struct {
-    mnemonic: []const u8,
-    op: operands.Operand,
-    // inst_size: u8, this is for when jumps need to calculate their offsets
-
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        // "{self.mnemonic} {size_spec}{self.op}"
-
-        arr.printBounded("{s} ", .{self.mnemonic});
-        if (self.op == .memory_operand) |m| {
-            arr.printBounded("{s} ", .{m.getSizeSpec()});
-        }
-        arr.printBounded("{d}", self.op.fmt());
-    }
-};
-
-const BinaryInstruction = struct {
-    mnemonic: []const u8,
-    dst: operands.Operand,
-    src: operands.Operand,
-    // inst_size: u8, this is for when jumps need to calculate their offsets
-
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        // "{self.mnemonic} {self.dest}, {size_spec}{self.source}"
-
-        arr.printBounded("{s} ", .{self.mnemonic});
-        self.dst.fmt(arr);
-        arr.printBounded(", ", .{});
-        if (self.src == .immediate_operand) {
-            if (self.dst == .memory_operand) |m| {
-                m.getSizeSpec(arr);
-            }
-        }
-        arr.printBounded("{s}", .{self.src.fmt()});
-    }
-};
-
-const JumpInstruction = struct {
-    mnemonic: []const u8,
-    disp: i16,
-    // inst_size: u8, this is for when jumps need to calculate their offsets
-    label: ?[]const u8,
-
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        // "{self.mnemonic} {destination}"
-
-        if (self.label) |l| {
-            arr.printBounded("{s}", .{l});
-        } else {
-            arr.printBounded("{s}", .{self.disp});
-        }
-    }
-
-    // pub fn getAbsLabelOffset(self: *@This(), curr_byte_ind: anytype) @TypeOf(curr_byte_ind) {
-    //     return curr_byte_ind + self.inst_size + self.dip;
-    // }
-};
-
-const DisasmInstr = union(enum) {
-    nullary_instruction: NullaryInstruction,
-    unary_instruction: UnaryInstruction,
-    binary_instruction: BinaryInstruction,
-    jump_instruction: JumpInstruction,
-
-    pub fn fmt(self: *@This(), arr: *std.ArrayList(u8)) void {
-        return switch (self) {
-            inline else => |inst| inst.fmt(arr),
-        };
-    }
-};
-
-// --- naturally above here is instruction types ---
-
 const ModeType = enum {
     no_displacement_mode,
     byte_displacement_mode,
@@ -193,3 +111,42 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
         else => unreachable,
     };
 }
+
+// test "simple reg to reg" {
+//     // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+//     const encoding = lexer.encodings.instruction_encodings[0];
+//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
+//     parsed_inst.set(.d, 0b0);
+//     parsed_inst.set(.w, 0b1);
+//     parsed_inst.set(.mod, 0b11);
+//     parsed_inst.set(.reg, 3);
+//     parsed_inst.set(.rm, 1);
+//     const ac = try formatInst(&encoding, &parsed_inst);
+//     try std.testing.expectEqualStrings("mov cx, bx", ac);
+// }
+
+// test "simple reg to reg with d set" {
+//     // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+//     const encoding = lexer.encodings.instruction_encodings[0];
+//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
+//     parsed_inst.set(.d, 0b1);
+//     parsed_inst.set(.w, 0b1);
+//     parsed_inst.set(.mod, 0b11);
+//     parsed_inst.set(.reg, 3);
+//     parsed_inst.set(.rm, 1);
+//     const ac = try formatInst(&encoding, &parsed_inst);
+//     try std.testing.expectEqualStrings("mov bx, cx", ac);
+// }
+
+// test "8 bit immediate to register uses implicit direction" {
+//     // "mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1" implied: { .d = 0 }
+//     const encoding = lexer.encodings.instruction_encodings[1];
+//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
+//     parsed_inst.set(.w, 0b0);
+//     parsed_inst.set(.mod, 0b11);
+//     parsed_inst.set(.rm, 1);
+//     parsed_inst.set(.data, 12);
+//     parsed_inst.set(.d, 0); // implied
+//     const ac = try formatInst(&encoding, &parsed_inst);
+//     try std.testing.expectEqualStrings("mov cl, 12", ac);
+// }
