@@ -71,7 +71,7 @@ const JumpInstruction = struct {
     // }
 };
 
-const DisasmInstr = union(enum) {
+pub const DisasmInstr = union(enum) {
     nullary_instruction: NullaryInstruction,
     unary_instruction: UnaryInstruction,
     binary_instruction: BinaryInstruction,

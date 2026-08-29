@@ -71,11 +71,11 @@ fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.RegisterO
 
 pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) instructions.DisasmInstr {
     if (extracted.get(.ip_inc8)) |inc_8| {
-        return instructions.JumpInstruction{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null };
+        return instructions.DisasmInstr{ .jump_instruction = .{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null } };
     }
 
     const hasData: bool = extracted.get(.data) != null;
-    const data: u16 = std.mem.readInt(u16, [_]u8{ extracted.get(.data_if_w_eq_1) orelse 0, extracted.get(.data) orelse 0 }, .big);
+    const data: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.data_if_w_eq_1) orelse 0, extracted.get(.data) orelse 0 }, .big);
     const word: bool = if (extracted.get(.w)) |w| w == 1 else unreachable; // no idea what to do with instructions that don't have a w. Prob unary but idk yet
 
     const data_operand = getDataOperand(hasData, data, word);
@@ -102,13 +102,13 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
     const d: u1 = @truncate(extracted.get(.d) orelse 0);
 
     return switch (op_arr.len) {
-        0 => instructions.NullaryInstruction{ .mnemonic = schema.name },
-        1 => instructions.UnaryInstruction{ .mnemonic = schema.name, .op = op_arr[0] },
-        2 => instructions.BinaryInstruction{
+        0 => instructions.DisasmInstr{ .nullary_instruction = .{ .mnemonic = schema.name } },
+        1 => instructions.DisasmInstr{ .unary_instruction = .{ .mnemonic = schema.name, .op = op_arr[0] } },
+        2 => instructions.DisasmInstr{ .binary_instruction = .{
             .mnemonic = schema.name,
             .src = op_arr[0 ^ d],
             .dst = op_arr[1 ^ d],
-        },
+        } },
         else => unreachable,
     };
 }
@@ -117,48 +117,52 @@ fn test_disassemble_helper(expected: []const u8, schema: *const lexer.schema.Ins
     var buf = [_]u8{0} ** 64;
     var arr = std.ArrayList(u8).initBuffer(&buf);
 
-    const parsed_inst = decoder.ParsedInstruction.initDefault(?u8, fields);
-    const disasm_instr = disassemble(schema, parsed_inst);
+    const parsed_inst = decoder.ParsedInstruction.initDefault(@as(?u8, null), fields);
+    const disasm_instr = disassemble(schema, &parsed_inst);
 
     disasm_instr.fmt(&arr);
     try std.testing.expectEqualStrings(expected, arr.items);
 }
 
-// test "simple reg to reg" {
-//     // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
-//     const encoding = lexer.encodings.instruction_encodings[0];
-//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
-//     parsed_inst.set(.d, 0b0);
-//     parsed_inst.set(.w, 0b1);
-//     parsed_inst.set(.mod, 0b11);
-//     parsed_inst.set(.reg, 3);
-//     parsed_inst.set(.rm, 1);
-//     const ac = try formatInst(&encoding, &parsed_inst);
-//     try std.testing.expectEqualStrings("mov cx, bx", ac);
-// }
-
-// test "simple reg to reg with d set" {
-//     // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
-//     const encoding = lexer.encodings.instruction_encodings[0];
-//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
-//     parsed_inst.set(.d, 0b1);
-//     parsed_inst.set(.w, 0b1);
-//     parsed_inst.set(.mod, 0b11);
-//     parsed_inst.set(.reg, 3);
-//     parsed_inst.set(.rm, 1);
-//     const ac = try formatInst(&encoding, &parsed_inst);
-//     try std.testing.expectEqualStrings("mov bx, cx", ac);
-// }
-
-// test "8 bit immediate to register uses implicit direction" {
-//     // "mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1" implied: { .d = 0 }
-//     const encoding = lexer.encodings.instruction_encodings[1];
-//     var parsed_inst = decoder.ParsedInstruction.initFill(null);
-//     parsed_inst.set(.w, 0b0);
-//     parsed_inst.set(.mod, 0b11);
-//     parsed_inst.set(.rm, 1);
-//     parsed_inst.set(.data, 12);
-//     parsed_inst.set(.d, 0); // implied
-//     const ac = try formatInst(&encoding, &parsed_inst);
-//     try std.testing.expectEqualStrings("mov cl, 12", ac);
-// }
+test "simple reg to reg" {
+    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+    try test_disassemble_helper(
+        "mov cx, bx",
+        &lexer.encodings.instruction_encodings[0],
+        .{
+            .d = 0b0,
+            .w = 0b1,
+            .mod = 0b11,
+            .reg = 3,
+            .rm = 1,
+        },
+    );
+}
+test "simple reg to reg with d set" {
+    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+    try test_disassemble_helper(
+        "mov bx, cx",
+        &lexer.encodings.instruction_encodings[0],
+        .{
+            .d = 0b1,
+            .w = 0b1,
+            .mod = 0b11,
+            .reg = 3,
+            .rm = 1,
+        },
+    );
+}
+test "8 bit immediate to register uses implicit direction" {
+    // "mov", "100010 d w, mod reg rm, disp_lo, disp_hi" reg/mem to/from reg
+    try test_disassemble_helper(
+        "mov bx, cx",
+        &lexer.encodings.instruction_encodings[0],
+        .{
+            .w = 0b0,
+            .mod = 0b11,
+            .rm = 1,
+            .data = 12,
+            .d = 0, // would be decoded with implied
+        },
+    );
+}
