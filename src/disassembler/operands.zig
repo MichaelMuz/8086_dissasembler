@@ -74,12 +74,12 @@ const MemoryOperand = struct {
     displacement: u16,
     word: bool,
 
-    // pub fn getSizeSpec( self: *const @This()) [4]u8 {
-    //     return switch (self.word) {
-    //         true => "word",
-    //         false => "byte",
-    //     };
-    // }
+    pub fn getSizeSpec(self: *const @This()) [4]u8 {
+        return switch (self.word) {
+            true => "word",
+            false => "byte",
+        };
+    }
 
     pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
         arr.printAssumeCapacity("[", .{});

@@ -42,7 +42,7 @@ const BinaryInstruction = struct {
         arr.printBounded(", ", .{});
         if (self.src == .immediate_operand) {
             if (self.dst == .memory_operand) |m| {
-                m.getSizeSpec(arr);
+                arr.printBounded("{s}", .{m.getSizeSpec(arr)});
             }
         }
         arr.printBounded("{s}", .{self.src.fmt()});
@@ -82,3 +82,99 @@ const DisasmInstr = union(enum) {
         };
     }
 };
+
+fn test_fmt_helper(expected: []const u8, actual: anytype) !void {
+    var buf = [_]u8{0} ** 64;
+    var arr = std.ArrayList(u8).initBuffer(&buf);
+    actual.fmt(&arr);
+    try std.testing.expectEqualStrings(expected, arr.items);
+}
+
+test "nullary instruction" {
+    try test_fmt_helper("nul", &NullaryInstruction{ .mnemonic = "nul" });
+}
+
+test "unary instruction register operand" {
+    try test_fmt_helper("unar ax", &UnaryInstruction{ .mnemonic = "unar", .op = operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 1, .word = true } } } });
+}
+test "unary instruction memory operand byte" {
+    try test_fmt_helper("unar byte [bx + si + 200]", &UnaryInstruction{ .mnemonic = "unar", .op = operands.Operand{ .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = false } } });
+}
+test "unary instruction memory operand word" {
+    try test_fmt_helper("unar word [bx + si + 200]", &UnaryInstruction{ .mnemonic = "unar", .op = operands.Operand{ .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = true } } });
+}
+
+test "binary instruction mem to reg" {
+    try test_fmt_helper("binar cx, [bx + si + 200]", &BinaryInstruction{
+        .mnemonic = "binar",
+        .src = operands.Operand{
+            .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = true },
+        },
+        .dst = .{
+            .register_operand = .{ .reg_operand = .{ .reg_ind = 3, .word = true } },
+        },
+    });
+}
+test "binary instruction immediate to reg" {
+    try test_fmt_helper("binar cl, 5", &BinaryInstruction{
+        .mnemonic = "binar",
+        .src = operands.Operand{
+            .immediate_operand = .{ .value = 5, .word = false },
+        },
+        .dst = .{
+            .register_operand = .{ .reg_operand = .{ .reg_ind = 3, .word = false } },
+        },
+    });
+}
+test "binary instruction immediate to mem byte" {
+    try test_fmt_helper("binar [bx + si + 200], byte 5", &BinaryInstruction{
+        .mnemonic = "binar",
+        .src = operands.Operand{
+            .immediate_operand = .{ .value = 5, .word = false },
+        },
+        .dst = operands.Operand{
+            .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = false },
+        },
+    });
+}
+test "binary instruction immediate to mem word" {
+    try test_fmt_helper("binar [bx + si + 200], word 5", &BinaryInstruction{
+        .mnemonic = "binar",
+        .src = operands.Operand{
+            .immediate_operand = .{ .value = 5, .word = true },
+        },
+        .dst = operands.Operand{
+            .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = true },
+        },
+    });
+}
+
+test "jump instruction no label" {
+    const jmp = &JumpInstruction{ .mnemonic = "jmp", .disp = "5", .label = null };
+    try test_fmt_helper("jmp 5", &jmp);
+}
+test "jump instruction with label" {
+    const jmp = &JumpInstruction{ .mnemonic = "jmp", .disp = "5", .label = null };
+    try test_fmt_helper("jmp lab", &jmp);
+}
+
+test "disasm nullary" {
+    try test_fmt_helper("nul", &DisasmInstr{ .nullary_instruction = .{ .mnemonic = "nul" } });
+}
+test "disasm unary" {
+    try test_fmt_helper("unar ax", &DisasmInstr{ .unary_instruction = .{ .mnemonic = "unar", .op = operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 1, .word = true } } } } });
+}
+test "disasm binary" {
+    try test_fmt_helper("binar cx, [bx + si + 200]", &DisasmInstr{ .binary_instruction = .{
+        .mnemonic = "binar",
+        .src = operands.Operand{
+            .memory_operand = .{ .memory_base = 0, .displacement = 200, .word = true },
+        },
+        .dst = .{
+            .register_operand = .{ .reg_operand = .{ .reg_ind = 3, .word = true } },
+        },
+    } });
+}
+test "disasm jump" {
+    try test_fmt_helper("jmp lab", &DisasmInstr{ .jump_instruction = .{ .mnemonic = "jmp", .disp = "5", .label = null } });
+}
