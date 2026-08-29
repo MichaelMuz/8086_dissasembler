@@ -119,3 +119,36 @@ const Operand = union(enum) {
         };
     }
 };
+
+fn test_helper(expected: *[]u8, actual: *Operand) void {
+    const buf = [_]u8{0} ** 64;
+    const arr = std.ArrayList(u8).initBuffer(buf);
+    actual.fmt(arr);
+    std.testing.expectEqualStrings(expected, arr.items);
+}
+test "immediate operand" {
+    test_helper("12", ImmediateOperand{ .value = 12, .word = false });
+}
+
+test "reg operand byte" {
+    test_helper("ch", RegOperand{ .reg_ind = 5, .word = false });
+}
+test "reg operand word" {
+    test_helper("bp", RegOperand{ .reg_ind = 5, .word = true });
+}
+
+test "segment reg operand" {
+    test_helper("cs", SegmentRegOperand{ .reg_ind = 1, .word = false });
+}
+
+test "register operand is reg operand" {
+    test_helper("bp", RegisterOperand{ .reg_operand = .{ .reg_ind = 5, .word = true } });
+}
+test "register operand is memory operand" {
+    test_helper("cs", RegisterOperand{ .seg_operand = .{ .reg_ind = 1, .word = true } });
+}
+
+// add memory operand tests for each variation
+// test "register operand is memory operand" {
+//     test_helper("cs", RegisterOperand{ .seg_operand = .{ .reg_ind = 1, .word = true } });
+// }
