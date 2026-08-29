@@ -86,7 +86,7 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
 
     const rm: ?u3 = if (extracted.get(.rm)) |rm| @intCast(rm) else null;
     const mode: ?Mode = getMode(if (extracted.get(.mod)) |m| @intCast(m) else null, rm);
-    const disp: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.disp_lo) orelse 0, extracted.get(.disp_hi) orelse 0 }, .big);
+    const disp: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.disp_hi) orelse 0, extracted.get(.disp_lo) orelse 0 }, .big);
 
     const rm_operand = getRmOperand(rm, mode, word, disp);
 
