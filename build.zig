@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const integration_test_mod = b.createModule(.{
-        .root_source_file = b.path("src/test_root.zig"),
+        .root_source_file = b.path("test/integration.zig"),
         .target = target,
         .imports = &.{
             .{ .name = "_8086_dissasembler", .module = mod },
