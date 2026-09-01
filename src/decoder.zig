@@ -116,7 +116,7 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
     return parsedInst; // maybe I take an out param? Could be more performant. Will check asm zig makes
 }
 
-fn decode(reader: *std.Io.Reader) !DecodedInstruction {
+pub fn decode(reader: *std.Io.Reader) !DecodedInstruction {
     const peeked = reader.peek(2) catch |err| switch (err) {
         error.EndOfStream => try reader.peek(1),
         error.ReadFailed => return err,
@@ -128,15 +128,15 @@ fn decode(reader: *std.Io.Reader) !DecodedInstruction {
         false => std.mem.readInt(u16, &[_]u8{ peeked[0], peeked[1] }, .big),
     };
 
-    const matched_schema: lexer.schema.InstructionSchema = for (lexer.encodings.instruction_encodings) |err| {
-        if (is_last_byte and !err.isOneByteIdentified()) {
+    const matched_schema: *const lexer.schema.InstructionSchema = for (&lexer.encodings.instruction_encodings) |*schema| {
+        if (is_last_byte and !schema.isOneByteIdentified()) {
             continue;
-        } else if (err.matches(stamp)) {
-            break err;
+        } else if (schema.matches(stamp)) {
+            break schema;
         }
     } else return error.InvalidInstruction;
 
-    return DecodedInstruction{ .parsed = try extract(reader, &matched_schema), .schema = &matched_schema };
+    return DecodedInstruction{ .parsed = try extract(reader, matched_schema), .schema = matched_schema };
 }
 
 test "basic mov" {
