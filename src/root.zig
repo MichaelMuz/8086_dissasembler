@@ -14,6 +14,7 @@ pub fn disassembleStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
             error.ReadFailed => return err,
             error.InvalidInstruction => return err,
         };
+        // std.debug.print("found: {s}, extracted: {}\n", .{ decoded.schema.name, decoded.parsed });
         const disasm: disassembler.instructions.DisasmInstr = disassembler.disassemble.disassemble(decoded.schema, &decoded.parsed);
         disasm.fmt(&arr);
         try writer.writeAll(arr.items);
