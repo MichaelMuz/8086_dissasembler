@@ -4,6 +4,8 @@ const decoder = @import("decoder.zig");
 const disassembler = @import("disassembler.zig");
 
 pub fn disassembleStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
+    _ = try writer.write("bits 16\n");
+
     // I realize that I made everything write to an arraylist but really shoulda just been to some interface so now coupled to arraylist
     var buf = [_]u8{undefined} ** 128;
     var arr = std.ArrayList(u8).initBuffer(&buf);
@@ -18,6 +20,7 @@ pub fn disassembleStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
         const disasm: disassembler.instructions.DisasmInstr = disassembler.disassemble.disassemble(decoded.schema, &decoded.parsed);
         disasm.fmt(&arr);
         try writer.writeAll(arr.items);
+        _ = try writer.write("\n");
     }
 }
 

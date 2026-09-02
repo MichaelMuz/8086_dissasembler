@@ -61,22 +61,22 @@ fn testRoundTripHelper(asm_instructions_slc: []const [:0]const u8) !void {
 test "mov reg to reg" {
     try testRoundTripHelper(&.{"mov cx, bx"});
 }
-// test "mov many reg to reg" {
-//     try testRoundTripHelper(&.{
-//         "mov cx, bx",
-//         "mov ch, ah",
-//         "mov dx, bx",
-//         "mov bx, di",
-//         "mov al, cl",
-//         "mov ch, ch",
-//         "mov bx, ax",
-//         "mov bx, si",
-//         "mov sp, di",
-//         "mov bp, ax",
-//         "mov si, bx",
-//         "mov dh, al",
-//     });
-// }
+test "mov many reg to reg" {
+    try testRoundTripHelper(&.{
+        "mov cx, bx",
+        "mov ch, ah",
+        "mov dx, bx",
+        "mov bx, di",
+        "mov al, cl",
+        "mov ch, ch",
+        "mov bx, ax",
+        "mov bx, si",
+        "mov sp, di",
+        "mov bp, ax",
+        "mov si, bx",
+        "mov dh, al",
+    });
+}
 // test "mov 8bit immediate to register" {
 //     try testRoundTripHelper(&.{"mov bh, 12"});
 // }
