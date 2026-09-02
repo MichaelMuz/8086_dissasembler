@@ -20,7 +20,7 @@ pub fn disassembleStream(reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
     }
 }
 
-test "wired up smoke test" {
+test "module smoke test" {
     var reader = std.Io.Reader.fixed(&[_]u8{ 0b10001000, 0b11001000 });
     var buf = [_]u8{undefined} ** 256;
     var writer = std.Io.Writer.fixed(&buf);
