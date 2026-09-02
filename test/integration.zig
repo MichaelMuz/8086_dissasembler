@@ -1,43 +1,58 @@
 const std = @import("std");
 const _8086_dissasembler = @import("_8086_dissasembler");
 
-const tmp = std.testing.tmpDir(.{});
+const tmp_name: [:0]const u8 = "/tmp/8086";
 var test_counter: std.atomic.Value(u32) = .init(0);
 
-fn getBinFromNasm(asm_instructions: []const [:0]const u8, buffer: []u8) !void {
+fn getBinFromNasm(asm_instructions: []const u8, buffer: []u8) !void {
+    try std.Io.Dir.cwd().createDirPath(std.testing.io, tmp_name);
+    const tmp_dir = try std.Io.Dir.openDirAbsolute(std.testing.io, tmp_name, .{});
+    defer tmp_dir.close(std.testing.io);
+
     const test_num = test_counter.fetchAdd(1, .monotonic);
 
-    const nasm_in_file = std.fmt("{s}/{d}.asm", .{ tmp, test_num });
-    const nasm_out_file = std.fmt("{s}/{d}_bin", .{ tmp, test_num });
+    var in_file_name_buf = [_]u8{undefined} ** 256;
+    const nasm_in_file = try std.fmt.bufPrint(&in_file_name_buf, "{s}/{d}.asm", .{ tmp_name, test_num });
+    var out_file_name_buf = [_]u8{undefined} ** 256;
+    const nasm_out_file = try std.fmt.bufPrint(&out_file_name_buf, "{s}/{d}_bin", .{ tmp_name, test_num });
 
-    try tmp.dir.writeFile(std.testing.io, .{ .sub_path = nasm_in_file, .data = asm_instructions });
+    try tmp_dir.writeFile(std.testing.io, .{ .sub_path = nasm_in_file, .data = asm_instructions });
 
-    std.process.run(std.testing.allocator, std.testing.io, .{ .argv = [_][]u8{ "nasm", nasm_in_file, "-o", nasm_out_file } });
+    _ = try std.process.run(std.testing.allocator, std.testing.io, .{ .argv = &.{ "nasm", nasm_in_file, "-o", nasm_out_file } });
 
-    try tmp.dir.readFile(tmp, std.testing.io, nasm_out_file, buffer);
+    _ = try tmp_dir.readFile(std.testing.io, nasm_out_file, buffer);
 }
 
-fn helpTestRoundTrip(asm_instructions: []const [:0]const u8) !void {
-    const original_bin = [_]u8{undefined} ** 1024;
+fn testRoundTripHelper(asm_instructions_slc: []const [:0]const u8) !void {
+    const asm_instructions_no_header = try std.mem.join(std.testing.allocator, "\n", asm_instructions_slc);
+    const asm_instructions = try std.fmt.allocPrint(std.testing.allocator, "bits 16\n{s}\n", .{asm_instructions_no_header});
+
+    var original_bin = [_]u8{undefined} ** 1024;
     getBinFromNasm(asm_instructions, &original_bin) catch |err| {
-        std.testing.print("Nasm choked on test input.\nTest instructions: {s}\nError: {s}", .{ asm_instructions, err });
+        std.debug.print("Nasm choked on test input.\nTest instructions:\n{s}\nError: {}", .{ asm_instructions, err });
         return err;
     };
 
-    var reader = std.Io.Reader.fixed(&asm_instructions);
+    // std.debug.print("Nasm gave binary.\nTest instructions:\n{s}\n", .{asm_instructions});
+
+    var reader = std.Io.Reader.fixed(&original_bin);
     var our_disassembly = [_]u8{undefined} ** 1024;
     var writer = std.Io.Writer.fixed(&our_disassembly);
     _8086_dissasembler.disassembleStream(&reader, &writer) catch |err| {
-        std.testing.print("Our disassembler choked on nasm output.\nTest instructions: {s}\nNasm's assembly: {s}\nError:{s}", .{ asm_instructions, original_bin, err });
+        std.debug.print("Our disassembler choked on nasm output.\nTest instructions:\n{s}\nNasm's assembly: {s}\nError:{}", .{ asm_instructions, original_bin, err });
         return err;
     };
 
     var bin_of_our_disassembly = [_]u8{undefined} ** 1024;
     getBinFromNasm(asm_instructions, &bin_of_our_disassembly) catch |err| {
-        std.testing.print("Nasm choked on our disassembler's output.\nTest instructions: {s}\nNasm's assembly: {s}\nOur disassembly: {s}\nError:{s}", .{ asm_instructions, original_bin, our_disassembly, err });
+        std.debug.print("Nasm choked on our disassembler's output.\nTest instructions: {s}\nNasm's assembly: {s}\nOur disassembly: {s}\nError:{}", .{ asm_instructions, original_bin, our_disassembly, err });
         return err;
     };
-    std.testing.expectEqualSlices(u8, original_bin, bin_of_our_disassembly) catch |err| {
-        std.testing.print("Binary our our disassembly not same as binary of test instructions.\nTest instructions: {s}\nNasm's assembly: {s}\nOur disassembly: {s}\nBinary of our disassembly: {s}\nError:{s}", .{ asm_instructions, original_bin, our_disassembly, bin_of_our_disassembly, err });
+    std.testing.expectEqualSlices(u8, &original_bin, &bin_of_our_disassembly) catch |err| {
+        std.debug.print("Binary our our disassembly not same as binary of test instructions.\nTest instructions: {s}\nNasm's assembly: {s}\nOur disassembly: {s}\nBinary of our disassembly: {s}\nError:{}", .{ asm_instructions, original_bin, our_disassembly, bin_of_our_disassembly, err });
     };
+}
+
+test "reg to reg" {
+    try testRoundTripHelper(&.{"mov cx, bx"});
 }
