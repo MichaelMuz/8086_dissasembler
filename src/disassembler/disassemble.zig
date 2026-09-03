@@ -33,6 +33,19 @@ fn getMode(mod: ?u2, rm: ?u3) ?Mode {
     };
 }
 
+fn getDisp(disp_hi: ?u8, disp_lo: ?u8) i16 {
+    if (disp_hi) |dh| {
+        if (disp_lo) |dl| {
+            return std.mem.readInt(i16, &.{ dh, dl }, .big);
+        } else unreachable; // can't have disp_hi with no disp_lo
+    } else if (disp_lo) |dl| {
+        return @as(i8, @bitCast(dl));
+    } else {
+        // we wouldn't display a 0 displacement anyway, same thing
+        return 0;
+    }
+}
+
 fn getDataOperand(hasData: bool, data: u16, word: bool) ?operands.Operand {
     if (hasData) {
         return operands.Operand{ .immediate_operand = .{ .value = data, .word = word } };
@@ -51,7 +64,7 @@ fn getRegOperand(reg: ?u3, sr: ?u2, word: bool) ?operands.Operand {
     }
 }
 
-fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: u16) ?operands.Operand {
+fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: i16) ?operands.Operand {
     const m = mode orelse return null; // can't have rm operand without mode
 
     if (rm) |reg_or_mem_base| {
@@ -86,7 +99,7 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
 
     const rm: ?u3 = if (extracted.get(.rm)) |rm| @intCast(rm) else null;
     const mode: ?Mode = getMode(if (extracted.get(.mod)) |m| @intCast(m) else null, rm);
-    const disp: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.disp_hi) orelse 0, extracted.get(.disp_lo) orelse 0 }, .big);
+    const disp: i16 = getDisp(extracted.get(.disp_hi), extracted.get(.disp_lo));
 
     const rm_operand = getRmOperand(rm, mode, word, disp);
 

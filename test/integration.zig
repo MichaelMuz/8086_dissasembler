@@ -53,7 +53,7 @@ fn testRoundTripHelper(asm_instructions_slc: []const [:0]const u8) !void {
         return err;
     };
     std.testing.expectEqualSlices(u8, original_bin, bin_of_our_disassembly) catch |err| {
-        std.debug.print("Binary our our disassembly not same as binary of test instructions.\nTest instructions: {s}\nNasm's assembly: {s}\nOur disassembly: {s}\nBinary of our disassembly: {s}\nError:{}", .{ asm_instructions, original_bin, our_disassembly, bin_of_our_disassembly, err });
+        std.debug.print("Our disassembly not same as binary of test instructions.\nTest instructions: {s}\nNasm's assembly: {s}\nOur disassembly: {s}\nBinary of our disassembly: {s}\nError:{}", .{ asm_instructions, original_bin, our_disassembly, bin_of_our_disassembly, err });
         return err;
     };
 }
@@ -111,9 +111,9 @@ test "mov source address with 16bit displacement" {
 test "mov dest address calculation" {
     try testRoundTripHelper(&.{ "mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch" });
 }
-// test "mov signed displacement" {
-//     try testRoundTripHelper(&.{"mov ax, [bx + di - 37]"});
-// }
+test "mov signed displacement" {
+    try testRoundTripHelper(&.{"mov ax, [bx + di - 37]"});
+}
 // test "mov signed displacements" {
 //     try testRoundTripHelper(&.{ "mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]" });
 // }

@@ -71,7 +71,7 @@ const RegisterOperand = union(enum) {
 
 const MemoryOperand = struct {
     memory_base: ?u8,
-    displacement: u16,
+    displacement: i16,
     word: bool,
 
     pub fn getSizeSpec(self: *const @This()) []const u8 {
@@ -86,23 +86,24 @@ const MemoryOperand = struct {
         else
             .{ null, null };
 
-        var need_plus = false;
+        var eq_started = false;
         if (first) |f| {
             arr.printAssumeCapacity("{s}", .{f});
-            need_plus = true;
+            eq_started = true;
         }
         if (second) |s| {
-            if (need_plus) {
+            if (eq_started) {
                 arr.printAssumeCapacity(" + ", .{});
             }
             arr.printAssumeCapacity("{s}", .{s});
-            need_plus = true;
+            eq_started = true;
         }
         if (self.displacement != 0) {
-            if (need_plus) {
-                arr.printAssumeCapacity(" + ", .{});
+            if (eq_started or self.displacement < 0) {
+                const sign = if (self.displacement < 0) "-" else "+";
+                arr.printAssumeCapacity(" {s} ", .{sign});
             }
-            arr.printAssumeCapacity("{d}", .{self.displacement});
+            arr.printAssumeCapacity("{d}", .{@abs(self.displacement)});
         }
 
         arr.printAssumeCapacity("]", .{});
