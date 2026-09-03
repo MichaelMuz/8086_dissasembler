@@ -114,21 +114,21 @@ test "mov dest address calculation" {
 test "mov signed displacement" {
     try testRoundTripHelper(&.{"mov ax, [bx + di - 37]"});
 }
-// test "mov signed displacements" {
-//     try testRoundTripHelper(&.{ "mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]" });
-// }
-// test "mov explicit size" {
-//     try testRoundTripHelper(&.{"mov [di + 901], word 347"});
-// }
-// test "mov explicit sizes" {
-//     try testRoundTripHelper(&.{ "mov [bp + di], byte 7", "mov [di + 901], word 347" });
-// }
-// test "mov direct address" {
-//     try testRoundTripHelper(&.{"mov bp, [5]"});
-// }
-// test "mov direct addresses" {
-//     try testRoundTripHelper(&.{ "mov bp, [5]", "mov bx, [3458]" });
-// }
+test "mov signed displacements" {
+    try testRoundTripHelper(&.{ "mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]" });
+}
+test "mov explicit size" {
+    try testRoundTripHelper(&.{"mov [di + 901], word 347"});
+}
+test "mov explicit sizes" {
+    try testRoundTripHelper(&.{ "mov [bp + di], byte 7", "mov [di + 901], word 347" });
+}
+test "mov direct address" {
+    try testRoundTripHelper(&.{"mov bp, [5]"});
+}
+test "mov direct addresses" {
+    try testRoundTripHelper(&.{ "mov bp, [5]", "mov bx, [3458]" });
+}
 // test "mov memory to accumulator" {
 //     try testRoundTripHelper(&.{"mov ax, [2555]"});
 // }
