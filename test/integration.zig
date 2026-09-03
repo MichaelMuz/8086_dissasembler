@@ -77,40 +77,40 @@ test "mov many reg to reg" {
         "mov dh, al",
     });
 }
-// test "mov 8bit immediate to register" {
-//     try testRoundTripHelper(&.{"mov bh, 12"});
-// }
-// test "mov many 8bit immediate to register" {
-//     try testRoundTripHelper(&.{ "mov cl, 12", "mov ch, -12" });
-// }
-// test "mov 16bit immediate to register" {
-//     try testRoundTripHelper(&.{"mov ax, 100"});
-// }
-// test "mov many 16bit immediate to register" {
-//     try testRoundTripHelper(&.{ "mov cx, 12", "mov cx, -12", "mov dx, 3948", "mov dx, -3948" });
-// }
-// test "mov source address calculation single var" {
-//     try testRoundTripHelper(&.{"mov bh, [bp]"});
-// }
-// test "mov source address calculation double var" {
-//     try testRoundTripHelper(&.{"mov bh, [bp]"});
-// }
-// test "mov many source address calculation" {
-//     try testRoundTripHelper(&.{
-//         "mov al, [bx + si]",
-//         "mov bx, [bp + di]",
-//         "mov dx, [bp]",
-//     });
-// }
-// test "mov source address with 8bit displacement" {
-//     try testRoundTripHelper(&.{"mov ah, [bx + si + 4]"});
-// }
-// test "mov source address with 16bit displacement" {
-//     try testRoundTripHelper(&.{"mov al, [bx + si + 4999]"});
-// }
-// test "mov dest address calculation" {
-//     try testRoundTripHelper(&.{ "mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch" });
-// }
+test "mov 8bit immediate to register" {
+    try testRoundTripHelper(&.{"mov bh, 12"});
+}
+test "mov many 8bit immediate to register" {
+    try testRoundTripHelper(&.{ "mov cl, 12", "mov ch, -12" });
+}
+test "mov 16bit immediate to register" {
+    try testRoundTripHelper(&.{"mov ax, 100"});
+}
+test "mov many 16bit immediate to register" {
+    try testRoundTripHelper(&.{ "mov cx, 12", "mov cx, -12", "mov dx, 3948", "mov dx, -3948" });
+}
+test "mov source address calculation single var" {
+    try testRoundTripHelper(&.{"mov bh, [bp]"});
+}
+test "mov source address calculation double var" {
+    try testRoundTripHelper(&.{"mov bh, [bp]"});
+}
+test "mov many source address calculation" {
+    try testRoundTripHelper(&.{
+        "mov al, [bx + si]",
+        "mov bx, [bp + di]",
+        "mov dx, [bp]",
+    });
+}
+test "mov source address with 8bit displacement" {
+    try testRoundTripHelper(&.{"mov ah, [bx + si + 4]"});
+}
+test "mov source address with 16bit displacement" {
+    try testRoundTripHelper(&.{"mov al, [bx + si + 4999]"});
+}
+test "mov dest address calculation" {
+    try testRoundTripHelper(&.{ "mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch" });
+}
 // test "mov signed displacement" {
 //     try testRoundTripHelper(&.{"mov ax, [bx + di - 37]"});
 // }

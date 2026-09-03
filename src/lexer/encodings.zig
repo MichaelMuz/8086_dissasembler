@@ -11,8 +11,8 @@ pub const instruction_encodings = encodings: {
     break :encodings [_]schema.InstructionSchema{
         // Data transfer
         parser.instSch("mov", "100010 d w, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1", .{ .d = 0 }),
-        parser.instSch("mov", "1011 w reg, data, data_if_w_eq_1", .{ .d = 0, .mod = 3 }),
+        parser.instSch("mov", "1100011 w, mod 000 rm, disp_lo, disp_hi, data, data_if_w_eq_1", .{}),
+        parser.instSch("mov", "1011 w reg, data, data_if_w_eq_1", .{}),
         parser.instSch("mov", "1010000 w, addr_lo, addr_hi", .{ .d = 1, .mod = 0, .rm = 6, .reg = 0 }),
         parser.instSch("mov", "1010001 w, addr_lo, addr_hi", .{ .d = 0, .mod = 0, .rm = 6, .reg = 0 }),
         parser.instSch("mov", "10001110, mod 0 sr rm, disp_lo, disp_hi", .{ .d = 1, .w = 1 }),
