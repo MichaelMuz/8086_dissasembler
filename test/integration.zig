@@ -132,15 +132,15 @@ test "mov direct addresses" {
 test "mov memory to accumulator" {
     try testRoundTripHelper(&.{"mov ax, [2555]"});
 }
-// test "mov memory to accumulators" {
-//     try testRoundTripHelper(&.{ "mov ax, [2555]", "mov ax, [16]" });
-// }
-// test "mov accumulator to memory" {
-//     try testRoundTripHelper(&.{"mov [2554], ax"});
-// }
-// test "mov accumulator to memories" {
-//     try testRoundTripHelper(&.{ "mov [2554], ax", "mov [15], ax" });
-// }
+test "mov memory to accumulators" {
+    try testRoundTripHelper(&.{ "mov ax, [2555]", "mov ax, [16]" });
+}
+test "mov accumulator to memory" {
+    try testRoundTripHelper(&.{"mov [2554], ax"});
+}
+test "mov accumulator to memories" {
+    try testRoundTripHelper(&.{ "mov [2554], ax", "mov [15], ax" });
+}
 // test "mov segment register" {
 //     try testRoundTripHelper(&.{"mov ax, ds"});
 // }
