@@ -129,9 +129,9 @@ test "mov direct address" {
 test "mov direct addresses" {
     try testRoundTripHelper(&.{ "mov bp, [5]", "mov bx, [3458]" });
 }
-// test "mov memory to accumulator" {
-//     try testRoundTripHelper(&.{"mov ax, [2555]"});
-// }
+test "mov memory to accumulator" {
+    try testRoundTripHelper(&.{"mov ax, [2555]"});
+}
 // test "mov memory to accumulators" {
 //     try testRoundTripHelper(&.{ "mov ax, [2555]", "mov ax, [16]" });
 // }

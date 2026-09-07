@@ -69,6 +69,15 @@ const RegisterOperand = union(enum) {
     }
 };
 
+const AddrOperand = struct {
+    offset: u16,
+    word: bool, // doesn't really need I think bc must be paired with reg in binary instruction
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("[{d}]", .{self.offset});
+    }
+};
+
 const MemoryOperand = struct {
     memory_base: ?u8,
     displacement: i16,
@@ -85,6 +94,8 @@ const MemoryOperand = struct {
             rm_to_effective_addr_calc[m]
         else
             .{ null, null };
+
+        // std.debug.print("first: {any}, second: {any}, disp: {}", .{ first, second, self.displacement });
 
         var eq_started = false;
         if (first) |f| {
@@ -114,6 +125,8 @@ pub const Operand = union(enum) {
     immediate_operand: ImmediateOperand,
     register_operand: RegisterOperand,
     memory_operand: MemoryOperand,
+    addr_operand: AddrOperand,
+    // it is a bit odd that I have seg reg nested in register but addr is at top level here
 
     pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
         return switch (self.*) {

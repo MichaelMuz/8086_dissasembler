@@ -36,6 +36,7 @@ fn getMode(mod: ?u2, rm: ?u3) ?Mode {
 fn getDisp(disp_hi: ?u8, disp_lo: ?u8) i16 {
     if (disp_hi) |dh| {
         if (disp_lo) |dl| {
+            // std.debug.print("dh: {d}, dl: {d}\n", .{ dh, dl });
             return std.mem.readInt(i16, &.{ dh, dl }, .big);
         } else unreachable; // can't have disp_hi with no disp_lo
     } else if (disp_lo) |dl| {
@@ -82,6 +83,21 @@ fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: i16) ?operands.Operand {
     }
 }
 
+// it is a bit odd that I have seg reg nested in register but addr is at top level here
+// Perhaps these functions should be getting immediate operand, memory operand, register operand etc
+// This is exclusive vs the rm operand. Just a bit odd the way I did it
+fn getAddrOperand(addr_hi: ?u8, addr_lo: ?u8, word: bool) ?operands.Operand {
+    if (addr_lo) |al| {
+        if (addr_hi) |ah| {
+            return operands.Operand{ .addr_operand = .{ .offset = std.mem.readInt(u16, &[_]u8{ ah, al }, .big), .word = word } };
+        } else {
+            return operands.Operand{ .addr_operand = .{ .offset = al, .word = word } };
+        }
+    } else {
+        return null;
+    }
+}
+
 pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) instructions.DisasmInstr {
     if (extracted.get(.ip_inc8)) |inc_8| {
         return instructions.DisasmInstr{ .jump_instruction = .{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null } };
@@ -101,11 +117,13 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
     const mode: ?Mode = getMode(if (extracted.get(.mod)) |m| @intCast(m) else null, rm);
     const disp: i16 = getDisp(extracted.get(.disp_hi), extracted.get(.disp_lo));
 
+    // ideally I could express the invariant that these are both memory operands so they are mutually exclusive
     const rm_operand = getRmOperand(rm, mode, word, disp);
+    const addr_operand = getAddrOperand(extracted.get(.addr_hi), extracted.get(.addr_lo), word);
 
     var operand_buffer = [_]operands.Operand{undefined} ** 3;
     var op_arr = std.ArrayList(operands.Operand).initBuffer(&operand_buffer);
-    for ([_]?operands.Operand{ data_operand, reg_operand, rm_operand }) |op| {
+    for ([_]?operands.Operand{ data_operand, reg_operand, rm_operand, addr_operand }) |op| {
         if (op) |o| {
             op_arr.appendAssumeCapacity(o);
         }
