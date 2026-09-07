@@ -29,7 +29,7 @@ test "module smoke test" {
     var buf = [_]u8{undefined} ** 256;
     var writer = std.Io.Writer.fixed(&buf);
     try disassembleStream(&reader, &writer);
-    try std.testing.expectEqualStrings("mov al, cl", writer.buffered());
+    try std.testing.expectEqualStrings("bits 16\nmov al, cl\n", writer.buffered());
 }
 
 test {
