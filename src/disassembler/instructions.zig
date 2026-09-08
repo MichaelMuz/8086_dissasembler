@@ -159,7 +159,7 @@ test "binary instruction immediate to mem word" {
 
 test "jump instruction no label" {
     const jmp = JumpInstruction{ .mnemonic = "jmp", .disp = 5, .label = null };
-    try test_fmt_helper("jmp 5", &jmp);
+    try test_fmt_helper("jmp $ + 7", &jmp);
 }
 test "jump instruction with label" {
     const jmp = JumpInstruction{ .mnemonic = "jmp", .disp = 5, .label = "lab" };

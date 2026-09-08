@@ -269,7 +269,7 @@ test "nullary" {
 }
 test "jump" {
     try test_disassemble_helper(
-        "jmp 5",
+        "jmp $ + 7",
         TestSchemas.jmp_short,
         .{
             .ip_inc8 = 5,
