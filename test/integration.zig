@@ -261,6 +261,16 @@ test "cmp immediate values" {
     try testRoundTripHelper(&.{ "cmp ax, 1000", "cmp al, -30", "cmp al, 9" });
 }
 
+test "jumps back inline" {
+    try testRoundTripHelper(&.{
+        "jne $ - 3",
+    });
+}
+test "jumps forward inline" {
+    try testRoundTripHelper(&.{
+        "jne $ + 3",
+    });
+}
 // test "jumps jnz instruction" {
 //     try testRoundTripHelper(&.{
 //         "test_label0:",

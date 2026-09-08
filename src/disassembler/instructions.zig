@@ -62,7 +62,14 @@ const JumpInstruction = struct {
         if (self.label) |l| {
             arr.printAssumeCapacity("{s}", .{l});
         } else {
-            arr.printAssumeCapacity("{d}", .{self.disp});
+            const inst_size = 2; // hardcoded for now
+            const sign, const jsize =
+                if (self.disp < 0)
+                    .{ "-", @as(i16, @intCast(@abs(self.disp))) - inst_size }
+                else
+                    .{ "+", self.disp + inst_size };
+
+            arr.printAssumeCapacity("$ {s} {d}", .{ sign, jsize });
         }
     }
 
