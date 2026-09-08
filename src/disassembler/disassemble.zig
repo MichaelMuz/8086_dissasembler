@@ -100,7 +100,8 @@ fn getAddrOperand(addr_hi: ?u8, addr_lo: ?u8, word: bool) ?operands.Operand {
 
 pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) instructions.DisasmInstr {
     if (extracted.get(.ip_inc8)) |inc_8| {
-        return instructions.DisasmInstr{ .jump_instruction = .{ .mnemonic = schema.name, .disp = @intCast(inc_8), .label = null } };
+        const signed: i8 = @bitCast(inc_8);
+        return instructions.DisasmInstr{ .jump_instruction = .{ .mnemonic = schema.name, .disp = signed, .label = null } };
     }
 
     const hasData: bool = extracted.get(.data) != null;

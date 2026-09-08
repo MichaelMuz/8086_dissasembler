@@ -261,6 +261,12 @@ test "cmp immediate values" {
     try testRoundTripHelper(&.{ "cmp ax, 1000", "cmp al, -30", "cmp al, 9" });
 }
 
+// test "jumps jnz instruction" {
+//     try testRoundTripHelper(&.{
+//         "test_label0:",
+//         "jnz test_label0",
+//     });
+// }
 // test "jumps jnz instructions" {
 //     try testRoundTripHelper(&.{
 //         "test_label0:",
