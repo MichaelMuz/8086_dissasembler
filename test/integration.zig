@@ -271,51 +271,51 @@ test "jumps forward inline" {
         "jne $ + 3",
     });
 }
-// test "jumps jnz instruction" {
-//     try testRoundTripHelper(&.{
-//         "test_label0:",
-//         "jnz test_label0",
-//     });
-// }
-// test "jumps jnz instructions" {
-//     try testRoundTripHelper(&.{
-//         "test_label0:",
-//         "jnz test_label1",
-//         "jnz test_label0",
-//         "test_label1:",
-//         "jnz test_label0",
-//         "jnz test_label1",
-//     });
-// }
-// test "jumps conditional jumps" {
-//     try testRoundTripHelper(&.{
-//         "label:",
-//         "je label",
-//         "jl label",
-//         "jle label",
-//         "jb label",
-//         "jbe label",
-//         "jp label",
-//         "jo label",
-//         "js label",
-//     });
-// }
-// test "jumps negative conditional jumps" {
-//     try testRoundTripHelper(&.{
-//         "label:",
-//         "jne label",
-//         "jnl label",
-//         "jg label",
-//         "jnb label",
-//         "ja label",
-//         "jnp label",
-//         "jno label",
-//         "jns label",
-//     });
-// }
-// test "jumps loop instructions" {
-//     try testRoundTripHelper(&.{ "label:", "loop label", "loopz label", "loopnz label", "jcxz label" });
-// }
+test "jumps jnz instruction" {
+    try testRoundTripHelper(&.{
+        "test_label0:",
+        "jnz test_label0",
+    });
+}
+test "jumps jnz instructions" {
+    try testRoundTripHelper(&.{
+        "test_label0:",
+        "jnz test_label1",
+        "jnz test_label0",
+        "test_label1:",
+        "jnz test_label0",
+        "jnz test_label1",
+    });
+}
+test "jumps conditional jumps" {
+    try testRoundTripHelper(&.{
+        "label:",
+        "je label",
+        "jl label",
+        "jle label",
+        "jb label",
+        "jbe label",
+        "jp label",
+        "jo label",
+        "js label",
+    });
+}
+test "jumps negative conditional jumps" {
+    try testRoundTripHelper(&.{
+        "label:",
+        "jne label",
+        "jnl label",
+        "jg label",
+        "jnb label",
+        "ja label",
+        "jnp label",
+        "jno label",
+        "jns label",
+    });
+}
+test "jumps loop instructions" {
+    try testRoundTripHelper(&.{ "label:", "loop label", "loopz label", "loopnz label", "jcxz label" });
+}
 
 test "push" {
     try testRoundTripHelper(&.{"push word [3000]"});
