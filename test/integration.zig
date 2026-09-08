@@ -307,30 +307,30 @@ test "cmp immediate values" {
 //     try testRoundTripHelper(&.{ "label:", "loop label", "loopz label", "loopnz label", "jcxz label" });
 // }
 
-// test "push" {
-//     try testRoundTripHelper(&.{"push word [3000]"});
-// }
-// test "pushes" {
-//     try testRoundTripHelper(&.{
-//         "push word [bp + si]",
-//         "push word [3000]",
-//         "push word [bx + di - 30]",
-//         "push cx",
-//         "push ax",
-//         "push dx",
-//     });
-// }
+test "push" {
+    try testRoundTripHelper(&.{"push word [3000]"});
+}
+test "pushes" {
+    try testRoundTripHelper(&.{
+        "push word [bp + si]",
+        "push word [3000]",
+        "push word [bx + di - 30]",
+        "push cx",
+        "push ax",
+        "push dx",
+    });
+}
 
-// test "pop" {
-//     try testRoundTripHelper(&.{"pop sp"});
-// }
-// test "pops" {
-//     try testRoundTripHelper(&.{
-//         "pop word [bp + si]",
-//         "pop word [3]",
-//         "pop word [bx + di - 3000]",
-//         "pop sp",
-//         "pop di",
-//         "pop si",
-//     });
-// }
+test "pop" {
+    try testRoundTripHelper(&.{"pop sp"});
+}
+test "pops" {
+    try testRoundTripHelper(&.{
+        "pop word [bp + si]",
+        "pop word [3]",
+        "pop word [bx + di - 3000]",
+        "pop sp",
+        "pop di",
+        "pop si",
+    });
+}
