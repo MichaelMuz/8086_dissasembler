@@ -141,9 +141,9 @@ test "mov accumulator to memory" {
 test "mov accumulator to memories" {
     try testRoundTripHelper(&.{ "mov [2554], ax", "mov [15], ax" });
 }
-// test "mov segment register" {
-//     try testRoundTripHelper(&.{"mov ax, ds"});
-// }
+test "mov segment register" {
+    try testRoundTripHelper(&.{"mov ax, ds"});
+}
 // test "mov segment register2" {
 //     try testRoundTripHelper(&.{"mov ds, ax"});
 // }

@@ -84,7 +84,6 @@ fn extract(reader: *std.Io.Reader, schema: *const lexer.schema.InstructionSchema
             };
         }
 
-        // std.debug.print("HERE curr_byte: {b}, next_msb: {d}, f.width: {d}\n", .{ curr_byte, next_msb, f.width() });
         const sub_bits = utils.getSubMostSigBits(u8, curr_byte, next_msb, f.width());
 
         switch (f) {
@@ -188,5 +187,30 @@ test "immediate to register" {
     exp.set(.w, 0b0);
     exp.set(.reg, 0b001);
     exp.set(.data, 0b10000000);
+    try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
+}
+
+test "to segment register" {
+    // 10001110, mod 0 sr rm, disp_lo, disp_hi
+    var reader = std.Io.Reader.fixed(&[_]u8{ 0b10001110, 0b11011000 });
+    const ac = try decode(&reader);
+    var exp = ParsedInstruction.initFill(null);
+    exp.set(.d, 0b1);
+    exp.set(.w, 0b1);
+    exp.set(.mod, 0b11);
+    exp.set(.sr, 0b11);
+    exp.set(.rm, 0b000);
+    try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
+}
+test "from segment register" {
+    // 10001100, mod 0 sr rm, disp_lo, disp_hi
+    var reader = std.Io.Reader.fixed(&[_]u8{ 0b10001100, 0b11011000 });
+    const ac = try decode(&reader);
+    var exp = ParsedInstruction.initFill(null);
+    exp.set(.d, 0b0);
+    exp.set(.w, 0b1);
+    exp.set(.mod, 0b11);
+    exp.set(.sr, 0b11);
+    exp.set(.rm, 0b000);
     try std.testing.expectEqualSlices(?u8, &ac.parsed.values, &exp.values);
 }

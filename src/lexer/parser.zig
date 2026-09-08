@@ -24,7 +24,7 @@ fn parseSegment(segment: []const u8) struct { schema.SchemaField, u8, u8 } {
         // want to copy these bits to the skeleton and make mask have 1s here
         // mask gets 1s here
         add_to_skeleton = std.fmt.parseInt(u8, segment, 2) catch unreachable;
-        add_to_mask = (@as(u8, 1) << @truncate(curr_field.width())) - 1;
+        add_to_mask = @intCast((@as(u16, 1) << curr_field.width()) - 1);
     } else {
         curr_field = .{
             .named_field = schema.NamedField.of(segment),
@@ -54,7 +54,6 @@ fn parseByte(byte: []const u8, field_list: *std.ArrayList(schema.SchemaField)) s
         next_msb += curr_field.width();
     }
 
-    // std.debug.print("byte: {s}, next_msb: {d}\n", .{ byte, next_msb });
     std.debug.assert(next_msb == 8);
 
     return .{ skeleton, mask };
@@ -122,4 +121,30 @@ test "check that implied values are populated" {
     try std.testing.expect(mov.fields()[0].literal_field.value == 0b100010);
     try std.testing.expect(mov.implied_values.get(.data) == 1);
     try std.testing.expect(mov.implied_values.get(.z) == 5);
+}
+test "check that skeleton correct with multiple differentiating bytes" {
+    const mov = instSch("mov0", "100010 d 0, 111 mod 001", .{});
+    try std.testing.expect(mov.fields()[0].literal_field.value == 0b100010);
+    try std.testing.expect(mov.fields()[1].named_field == .d);
+    try std.testing.expect(mov.fields()[2].literal_field.value == 0b0);
+    try std.testing.expect(mov.fields()[3].literal_field.value == 0b111);
+    try std.testing.expect(mov.fields()[4].named_field == .mod);
+    try std.testing.expect(mov.fields()[5].literal_field.value == 0b001);
+    try std.testing.expect(mov.mask == std.mem.readInt(u16, &[_]u8{ 0b11111101, 0b11100111 }, .big));
+    try std.testing.expect(mov.skeleton == std.mem.readInt(u16, &[_]u8{ 0b10001000, 0b11100001 }, .big));
+}
+test "check matches" {
+    const mov = instSch("mov0", "10001110, mod 0 sr rm, disp_lo, disp_hi", .{});
+    try std.testing.expect(mov.fields()[0].literal_field.value == 0b10001110);
+    try std.testing.expect(mov.fields()[1].named_field == .mod);
+    try std.testing.expect(mov.fields()[2].literal_field.value == 0b0);
+    try std.testing.expect(mov.fields()[3].named_field == .sr);
+    try std.testing.expect(mov.fields()[4].named_field == .rm);
+    try std.testing.expect(mov.fields()[5].named_field == .disp_lo);
+    try std.testing.expect(mov.fields()[6].named_field == .disp_hi);
+
+    try std.testing.expect(mov.mask == std.mem.readInt(u16, &[_]u8{ 0b11111111, 0b00100000 }, .big));
+    try std.testing.expect(mov.skeleton == std.mem.readInt(u16, &[_]u8{ 0b10001110, 0b00000000 }, .big));
+    try std.testing.expect(mov.matches(std.mem.readInt(u16, &[_]u8{ 0b10001110, 0b00000001 }, .big)));
+    try std.testing.expect(!mov.matches(std.mem.readInt(u16, &[_]u8{ 0b10001100, 0b00000001 }, .big)));
 }
