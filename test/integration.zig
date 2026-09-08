@@ -144,122 +144,122 @@ test "mov accumulator to memories" {
 test "mov segment register" {
     try testRoundTripHelper(&.{"mov ax, ds"});
 }
-// test "mov segment register2" {
-//     try testRoundTripHelper(&.{"mov ds, ax"});
-// }
-// test "mov segment registers" {
-//     try testRoundTripHelper(&.{
-//         "mov ax, ds",
-//         "mov ds, ax",
-//         "mov es, bx",
-//         "mov cx, ss",
-//     });
-// }
+test "mov segment register2" {
+    try testRoundTripHelper(&.{"mov ds, ax"});
+}
+test "mov segment registers" {
+    try testRoundTripHelper(&.{
+        "mov ax, ds",
+        "mov ds, ax",
+        "mov es, bx",
+        "mov cx, ss",
+    });
+}
 
-// test "sub reg from memory" {
-//     try testRoundTripHelper(&.{"sub bx, [bp]"});
-// }
-// test "sub regs from memory" {
-//     try testRoundTripHelper(&.{ "sub bx, [bx+si]", "sub bx, [bp]" });
-// }
-// test "sub immediate from reg" {
-//     try testRoundTripHelper(&.{ "sub si, 2", "sub bp, 2", "sub cx, 8" });
-// }
-// test "sub reg from memory with displacement" {
-//     try testRoundTripHelper(&.{
-//         "sub bx, [bp + 0]",
-//         "sub cx, [bx + 2]",
-//         "sub bh, [bp + si + 4]",
-//         "sub di, [bp + di + 6]",
-//     });
-// }
-// test "sub reg from memory dest" {
-//     try testRoundTripHelper(&.{
-//         "sub [bx+si], bx",
-//         "sub [bp], bx",
-//         "sub [bp + 0], bx",
-//         "sub [bx + 2], cx",
-//         "sub [bp + si + 4], bh",
-//         "sub [bp + di + 6], di",
-//     });
-// }
-// test "sub immediate from memory" {
-//     try testRoundTripHelper(&.{ "sub byte [bx], 34", "sub word [bx + di], 29" });
-// }
-// test "sub mixed operations" {
-//     try testRoundTripHelper(&.{ "sub ax, [bp]", "sub al, [bx + si]", "sub ax, bx", "sub al, ah" });
-// }
-// test "sub immediate values" {
-//     try testRoundTripHelper(&.{ "sub ax, 1000", "sub al, -30", "sub al, 9" });
-// }
+test "sub reg from memory" {
+    try testRoundTripHelper(&.{"sub bx, [bp]"});
+}
+test "sub regs from memory" {
+    try testRoundTripHelper(&.{ "sub bx, [bx+si]", "sub bx, [bp]" });
+}
+test "sub immediate from reg" {
+    try testRoundTripHelper(&.{ "sub si, 2", "sub bp, 2", "sub cx, 8" });
+}
+test "sub reg from memory with displacement" {
+    try testRoundTripHelper(&.{
+        "sub bx, [bp + 0]",
+        "sub cx, [bx + 2]",
+        "sub bh, [bp + si + 4]",
+        "sub di, [bp + di + 6]",
+    });
+}
+test "sub reg from memory dest" {
+    try testRoundTripHelper(&.{
+        "sub [bx+si], bx",
+        "sub [bp], bx",
+        "sub [bp + 0], bx",
+        "sub [bx + 2], cx",
+        "sub [bp + si + 4], bh",
+        "sub [bp + di + 6], di",
+    });
+}
+test "sub immediate from memory" {
+    try testRoundTripHelper(&.{ "sub byte [bx], 34", "sub word [bx + di], 29" });
+}
+test "sub mixed operations" {
+    try testRoundTripHelper(&.{ "sub ax, [bp]", "sub al, [bx + si]", "sub ax, bx", "sub al, ah" });
+}
+test "sub immediate values" {
+    try testRoundTripHelper(&.{ "sub ax, 1000", "sub al, -30", "sub al, 9" });
+}
 
-// test "add reg from memory" {
-//     try testRoundTripHelper(&.{ "add bx, [bx+si]", "add bx, [bp]" });
-// }
-// test "add immediate to reg" {
-//     try testRoundTripHelper(&.{ "add si, 2", "add bp, 2", "add cx, 8" });
-// }
-// test "add reg from memory with displacement" {
-//     try testRoundTripHelper(&.{
-//         "add bx, [bp + 0]",
-//         "add cx, [bx + 2]",
-//         "add bh, [bp + si + 4]",
-//         "add di, [bp + di + 6]",
-//     });
-// }
-// test "add reg to memory" {
-//     try testRoundTripHelper(&.{
-//         "add [bx+si], bx",
-//         "add [bp], bx",
-//         "add [bp + 0], bx",
-//         "add [bx + 2], cx",
-//         "add [bp + si + 4], bh",
-//         "add [bp + di + 6], di",
-//     });
-// }
-// test "add immediate to memory" {
-//     try testRoundTripHelper(&.{ "add byte [bx], 34", "add word [bp + si + 1000], 29" });
-// }
-// test "add mixed operations" {
-//     try testRoundTripHelper(&.{ "add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah" });
-// }
-// test "add immediate values" {
-//     try testRoundTripHelper(&.{ "add ax, 1000", "add al, -30", "add al, 9" });
-// }
+test "add reg from memory" {
+    try testRoundTripHelper(&.{ "add bx, [bx+si]", "add bx, [bp]" });
+}
+test "add immediate to reg" {
+    try testRoundTripHelper(&.{ "add si, 2", "add bp, 2", "add cx, 8" });
+}
+test "add reg from memory with displacement" {
+    try testRoundTripHelper(&.{
+        "add bx, [bp + 0]",
+        "add cx, [bx + 2]",
+        "add bh, [bp + si + 4]",
+        "add di, [bp + di + 6]",
+    });
+}
+test "add reg to memory" {
+    try testRoundTripHelper(&.{
+        "add [bx+si], bx",
+        "add [bp], bx",
+        "add [bp + 0], bx",
+        "add [bx + 2], cx",
+        "add [bp + si + 4], bh",
+        "add [bp + di + 6], di",
+    });
+}
+test "add immediate to memory" {
+    try testRoundTripHelper(&.{ "add byte [bx], 34", "add word [bp + si + 1000], 29" });
+}
+test "add mixed operations" {
+    try testRoundTripHelper(&.{ "add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah" });
+}
+test "add immediate values" {
+    try testRoundTripHelper(&.{ "add ax, 1000", "add al, -30", "add al, 9" });
+}
 
-// test "cmp reg with memory" {
-//     try testRoundTripHelper(&.{ "cmp bx, [bx+si]", "cmp bx, [bp]" });
-// }
-// test "cmp reg with immediate" {
-//     try testRoundTripHelper(&.{ "cmp si, 2", "cmp bp, 2", "cmp cx, 8" });
-// }
-// test "cmp reg with memory displacement" {
-//     try testRoundTripHelper(&.{
-//         "cmp bx, [bp + 0]",
-//         "cmp cx, [bx + 2]",
-//         "cmp bh, [bp + si + 4]",
-//         "cmp di, [bp + di + 6]",
-//     });
-// }
-// test "cmp memory with reg" {
-//     try testRoundTripHelper(&.{
-//         "cmp [bx+si], bx",
-//         "cmp [bp], bx",
-//         "cmp [bp + 0], bx",
-//         "cmp [bx + 2], cx",
-//         "cmp [bp + si + 4], bh",
-//         "cmp [bp + di + 6], di",
-//     });
-// }
-// test "cmp memory with immediate" {
-//     try testRoundTripHelper(&.{ "cmp byte [bx], 34", "cmp word [4834], 29" });
-// }
-// test "cmp mixed operations" {
-//     try testRoundTripHelper(&.{ "cmp ax, [bp]", "cmp al, [bx + si]", "cmp ax, bx", "cmp al, ah" });
-// }
-// test "cmp immediate values" {
-//     try testRoundTripHelper(&.{ "cmp ax, 1000", "cmp al, -30", "cmp al, 9" });
-// }
+test "cmp reg with memory" {
+    try testRoundTripHelper(&.{ "cmp bx, [bx+si]", "cmp bx, [bp]" });
+}
+test "cmp reg with immediate" {
+    try testRoundTripHelper(&.{ "cmp si, 2", "cmp bp, 2", "cmp cx, 8" });
+}
+test "cmp reg with memory displacement" {
+    try testRoundTripHelper(&.{
+        "cmp bx, [bp + 0]",
+        "cmp cx, [bx + 2]",
+        "cmp bh, [bp + si + 4]",
+        "cmp di, [bp + di + 6]",
+    });
+}
+test "cmp memory with reg" {
+    try testRoundTripHelper(&.{
+        "cmp [bx+si], bx",
+        "cmp [bp], bx",
+        "cmp [bp + 0], bx",
+        "cmp [bx + 2], cx",
+        "cmp [bp + si + 4], bh",
+        "cmp [bp + di + 6], di",
+    });
+}
+test "cmp memory with immediate" {
+    try testRoundTripHelper(&.{ "cmp byte [bx], 34", "cmp word [4834], 29" });
+}
+test "cmp mixed operations" {
+    try testRoundTripHelper(&.{ "cmp ax, [bp]", "cmp al, [bx + si]", "cmp ax, bx", "cmp al, ah" });
+}
+test "cmp immediate values" {
+    try testRoundTripHelper(&.{ "cmp ax, 1000", "cmp al, -30", "cmp al, 9" });
+}
 
 // test "jumps jnz instructions" {
 //     try testRoundTripHelper(&.{
