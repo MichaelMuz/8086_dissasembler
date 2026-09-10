@@ -58,236 +58,505 @@ fn testRoundTripHelper(asm_instructions_slc: []const [:0]const u8) !void {
     };
 }
 
-test "mov reg to reg" {
-    try testRoundTripHelper(&.{"mov cx, bx"});
-}
-test "mov many reg to reg" {
+test "mov completionist" {
     try testRoundTripHelper(&.{
-        "mov cx, bx",
-        "mov ch, ah",
-        "mov dx, bx",
-        "mov bx, di",
-        "mov al, cl",
-        "mov ch, ch",
-        "mov bx, ax",
-        "mov bx, si",
-        "mov sp, di",
-        "mov bp, ax",
         "mov si, bx",
         "mov dh, al",
-    });
-}
-test "mov 8bit immediate to register" {
-    try testRoundTripHelper(&.{"mov bh, 12"});
-}
-test "mov many 8bit immediate to register" {
-    try testRoundTripHelper(&.{ "mov cl, 12", "mov ch, -12" });
-}
-test "mov 16bit immediate to register" {
-    try testRoundTripHelper(&.{"mov ax, 100"});
-}
-test "mov many 16bit immediate to register" {
-    try testRoundTripHelper(&.{ "mov cx, 12", "mov cx, -12", "mov dx, 3948", "mov dx, -3948" });
-}
-test "mov source address calculation single var" {
-    try testRoundTripHelper(&.{"mov bh, [bp]"});
-}
-test "mov source address calculation double var" {
-    try testRoundTripHelper(&.{"mov bh, [bp]"});
-}
-test "mov many source address calculation" {
-    try testRoundTripHelper(&.{
+        "mov cl, 12",
+        "mov ch, -12",
+        "mov cx, 12",
+        "mov cx, -12",
+        "mov dx, 3948",
+        "mov dx, -3948",
         "mov al, [bx + si]",
         "mov bx, [bp + di]",
         "mov dx, [bp]",
-    });
-}
-test "mov source address with 8bit displacement" {
-    try testRoundTripHelper(&.{"mov ah, [bx + si + 4]"});
-}
-test "mov source address with 16bit displacement" {
-    try testRoundTripHelper(&.{"mov al, [bx + si + 4999]"});
-}
-test "mov dest address calculation" {
-    try testRoundTripHelper(&.{ "mov [bx + di], cx", "mov [bp + si], cl", "mov [bp], ch" });
-}
-test "mov signed displacement" {
-    try testRoundTripHelper(&.{"mov ax, [bx + di - 37]"});
-}
-test "mov signed displacements" {
-    try testRoundTripHelper(&.{ "mov ax, [bx + di - 37]", "mov [si - 300], cx", "mov dx, [bx - 32]" });
-}
-test "mov explicit size" {
-    try testRoundTripHelper(&.{"mov [di + 901], word 347"});
-}
-test "mov explicit sizes" {
-    try testRoundTripHelper(&.{ "mov [bp + di], byte 7", "mov [di + 901], word 347" });
-}
-test "mov direct address" {
-    try testRoundTripHelper(&.{"mov bp, [5]"});
-}
-test "mov direct addresses" {
-    try testRoundTripHelper(&.{ "mov bp, [5]", "mov bx, [3458]" });
-}
-test "mov memory to accumulator" {
-    try testRoundTripHelper(&.{"mov ax, [2555]"});
-}
-test "mov memory to accumulators" {
-    try testRoundTripHelper(&.{ "mov ax, [2555]", "mov ax, [16]" });
-}
-test "mov accumulator to memory" {
-    try testRoundTripHelper(&.{"mov [2554], ax"});
-}
-test "mov accumulator to memories" {
-    try testRoundTripHelper(&.{ "mov [2554], ax", "mov [15], ax" });
-}
-test "mov segment register" {
-    try testRoundTripHelper(&.{"mov ax, ds"});
-}
-test "mov segment register2" {
-    try testRoundTripHelper(&.{"mov ds, ax"});
-}
-test "mov segment registers" {
-    try testRoundTripHelper(&.{
-        "mov ax, ds",
-        "mov ds, ax",
-        "mov es, bx",
-        "mov cx, ss",
+        "mov ah, [bx + si + 4]",
+        "mov al, [bx + si + 4999]",
+        "mov [bx + di], cx",
+        "mov [bp + si], cl",
+        "mov [bp], ch",
+        "mov ax, [bx + di - 37]",
+        "mov [si - 300], cx",
+        "mov dx, [bx - 32]",
+        "mov [bp + di], byte 7",
+        "mov [di + 901], word 347",
+        "mov bp, [5]",
+        "mov bx, [3458]",
+        "mov ax, [2555]",
+        "mov ax, [16]",
+        "mov [2554], ax",
+        "mov [15], ax",
     });
 }
 
-test "sub reg from memory" {
-    try testRoundTripHelper(&.{"sub bx, [bp]"});
-}
-test "sub regs from memory" {
-    try testRoundTripHelper(&.{ "sub bx, [bx+si]", "sub bx, [bp]" });
-}
-test "sub immediate from reg" {
-    try testRoundTripHelper(&.{ "sub si, 2", "sub bp, 2", "sub cx, 8" });
-}
-test "sub reg from memory with displacement" {
+test "push completionist" {
     try testRoundTripHelper(&.{
-        "sub bx, [bp + 0]",
-        "sub cx, [bx + 2]",
-        "sub bh, [bp + si + 4]",
-        "sub di, [bp + di + 6]",
+        "push word [bp + si]",
+        "push word [3000]",
+        "push word [bx + di - 30]",
+        "push cx",
+        "push ax",
+        "push dx",
+        "push cs",
     });
-}
-test "sub reg from memory dest" {
-    try testRoundTripHelper(&.{
-        "sub [bx+si], bx",
-        "sub [bp], bx",
-        "sub [bp + 0], bx",
-        "sub [bx + 2], cx",
-        "sub [bp + si + 4], bh",
-        "sub [bp + di + 6], di",
-    });
-}
-test "sub immediate from memory" {
-    try testRoundTripHelper(&.{ "sub byte [bx], 34", "sub word [bx + di], 29" });
-}
-test "sub mixed operations" {
-    try testRoundTripHelper(&.{ "sub ax, [bp]", "sub al, [bx + si]", "sub ax, bx", "sub al, ah" });
-}
-test "sub immediate values" {
-    try testRoundTripHelper(&.{ "sub ax, 1000", "sub al, -30", "sub al, 9" });
 }
 
-test "add reg from memory" {
-    try testRoundTripHelper(&.{ "add bx, [bx+si]", "add bx, [bp]" });
-}
-test "add immediate to reg" {
-    try testRoundTripHelper(&.{ "add si, 2", "add bp, 2", "add cx, 8" });
-}
-test "add reg from memory with displacement" {
+test "pop completionist" {
     try testRoundTripHelper(&.{
-        "add bx, [bp + 0]",
-        "add cx, [bx + 2]",
+        "pop word [bp + si]",
+        "pop word [3]",
+        "pop word [bx + di - 3000]",
+        "pop sp",
+        "pop di",
+        "pop si",
+        "pop ds",
+    });
+}
+
+test "xchg memory" {
+    try testRoundTripHelper(&.{
+        "xchg ax, [bp - 1000]",
+        "xchg [bx + 50], bp",
+    });
+}
+
+test "xchg accumulator registers" {
+    try testRoundTripHelper(&.{
+        "xchg ax, ax",
+        "xchg ax, dx",
+        "xchg ax, sp",
+        "xchg ax, si",
+        "xchg ax, di",
+    });
+}
+test "xchg general registers" {
+    try testRoundTripHelper(&.{
+        "xchg cx, dx",
+        "xchg si, cx",
+        "xchg cl, ah",
+    });
+}
+
+test "in" {
+    try testRoundTripHelper(&.{
+        "in al, 200",
+        "in al, dx",
+        "in ax, dx",
+    });
+}
+
+test "out" {
+    try testRoundTripHelper(&.{
+        "out 44, ax",
+        "out dx, al",
+    });
+}
+
+test "xlat and lea" {
+    try testRoundTripHelper(&.{
+        "xlat",
+        "lea ax, [bx + di + 1420]",
+        "lea bx, [bp - 50]",
+        "lea sp, [bp - 1003]",
+        "lea di, [bx + si - 7]",
+    });
+}
+
+test "lds" {
+    try testRoundTripHelper(&.{
+        "lds ax, [bx + di + 1420]",
+        "lds bx, [bp - 50]",
+        "lds sp, [bp - 1003]",
+        "lds di, [bx + si - 7]",
+    });
+}
+
+test "les" {
+    try testRoundTripHelper(&.{
+        "les ax, [bx + di + 1420]",
+        "les bx, [bp - 50]",
+        "les sp, [bp - 1003]",
+        "les di, [bx + si - 7]",
+    });
+}
+
+test "lahf sahf pushf popf" {
+    try testRoundTripHelper(&.{
+        "lahf",
+        "sahf",
+        "pushf",
+        "popf",
+    });
+}
+
+test "add completionist" {
+    try testRoundTripHelper(&.{
+        "add cx, [bp]",
+        "add dx, [bx + si]",
+        "add al, [bx + si]",
         "add bh, [bp + si + 4]",
-        "add di, [bp + di + 6]",
+        "add [bp + di + 5000], ah",
+        "add [bx], al",
+        "add [bx + si], bx",
+        "add sp, 392",
+        "add si, 5",
+        "add ax, 1000",
+        "add ah, 30",
+        "add al, 9",
+        "add word [bp + si + 1000], 29",
+        "add cx, bx",
+        "add ch, al",
     });
-}
-test "add reg to memory" {
-    try testRoundTripHelper(&.{
-        "add [bx+si], bx",
-        "add [bp], bx",
-        "add [bp + 0], bx",
-        "add [bx + 2], cx",
-        "add [bp + si + 4], bh",
-        "add [bp + di + 6], di",
-    });
-}
-test "add immediate to memory" {
-    try testRoundTripHelper(&.{ "add byte [bx], 34", "add word [bp + si + 1000], 29" });
-}
-test "add mixed operations" {
-    try testRoundTripHelper(&.{ "add ax, [bp]", "add al, [bx + si]", "add ax, bx", "add al, ah" });
-}
-test "add immediate values" {
-    try testRoundTripHelper(&.{ "add ax, 1000", "add al, -30", "add al, 9" });
 }
 
-test "cmp reg with memory" {
-    try testRoundTripHelper(&.{ "cmp bx, [bx+si]", "cmp bx, [bp]" });
-}
-test "cmp reg with immediate" {
-    try testRoundTripHelper(&.{ "cmp si, 2", "cmp bp, 2", "cmp cx, 8" });
-}
-test "cmp reg with memory displacement" {
+test "adc" {
     try testRoundTripHelper(&.{
-        "cmp bx, [bp + 0]",
-        "cmp cx, [bx + 2]",
-        "cmp bh, [bp + si + 4]",
-        "cmp di, [bp + di + 6]",
+        "adc cx, [bp]",
+        "adc dx, [bx + si]",
+        "adc [bp + di + 5000], ah",
+        "adc [bx], al",
+        "adc sp, 392",
+        "adc si, 5",
+        "adc ax, 1000",
+        "adc ah, 30",
+        "adc al, 9",
+        "adc cx, bx",
+        "adc ch, al",
     });
-}
-test "cmp memory with reg" {
-    try testRoundTripHelper(&.{
-        "cmp [bx+si], bx",
-        "cmp [bp], bx",
-        "cmp [bp + 0], bx",
-        "cmp [bx + 2], cx",
-        "cmp [bp + si + 4], bh",
-        "cmp [bp + di + 6], di",
-    });
-}
-test "cmp memory with immediate" {
-    try testRoundTripHelper(&.{ "cmp byte [bx], 34", "cmp word [4834], 29" });
-}
-test "cmp mixed operations" {
-    try testRoundTripHelper(&.{ "cmp ax, [bp]", "cmp al, [bx + si]", "cmp ax, bx", "cmp al, ah" });
-}
-test "cmp immediate values" {
-    try testRoundTripHelper(&.{ "cmp ax, 1000", "cmp al, -30", "cmp al, 9" });
 }
 
-test "jumps back inline" {
+test "inc" {
     try testRoundTripHelper(&.{
-        "jne $ - 3",
+        "inc ax",
+        "inc cx",
+        "inc dh",
+        "inc al",
+        "inc ah",
+        "inc sp",
+        "inc di",
+        "inc byte [bp + 1002]",
+        "inc word [bx + 39]",
+        "inc byte [bx + si + 5]",
+        "inc word [bp + di - 10044]",
+        "inc word [9349]",
+        "inc byte [bp]",
     });
 }
-test "jumps forward inline" {
+
+test "aaa daa" {
     try testRoundTripHelper(&.{
-        "jne $ + 3",
+        "aaa",
+        "daa",
     });
 }
-test "jumps jnz instruction" {
+
+test "sub completionist" {
     try testRoundTripHelper(&.{
-        "test_label0:",
-        "jnz test_label0",
+        "sub cx, [bp]",
+        "sub dx, [bx + si]",
+        "sub [bp + di + 5000], ah",
+        "sub [bx], al",
+        "sub sp, 392",
+        "sub si, 5",
+        "sub ax, 1000",
+        "sub ah, 30",
+        "sub al, 9",
+        "sub word [bx + di], 29",
+        "sub cx, bx",
+        "sub ch, al",
     });
 }
-test "jumps jnz instructions" {
+
+test "sbb" {
     try testRoundTripHelper(&.{
-        "test_label0:",
-        "jnz test_label1",
-        "jnz test_label0",
-        "test_label1:",
-        "jnz test_label0",
-        "jnz test_label1",
+        "sbb cx, [bp]",
+        "sbb dx, [bx + si]",
+        "sbb [bp + di + 5000], ah",
+        "sbb [bx], al",
+        "sbb sp, 392",
+        "sbb si, 5",
+        "sbb ax, 1000",
+        "sbb ah, 30",
+        "sbb al, 9",
+        "sbb cx, bx",
+        "sbb ch, al",
     });
 }
-test "jumps conditional jumps" {
+
+test "dec" {
+    try testRoundTripHelper(&.{
+        "dec ax",
+        "dec cx",
+        "dec dh",
+        "dec al",
+        "dec ah",
+        "dec sp",
+        "dec di",
+        "dec byte [bp + 1002]",
+        "dec word [bx + 39]",
+        "dec byte [bx + si + 5]",
+        "dec word [bp + di - 10044]",
+        "dec word [9349]",
+        "dec byte [bp]",
+    });
+}
+
+test "neg" {
+    try testRoundTripHelper(&.{
+        "neg ax",
+        "neg cx",
+        "neg dh",
+        "neg al",
+        "neg ah",
+        "neg sp",
+        "neg di",
+        "neg byte [bp + 1002]",
+        "neg word [bx + 39]",
+        "neg byte [bx + si + 5]",
+        "neg word [bp + di - 10044]",
+        "neg word [9349]",
+        "neg byte [bp]",
+    });
+}
+
+test "cmp completionist" {
+    try testRoundTripHelper(&.{
+        "cmp bx, cx",
+        "cmp dh, [bp + 390]",
+        "cmp [bp + 2], si",
+        "cmp bl, 20",
+        "cmp byte [bx], 34",
+        "cmp si, 2",
+        "cmp al, -30",
+        "cmp word [4834], 29",
+        "cmp ax, 23909",
+    });
+}
+
+test "aas das" {
+    try testRoundTripHelper(&.{
+        "aas",
+        "das",
+    });
+}
+
+test "mul" {
+    try testRoundTripHelper(&.{
+        "mul al",
+        "mul cx",
+        "mul word [bp]",
+        "mul byte [bx + di + 500]",
+    });
+}
+
+test "imul" {
+    try testRoundTripHelper(&.{
+        "imul ch",
+        "imul dx",
+        "imul byte [bx]",
+        "imul word [9483]",
+    });
+}
+
+test "aam" {
+    try testRoundTripHelper(&.{"aam"});
+}
+
+test "div" {
+    try testRoundTripHelper(&.{
+        "div bl",
+        "div sp",
+        "div byte [bx + si + 2990]",
+        "div word [bp + di + 1000]",
+    });
+}
+
+test "idiv" {
+    try testRoundTripHelper(&.{
+        "idiv ax",
+        "idiv si",
+        "idiv byte [bp + si]",
+        "idiv word [bx + 493]",
+    });
+}
+
+test "aad cbw cwd" {
+    try testRoundTripHelper(&.{
+        "aad",
+        "cbw",
+        "cwd",
+    });
+}
+
+test "not" {
+    try testRoundTripHelper(&.{
+        "not ah",
+        "not bl",
+        "not sp",
+        "not si",
+        "not word [bp]",
+        "not byte [bp + 9905]",
+    });
+}
+
+test "shift rotate by one registers" {
+    try testRoundTripHelper(&.{
+        "shl ah, 1",
+        "shr ax, 1",
+        "sar bx, 1",
+        "rol cx, 1",
+        "ror dh, 1",
+        "rcl sp, 1",
+        "rcr bp, 1",
+    });
+}
+
+test "shift rotate by one memory" {
+    try testRoundTripHelper(&.{
+        "shl word [bp + 5], 1",
+        "shr byte [bx + si - 199], 1",
+        "sar byte [bx + di - 300], 1",
+        "rol word [bp], 1",
+        "ror word [4938], 1",
+        "rcl byte [3], 1",
+        "rcr word [bx], 1",
+    });
+}
+
+test "shift rotate by cl registers" {
+    try testRoundTripHelper(&.{
+        "shl ah, cl",
+        "shr ax, cl",
+        "sar bx, cl",
+        "rol cx, cl",
+        "ror dh, cl",
+        "rcl sp, cl",
+        "rcr bp, cl",
+    });
+}
+
+test "shift rotate by cl memory" {
+    try testRoundTripHelper(&.{
+        "shl word [bp + 5], cl",
+        "shr word [bx + si - 199], cl",
+        "sar byte [bx + di - 300], cl",
+        "rol byte [bp], cl",
+        "ror byte [4938], cl",
+        "rcl byte [3], cl",
+        "rcr word [bx], cl",
+    });
+}
+
+test "and" {
+    try testRoundTripHelper(&.{
+        "and al, ah",
+        "and ch, cl",
+        "and bp, si",
+        "and di, sp",
+        "and al, 93",
+        "and ax, 20392",
+        "and [bp + si + 10], ch",
+        "and [bx + di + 1000], dx",
+        "and bx, [bp]",
+        "and cx, [4384]",
+        "and byte [bp - 39], 239",
+        "and word [bx + si - 4332], 10328",
+    });
+}
+
+test "test" {
+    try testRoundTripHelper(&.{
+        "test bx, cx",
+        "test dh, [bp + 390]",
+        "test [bp + 2], si",
+        "test bl, 20",
+        "test byte [bx], 34",
+        "test ax, 23909",
+    });
+}
+
+test "or" {
+    try testRoundTripHelper(&.{
+        "or al, ah",
+        "or ch, cl",
+        "or bp, si",
+        "or di, sp",
+        "or al, 93",
+        "or ax, 20392",
+        "or [bp + si + 10], ch",
+        "or [bx + di + 1000], dx",
+        "or bx, [bp]",
+        "or cx, [4384]",
+        "or byte [bp - 39], 239",
+        "or word [bx + si - 4332], 10328",
+    });
+}
+
+test "xor" {
+    try testRoundTripHelper(&.{
+        "xor al, ah",
+        "xor ch, cl",
+        "xor bp, si",
+        "xor di, sp",
+        "xor al, 93",
+        "xor ax, 20392",
+        "xor [bp + si + 10], ch",
+        "xor [bx + di + 1000], dx",
+        "xor bx, [bp]",
+        "xor cx, [4384]",
+        "xor byte [bp - 39], 239",
+        "xor word [bx + si - 4332], 10328",
+    });
+}
+
+test "rep string operations" {
+    try testRoundTripHelper(&.{
+        "rep movsb",
+        "rep cmpsb",
+        "rep scasb",
+        "rep lodsb",
+        "rep movsw",
+        "rep cmpsw",
+        "rep scasw",
+        "rep lodsw",
+    });
+}
+
+test "rep stos" {
+    try testRoundTripHelper(&.{
+        "rep stosb",
+        "rep stosw",
+    });
+}
+
+test "indirect call" {
+    try testRoundTripHelper(&.{
+        "call [39201]",
+        "call [bp - 100]",
+        "call sp",
+        "call ax",
+    });
+}
+
+test "indirect jmp" {
+    try testRoundTripHelper(&.{
+        "jmp ax",
+        "jmp di",
+        "jmp [12]",
+        "jmp [4395]",
+    });
+}
+
+test "ret immediate and plain" {
+    try testRoundTripHelper(&.{
+        "ret -7",
+        "ret 500",
+        "ret",
+    });
+}
+
+test "conditional jumps and loops completionist" {
     try testRoundTripHelper(&.{
         "label:",
         "je label",
@@ -298,11 +567,6 @@ test "jumps conditional jumps" {
         "jp label",
         "jo label",
         "js label",
-    });
-}
-test "jumps negative conditional jumps" {
-    try testRoundTripHelper(&.{
-        "label:",
         "jne label",
         "jnl label",
         "jg label",
@@ -311,36 +575,127 @@ test "jumps negative conditional jumps" {
         "jnp label",
         "jno label",
         "jns label",
-    });
-}
-test "jumps loop instructions" {
-    try testRoundTripHelper(&.{ "label:", "loop label", "loopz label", "loopnz label", "jcxz label" });
-}
-
-test "push" {
-    try testRoundTripHelper(&.{"push word [3000]"});
-}
-test "pushes" {
-    try testRoundTripHelper(&.{
-        "push word [bp + si]",
-        "push word [3000]",
-        "push word [bx + di - 30]",
-        "push cx",
-        "push ax",
-        "push dx",
+        "loop label",
+        "loopz label",
+        "loopnz label",
+        "jcxz label",
     });
 }
 
-test "pop" {
-    try testRoundTripHelper(&.{"pop sp"});
-}
-test "pops" {
+test "int" {
     try testRoundTripHelper(&.{
-        "pop word [bp + si]",
-        "pop word [3]",
-        "pop word [bx + di - 3000]",
-        "pop sp",
-        "pop di",
-        "pop si",
+        "int 13",
+        "int3",
+    });
+}
+
+test "into iret" {
+    try testRoundTripHelper(&.{
+        "into",
+        "iret",
+    });
+}
+
+test "flag control halt wait" {
+    try testRoundTripHelper(&.{
+        "clc",
+        "cmc",
+        "stc",
+        "cld",
+        "std",
+        "cli",
+        "sti",
+        "hlt",
+        "wait",
+    });
+}
+
+test "lock" {
+    try testRoundTripHelper(&.{
+        "lock not byte [bp + 9905]",
+        "lock xchg [100], al",
+    });
+}
+
+test "mov segment overrides" {
+    try testRoundTripHelper(&.{
+        "mov al, cs:[bx + si]",
+        "mov bx, ds:[bp + di]",
+        "mov dx, es:[bp]",
+        "mov ah, ss:[bx + si + 4]",
+    });
+}
+
+test "alu segment overrides" {
+    try testRoundTripHelper(&.{
+        "and ss:[bp + si + 10], ch",
+        "or ds:[bx + di + 1000], dx",
+        "xor bx, es:[bp]",
+        "cmp cx, es:[4384]",
+        "test byte cs:[bp - 39], 239",
+        "sbb word cs:[bx + si - 4332], 10328",
+    });
+}
+
+test "lock segment override" {
+    try testRoundTripHelper(&.{"lock not byte CS:[bp + 9905]"});
+}
+
+test "far direct call and jmp" {
+    try testRoundTripHelper(&.{
+        "call 123:456",
+        "jmp 789:34",
+    });
+}
+
+test "mov segment register to memory" {
+    try testRoundTripHelper(&.{"mov [bx+si+59],es"});
+}
+
+test "near direct jmp and call" {
+    try testRoundTripHelper(&.{
+        "jmp 2620",
+        "call 11804",
+    });
+}
+
+test "retf and ret" {
+    try testRoundTripHelper(&.{
+        "retf 17556",
+        "ret 17560",
+        "retf",
+        "ret",
+    });
+}
+
+test "near and far indirect call and jmp" {
+    try testRoundTripHelper(&.{
+        "call [bp+si-0x3a]",
+        "call far [bp+si-0x3a]",
+        "jmp [di]",
+        "jmp far [di]",
+    });
+}
+
+test "far direct jmp" {
+    try testRoundTripHelper(&.{"jmp 21862:30600"});
+}
+
+test "additional mov cases" {
+    try testRoundTripHelper(&.{
+        "mov ax, 100",
+        "mov bh, 12",
+        "mov bh, [bp]",
+        "mov ax, ds",
+        "mov ds, ax",
+        "mov es, bx",
+        "mov cx, ss",
+    });
+}
+
+test "relative jumps without labels" {
+    try testRoundTripHelper(&.{
+        "jne $ + 3",
+        "jne $ - 3",
     });
 }
