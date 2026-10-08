@@ -1,0 +1,278 @@
+const std = @import("std");
+const lexer = @import("../lexer.zig");
+const decoder = @import("../decoder.zig");
+const operands = @import("operands.zig");
+const instructions = @import("instructions.zig");
+
+const ModeType = enum {
+    no_displacement_mode,
+    byte_displacement_mode,
+    word_displacement_mode,
+    register_mode,
+};
+
+const Mode = struct {
+    mode: ModeType,
+    direct_memory_index: bool,
+};
+
+fn getMode(mod: ?u2, rm: ?u3) ?Mode {
+    if ((mod == null) ^ (rm == null)) {
+        // either have both or missing both
+        unreachable;
+    }
+
+    const m = mod orelse return null;
+    const r = rm orelse return null;
+
+    return switch (m) {
+        0b00 => if ((r) == 0b110) .{ .mode = .word_displacement_mode, .direct_memory_index = true } else .{ .mode = .no_displacement_mode, .direct_memory_index = false },
+        0b01 => .{ .mode = .byte_displacement_mode, .direct_memory_index = false },
+        0b10 => .{ .mode = .word_displacement_mode, .direct_memory_index = false },
+        0b11 => .{ .mode = .register_mode, .direct_memory_index = false },
+    };
+}
+
+fn getDisp(disp_hi: ?u8, disp_lo: ?u8) i16 {
+    if (disp_hi) |dh| {
+        if (disp_lo) |dl| {
+            // std.debug.print("dh: {d}, dl: {d}\n", .{ dh, dl });
+            return std.mem.readInt(i16, &.{ dh, dl }, .big);
+        } else unreachable; // can't have disp_hi with no disp_lo
+    } else if (disp_lo) |dl| {
+        return @as(i8, @bitCast(dl));
+    } else {
+        // we wouldn't display a 0 displacement anyway, same thing
+        return 0;
+    }
+}
+
+fn getDataOperand(hasData: bool, data: u16, word: bool) ?operands.Operand {
+    if (hasData) {
+        return operands.Operand{ .immediate_operand = .{ .value = data, .word = word } };
+    } else {
+        return null;
+    }
+}
+
+fn getRegOperand(reg: ?u3, sr: ?u2, word: bool) ?operands.Operand {
+    if (reg) |r| {
+        return operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = r, .word = word } } };
+    } else if (sr) |s| {
+        return operands.Operand{ .register_operand = .{ .seg_operand = .{ .reg_ind = s } } };
+    } else {
+        return null;
+    }
+}
+
+fn getRmOperand(rm: ?u3, mode: ?Mode, word: bool, disp: i16) ?operands.Operand {
+    const m = mode orelse return null; // can't have rm operand without mode
+
+    if (rm) |reg_or_mem_base| {
+        if (m.mode == .register_mode) {
+            return operands.Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = reg_or_mem_base, .word = word } } };
+        } else {
+            return operands.Operand{ .memory_operand = .{
+                .memory_base = if (m.direct_memory_index) null else reg_or_mem_base,
+                .displacement = disp,
+                .word = word,
+            } };
+        }
+    } else {
+        return null;
+    }
+}
+
+// it is a bit odd that I have seg reg nested in register but addr is at top level here
+// Perhaps these functions should be getting immediate operand, memory operand, register operand etc
+// This is exclusive vs the rm operand. Just a bit odd the way I did it
+fn getAddrOperand(addr_hi: ?u8, addr_lo: ?u8, word: bool) ?operands.Operand {
+    if (addr_lo) |al| {
+        if (addr_hi) |ah| {
+            return operands.Operand{ .addr_operand = .{ .offset = std.mem.readInt(u16, &[_]u8{ ah, al }, .big), .word = word } };
+        } else {
+            return operands.Operand{ .addr_operand = .{ .offset = al, .word = word } };
+        }
+    } else {
+        return null;
+    }
+}
+
+pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *const decoder.ParsedInstruction) instructions.DisasmInstr {
+    if (extracted.get(.ip_inc8)) |inc_8| {
+        const signed: i8 = @bitCast(inc_8);
+        return instructions.DisasmInstr{ .jump_instruction = .{ .mnemonic = schema.name, .disp = signed, .label = null } };
+    }
+
+    const hasData: bool = extracted.get(.data) != null;
+    const data: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.data_if_w_eq_1) orelse 0, extracted.get(.data) orelse 0 }, .big);
+    const word: bool = if (extracted.get(.w)) |w| w == 1 else false; // no idea what to do with instructions that don't have a w. Prob unary but idk yet
+
+    const data_operand = getDataOperand(hasData, data, word);
+
+    const reg: ?u3 = if (extracted.get(.reg)) |r| @intCast(r) else null;
+    const sr: ?u2 = if (extracted.get(.sr)) |sr| @intCast(sr) else null;
+    const reg_operand = getRegOperand(reg, sr, word);
+
+    const rm: ?u3 = if (extracted.get(.rm)) |rm| @intCast(rm) else null;
+    const mode: ?Mode = getMode(if (extracted.get(.mod)) |m| @intCast(m) else null, rm);
+    const disp: i16 = getDisp(extracted.get(.disp_hi), extracted.get(.disp_lo));
+
+    // ideally I could express the invariant that these are both memory operands so they are mutually exclusive
+    const rm_operand = getRmOperand(rm, mode, word, disp);
+    const addr_operand = getAddrOperand(extracted.get(.addr_hi), extracted.get(.addr_lo), word);
+
+    var operand_buffer = [_]operands.Operand{undefined} ** 3;
+    var op_arr = std.ArrayList(operands.Operand).initBuffer(&operand_buffer);
+    for ([_]?operands.Operand{ data_operand, reg_operand, rm_operand, addr_operand }) |op| {
+        if (op) |o| {
+            op_arr.appendAssumeCapacity(o);
+        }
+    }
+
+    const d: u1 = @intCast(extracted.get(.d) orelse 0);
+
+    return switch (op_arr.items.len) {
+        0 => instructions.DisasmInstr{ .nullary_instruction = .{ .mnemonic = schema.name } },
+        1 => instructions.DisasmInstr{ .unary_instruction = .{ .mnemonic = schema.name, .op = op_arr.items[0] } },
+        2 => instructions.DisasmInstr{ .binary_instruction = .{
+            .mnemonic = schema.name,
+            .src = op_arr.items[0 ^ d],
+            .dst = op_arr.items[1 ^ d],
+        } },
+        else => unreachable,
+    };
+}
+
+const TestSchemas = struct {
+    const mov_reg_mem = &lexer.encodings.instruction_encodings[0];
+    const mov_immediate_rm = &lexer.encodings.instruction_encodings[1];
+    const mov_segment_from_rm = &lexer.encodings.instruction_encodings[5];
+    const add_immediate_accumulator = &lexer.encodings.instruction_encodings[29];
+    const cwd = &lexer.encodings.instruction_encodings[58];
+    const jmp_short = &lexer.encodings.instruction_encodings[90];
+};
+
+fn test_disassemble_helper(expected: []const u8, schema: *const lexer.schema.InstructionSchema, fields: std.enums.EnumFieldStruct(lexer.schema.NamedField, ?u8, @as(?u8, null))) !void {
+    var buf = [_]u8{0} ** 64;
+    var arr = std.ArrayList(u8).initBuffer(&buf);
+
+    var parsed_inst = schema.implied_values;
+    const explicit_fields = decoder.ParsedInstruction.initDefault(@as(?u8, null), fields);
+    for (std.enums.values(lexer.schema.NamedField)) |field| {
+        if (explicit_fields.get(field)) |value| {
+            parsed_inst.set(field, value);
+        }
+    }
+    const disasm_instr = disassemble(schema, &parsed_inst);
+
+    disasm_instr.fmt(&arr);
+    try std.testing.expectEqualStrings(expected, arr.items);
+}
+
+test "register mode d is 0" {
+    try test_disassemble_helper(
+        "mov cx, bx",
+        TestSchemas.mov_reg_mem,
+        .{
+            .d = 0b0,
+            .w = 0b1,
+            .mod = 0b11,
+            .reg = 3,
+            .rm = 1,
+        },
+    );
+}
+test "register mode d is 1" {
+    try test_disassemble_helper(
+        "mov bx, cx",
+        TestSchemas.mov_reg_mem,
+        .{
+            .d = 0b1,
+            .w = 0b1,
+            .mod = 0b11,
+            .reg = 3,
+            .rm = 1,
+        },
+    );
+}
+test "memory mode no direct index" {
+    try test_disassemble_helper(
+        "mov es, [bx + si]",
+        TestSchemas.mov_segment_from_rm,
+        .{
+            .sr = 0,
+            .mod = 0b00,
+            .rm = 0,
+        },
+    );
+}
+test "memory mode direct index" {
+    try test_disassemble_helper(
+        "mov cl, [512]",
+        TestSchemas.mov_reg_mem,
+        .{
+            .d = 1,
+            .w = 0,
+            .reg = 1,
+            .mod = 0b00,
+            .rm = 0b110,
+            .disp_lo = 0,
+            .disp_hi = 2,
+        },
+    );
+}
+test "byte displacement mode" {
+    try test_disassemble_helper(
+        "mov [bx + si + 5], byte 50",
+        TestSchemas.mov_immediate_rm,
+        .{
+            .w = 0,
+            .mod = 0b01,
+            .data = 50,
+            .rm = 0,
+            .disp_lo = 5,
+        },
+    );
+}
+test "word displacement mode" {
+    try test_disassemble_helper(
+        "mov [bx + si + 512], word 50",
+        TestSchemas.mov_immediate_rm,
+        .{
+            .w = 1,
+            .mod = 0b10,
+            .data = 50,
+            .rm = 0,
+            .disp_lo = 0,
+            .disp_hi = 2,
+            .data_if_w_eq_1 = 0,
+        },
+    );
+}
+test "immediate to accumulator has no mod" {
+    try test_disassemble_helper(
+        "add al, 50",
+        TestSchemas.add_immediate_accumulator,
+        .{
+            .w = 0,
+            .data = 50,
+        },
+    );
+}
+test "nullary" {
+    try test_disassemble_helper(
+        "cwd",
+        TestSchemas.cwd,
+        .{},
+    );
+}
+test "jump" {
+    try test_disassemble_helper(
+        "jmp $ + 7",
+        TestSchemas.jmp_short,
+        .{
+            .ip_inc8 = 5,
+        },
+    );
+}

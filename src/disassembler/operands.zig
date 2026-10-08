@@ -1,0 +1,191 @@
+const std = @import("std");
+const decoder = @import("../decoder.zig");
+
+const reg_and_word_to_reg_name = [_][2]*const [2:0]u8{
+    // 8 bit reg, 16 bit reg
+    .{ "al", "ax" },
+    .{ "cl", "cx" },
+    .{ "dl", "dx" },
+    .{ "bl", "bx" },
+    .{ "ah", "sp" },
+    .{ "ch", "bp" },
+    .{ "dh", "si" },
+    .{ "bh", "di" },
+};
+const rm_to_effective_addr_calc = [_][2]?*const [2:0]u8{
+    // if there are two things in the list, the equation these bits code for are those added
+    .{ "bx", "si" },
+    .{ "bx", "di" },
+    .{ "bp", "si" },
+    .{ "bp", "di" },
+    .{ "si", null },
+    .{ "di", null },
+    .{ "bp", null },
+    .{ "bx", null },
+};
+const segment_names = [_]*const [2:0]u8{ "es", "cs", "ss", "ds" };
+
+const ImmediateOperand = struct {
+    value: u16,
+    word: bool,
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("{d}", .{self.value});
+    }
+};
+
+const RegOperand = struct {
+    reg_ind: u3,
+    word: bool,
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("{s}", .{reg_and_word_to_reg_name[self.reg_ind][@intFromBool(self.word)]});
+    }
+};
+
+const SegmentRegOperand = struct {
+    reg_ind: u3,
+    word: bool = true, // true by default
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("{s}", .{segment_names[self.reg_ind]});
+    }
+};
+
+const RegisterOperand = union(enum) {
+    reg_operand: RegOperand,
+    seg_operand: SegmentRegOperand,
+
+    pub fn word(self: *const @This()) bool {
+        return switch (self.*) {
+            inline else => |op| op.word,
+        };
+    }
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        return switch (self.*) {
+            inline else => |op| op.fmt(arr),
+        };
+    }
+};
+
+const AddrOperand = struct {
+    offset: u16,
+    word: bool, // doesn't really need I think bc must be paired with reg in binary instruction
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("[{d}]", .{self.offset});
+    }
+};
+
+const MemoryOperand = struct {
+    memory_base: ?u8,
+    displacement: i16,
+    word: bool,
+
+    pub fn getSizeSpec(self: *const @This()) []const u8 {
+        return if (self.word) "word" else "byte";
+    }
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        arr.printAssumeCapacity("[", .{});
+
+        const first, const second = if (self.memory_base) |m|
+            rm_to_effective_addr_calc[m]
+        else
+            .{ null, null };
+
+        // std.debug.print("first: {any}, second: {any}, disp: {}", .{ first, second, self.displacement });
+
+        var eq_started = false;
+        if (first) |f| {
+            arr.printAssumeCapacity("{s}", .{f});
+            eq_started = true;
+        }
+        if (second) |s| {
+            if (eq_started) {
+                arr.printAssumeCapacity(" + ", .{});
+            }
+            arr.printAssumeCapacity("{s}", .{s});
+            eq_started = true;
+        }
+        if (self.displacement != 0) {
+            if (eq_started or self.displacement < 0) {
+                const sign = if (self.displacement < 0) "-" else "+";
+                arr.printAssumeCapacity(" {s} ", .{sign});
+            }
+            arr.printAssumeCapacity("{d}", .{@abs(self.displacement)});
+        }
+
+        arr.printAssumeCapacity("]", .{});
+    }
+};
+
+pub const Operand = union(enum) {
+    immediate_operand: ImmediateOperand,
+    register_operand: RegisterOperand,
+    memory_operand: MemoryOperand,
+    addr_operand: AddrOperand,
+    // it is a bit odd that I have seg reg nested in register but addr is at top level here
+
+    pub fn fmt(self: *const @This(), arr: *std.ArrayList(u8)) void {
+        return switch (self.*) {
+            inline else => |op| op.fmt(arr),
+        };
+    }
+};
+
+fn test_fmt_helper(expected: []const u8, actual: anytype) !void {
+    var buf = [_]u8{0} ** 64;
+    var arr = std.ArrayList(u8).initBuffer(&buf);
+    actual.fmt(&arr);
+    try std.testing.expectEqualStrings(expected, arr.items);
+}
+
+test "immediate operand" {
+    try test_fmt_helper("12", &ImmediateOperand{ .value = 12, .word = false });
+}
+
+test "reg operand byte" {
+    try test_fmt_helper("ch", &RegOperand{ .reg_ind = 5, .word = false });
+}
+test "reg operand word" {
+    try test_fmt_helper("bp", &RegOperand{ .reg_ind = 5, .word = true });
+}
+
+test "segment reg operand" {
+    try test_fmt_helper("cs", &SegmentRegOperand{ .reg_ind = 1, .word = false });
+}
+
+test "register operand is reg operand" {
+    try test_fmt_helper("bp", &RegisterOperand{ .reg_operand = .{ .reg_ind = 5, .word = true } });
+}
+test "register operand is seg operand" {
+    try test_fmt_helper("cs", &RegisterOperand{ .seg_operand = .{ .reg_ind = 1, .word = false } });
+}
+
+test "memory operand partial null base only" {
+    try test_fmt_helper("[di]", &MemoryOperand{ .memory_base = 5, .displacement = 0, .word = false });
+}
+test "memory operand no null base only" {
+    try test_fmt_helper("[bp + di]", &MemoryOperand{ .memory_base = 3, .displacement = 0, .word = false });
+}
+test "memory operand displacement only" {
+    try test_fmt_helper("[4]", &MemoryOperand{ .memory_base = null, .displacement = 4, .word = false });
+}
+test "memory operand partial null base and displacement" {
+    try test_fmt_helper("[di + 4]", &MemoryOperand{ .memory_base = 5, .displacement = 4, .word = false });
+}
+test "memory operand no null base and displacement" {
+    try test_fmt_helper("[bp + si + 4]", &MemoryOperand{ .memory_base = 2, .displacement = 4, .word = false });
+}
+
+test "operand immediate" {
+    try test_fmt_helper("12", &Operand{ .immediate_operand = .{ .value = 12, .word = false } });
+}
+test "operand register" {
+    try test_fmt_helper("bp", &Operand{ .register_operand = .{ .reg_operand = .{ .reg_ind = 5, .word = true } } });
+}
+test "operand memory" {
+    try test_fmt_helper("[bp + si + 4]", &Operand{ .memory_operand = .{ .memory_base = 2, .displacement = 4, .word = false } });
+}

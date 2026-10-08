@@ -1,5 +1,3 @@
-.DS_Store
-.idea
-*.log
-tmp/
-__pycache__/
+.zig-cache/
+zig-out/
+zig-pkg/
