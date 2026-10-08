@@ -6,8 +6,8 @@ pub fn main(init: std.process.Init) !void {
     const arena: std.mem.Allocator = init.arena.allocator();
 
     const args = try init.minimal.args.toSlice(arena);
-    const input_arg = args[0];
-    const output_arg = args[1];
+    const input_arg = args[1];
+    const output_arg = args[2];
 
     var in_buffer: [1024]u8 = undefined;
     var in_reader: std.Io.File.Reader =
