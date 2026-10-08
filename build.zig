@@ -41,11 +41,14 @@ pub fn build(b: *std.Build) void {
         run_cmd.addArgs(args);
     }
 
+    const test_filters = b.option([]const []const u8, "test-filter", "Only run tests whose names match a filter") orelse &.{};
     const mod_unit_tests = b.addTest(.{
         .root_module = mod,
+        .filters = test_filters,
     });
     const mod_integration_tests = b.addTest(.{
         .root_module = integration_test_mod,
+        .filters = test_filters,
     });
 
     const run_mod_unit_tests = b.addRunArtifact(mod_unit_tests);
