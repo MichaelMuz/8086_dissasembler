@@ -26,6 +26,7 @@ pub fn main(init: std.process.Init) !void {
         );
 
     try _8086_dissasembler.disassembleStream(&in_reader.interface, &out_writer.interface);
+    try out_writer.flush();
 }
 
 // hard to mock std.process.init I think unfortunately
