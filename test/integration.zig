@@ -123,11 +123,11 @@ test "xchg memory" {
 
 test "xchg accumulator registers" {
     try testRoundTripHelper(&.{
-        //         "xchg ax, ax",
-        //         "xchg ax, dx",
-        //         "xchg ax, sp",
-        //         "xchg ax, si",
-        //         "xchg ax, di",
+        "xchg ax, ax",
+        "xchg ax, dx",
+        "xchg ax, sp",
+        "xchg ax, si",
+        "xchg ax, di",
     });
 }
 test "xchg general registers" {

@@ -27,7 +27,7 @@ pub const instruction_encodings = encodings: {
         parser.instSch("pop", "000 sr 111", .{}),
 
         parser.instSch("xchg", "1000011 w, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("xchg", "10010 reg", .{}),
+        parser.instSch("xchg", "10010 reg", .{ .d = 0, .w = 1, .mod = 0b11, .rm = 0 }),
 
         parser.instSch("in", "1110010 w, data_8", .{}),
         parser.instSch("in", "1110110 w", .{}),
