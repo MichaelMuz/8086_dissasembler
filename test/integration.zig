@@ -132,9 +132,9 @@ test "xchg accumulator registers" {
 }
 test "xchg general registers" {
     try testRoundTripHelper(&.{
-        //         "xchg cx, dx",
-        //         "xchg si, cx",
-        //         "xchg cl, ah",
+        "xchg cx, dx",
+        "xchg si, cx",
+        "xchg cl, ah",
     });
 }
 
