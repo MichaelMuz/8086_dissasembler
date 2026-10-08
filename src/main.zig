@@ -9,21 +9,23 @@ pub fn main(init: std.process.Init) !void {
     const input_arg = args[0];
     const output_arg = args[1];
 
-    const in_file =
-        if (std.mem.eql(u8, &input_arg, "-")) std.fs.File.stdin() else try std.Io.Dir.cwd().openFile(std.Io, &input_arg, .{ .mode = .read_only });
-
-    const out_file =
-        if (std.mem.eql(u8, &output_arg, "-")) std.fs.File.stdout() else try std.Io.Dir.cwd().openFile(std.Io, &output_arg, .{ .mode = .write_only });
-
     var in_buffer: [1024]u8 = undefined;
-    var in_file_reader: std.Io.File.Reader = .init(in_file, std.io, &in_buffer);
-    const in_reader = &in_file_reader.interface;
+    var in_reader: std.Io.File.Reader =
+        if (std.mem.eql(u8, input_arg, "-")) std.Io.File.stdin().reader(init.io, &in_buffer) else .init(
+            try std.Io.Dir.cwd().openFile(init.io, input_arg, .{ .mode = .read_only }),
+            init.io,
+            &in_buffer,
+        );
 
     var out_buffer: [1024]u8 = undefined;
-    var out_file_writer: std.Io.File.Writer = .init(out_file, std.io, &out_buffer);
-    const out_writer = &out_file_writer.interface;
+    var out_writer: std.Io.File.Writer =
+        if (std.mem.eql(u8, output_arg, "-")) std.Io.File.stdout().writer(init.io, &out_buffer) else .init(
+            try std.Io.Dir.cwd().openFile(init.io, output_arg, .{ .mode = .write_only }),
+            init.io,
+            &out_buffer,
+        );
 
-    try _8086_dissasembler.disassembleStream(&in_reader, &out_writer);
+    try _8086_dissasembler.disassembleStream(&in_reader.interface, &out_writer.interface);
 }
 
 // hard to mock std.process.init I think unfortunately
