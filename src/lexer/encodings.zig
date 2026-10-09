@@ -63,7 +63,7 @@ pub const instruction_encodings = encodings: {
 
         parser.instSch("sbb", "000110 d w, mod reg rm, disp_lo, disp_hi", .{}),
         parser.instSch("sbb", "100000 s w, mod 011 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
-        parser.instSch("sbb", "0001110 w, data, data_if_w_eq_1", .{}),
+        parser.instSch("sbb", "0001110 w, data, data_if_w_eq_1", .{ .w = 1 }),
 
         parser.instSch("dec", "1111111 w, mod 001 rm, disp_lo, disp_hi", .{}),
         parser.instSch("dec", "01001 reg", .{}),
