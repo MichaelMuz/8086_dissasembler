@@ -431,25 +431,25 @@ test "shift rotate by one memory" {
 
 test "shift rotate by cl registers" {
     try testRoundTripHelper(&.{
-        //         "shl ah, cl",
-        //         "shr ax, cl",
-        //         "sar bx, cl",
-        //         "rol cx, cl",
-        //         "ror dh, cl",
-        //         "rcl sp, cl",
-        //         "rcr bp, cl",
+        "shl ah, cl",
+        "shr ax, cl",
+        "sar bx, cl",
+        "rol cx, cl",
+        "ror dh, cl",
+        "rcl sp, cl",
+        "rcr bp, cl",
     });
 }
 
 test "shift rotate by cl memory" {
     try testRoundTripHelper(&.{
-        //         "shl word [bp + 5], cl",
-        //         "shr word [bx + si - 199], cl",
-        //         "sar byte [bx + di - 300], cl",
-        //         "rol byte [bp], cl",
-        //         "ror byte [4938], cl",
-        //         "rcl byte [3], cl",
-        //         "rcr word [bx], cl",
+        "shl word [bp + 5], cl",
+        "shr word [bx + si - 199], cl",
+        "sar byte [bx + di - 300], cl",
+        "rol byte [bp], cl",
+        "ror byte [4938], cl",
+        "rcl byte [3], cl",
+        "rcr word [bx], cl",
     });
 }
 
