@@ -233,13 +233,13 @@ test "adc" {
 
 test "inc" {
     try testRoundTripHelper(&.{
-        //         "inc ax",
-        //         "inc cx",
+        "inc ax",
+        "inc cx",
         "inc dh",
         "inc al",
         "inc ah",
-        //         "inc sp",
-        //         "inc di",
+        "inc sp",
+        "inc di",
         "inc byte [bp + 1002]",
         "inc word [bx + 39]",
         "inc byte [bx + si + 5]",
