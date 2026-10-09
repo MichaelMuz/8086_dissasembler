@@ -407,6 +407,9 @@ test "not" {
 
 test "shift rotate by one registers" {
     try testRoundTripHelper(&.{
+        // These need a code change bc v=0 means basically data=1 but
+        // v=1 means the src is always CL. I can't just split into 2 instructions based on v because
+        // CL is always 8 bit but the dst follows w. Same issue as in/out.
         //         "shl ah, 1",
         //         "shr ax, 1",
         //         "sar bx, 1",
