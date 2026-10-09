@@ -50,7 +50,7 @@ pub const instruction_encodings = encodings: {
 
         parser.instSch("adc", "000100 d w, mod reg rm, disp_lo, disp_hi", .{}),
         parser.instSch("adc", "100000 s w, mod 010 rm, disp_lo, disp_hi, data, data_if_sw_eq_01", .{}),
-        parser.instSch("adc", "0001010 w, data, data_if_w_eq_1", .{}),
+        parser.instSch("adc", "0001010 w, data, data_if_w_eq_1", .{ .reg = 0 }),
 
         parser.instSch("inc", "1111111 w, mod 000 rm, disp_lo, disp_hi", .{}),
         parser.instSch("inc", "01000 reg", .{}),
