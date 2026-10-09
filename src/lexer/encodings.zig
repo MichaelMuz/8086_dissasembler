@@ -66,7 +66,7 @@ pub const instruction_encodings = encodings: {
         parser.instSch("sbb", "0001110 w, data, data_if_w_eq_1", .{ .w = 1 }),
 
         parser.instSch("dec", "1111111 w, mod 001 rm, disp_lo, disp_hi", .{}),
-        parser.instSch("dec", "01001 reg", .{ .w = 1 }),
+        parser.instSch("dec", "01001 reg", .{}),
         parser.instSch("neg", "1111011 w, mod 011 rm, disp_lo, disp_hi", .{}),
 
         parser.instSch("cmp", "001110 d w, mod reg rm, disp_lo, disp_hi", .{}),
