@@ -31,7 +31,7 @@ pub const instruction_encodings = encodings: {
 
         parser.instSch("in", "1110010 w, data_8", .{ .reg = 0 }),
         parser.instSch("in", "1110110 w", .{}),
-        parser.instSch("out", "1110011 w, data_8", .{}),
+        parser.instSch("out", "1110011 w, data_8", .{ .d = 1, .reg = 0 }),
         parser.instSch("out", "1110111 w", .{}),
 
         parser.instSch("xlat", "11010111", .{}),

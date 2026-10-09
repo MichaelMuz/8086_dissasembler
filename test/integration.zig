@@ -141,6 +141,11 @@ test "xchg general registers" {
 test "in" {
     try testRoundTripHelper(&.{
         "in al, 200",
+        // This is a special case because the dst is a byte register but the src is a word register.
+        // It has a W bit in it, but that only controls the al/ax not dx.
+        // implied_values = .{.mod = 0b11, .reg = 0b010, .rm = 0} don't work bc the W bit affects both
+        // registers for typical mov instructions. It really doesn't fit to implied values this to look like a mov.
+        // This is because dx contains the port number and al reads one byte and ax reads two bytes from that port.
         // "in al, dx",
         // "in ax, dx",
     });
@@ -148,8 +153,8 @@ test "in" {
 
 test "out" {
     try testRoundTripHelper(&.{
-        //         "out 44, ax",
-        //         "out dx, al",
+        "out 44, ax",
+        // "out dx, al",
     });
 }
 
