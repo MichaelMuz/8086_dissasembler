@@ -204,7 +204,7 @@ test "add completionist" {
         "add [bp + di + 5000], ah",
         "add [bx], al",
         "add [bx + si], bx",
-        //         "add sp, 392",
+        "add sp, 392",
         "add si, 5",
         "add ax, 1000",
         "add ah, 30",

@@ -57,7 +57,7 @@ fn getDataOperand(data_8: ?u8, data: ?u8, data_if_w_eq_1: ?u8, word: bool, data_
             if (!word or data_if_sw_eq_01 != null) unreachable;
             high_byte = dw;
         } else if (data_if_sw_eq_01) |ds| {
-            if (!sign_extend or data_if_w_eq_1 != null) unreachable;
+            if (sign_extend or !word or data_if_w_eq_1 != null) unreachable;
             high_byte = ds;
         }
         return operands.Operand{ .immediate_operand = .{ .value = std.mem.readInt(u16, &[_]u8{ high_byte orelse 0, low_byte }, .big), .word = word } };
