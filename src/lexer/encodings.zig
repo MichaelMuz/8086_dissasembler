@@ -35,9 +35,9 @@ pub const instruction_encodings = encodings: {
         parser.instSch("out", "1110111 w", .{}),
 
         parser.instSch("xlat", "11010111", .{}),
-        parser.instSch("lea", "10001101, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("lds", "11000101, mod reg rm, disp_lo, disp_hi", .{}),
-        parser.instSch("les", "11000100, mod reg rm, disp_lo, disp_hi", .{}),
+        parser.instSch("lea", "10001101, mod reg rm, disp_lo, disp_hi", .{ .d = 1, .w = 1 }),
+        parser.instSch("lds", "11000101, mod reg rm, disp_lo, disp_hi", .{ .d = 1, .w = 1 }),
+        parser.instSch("les", "11000100, mod reg rm, disp_lo, disp_hi", .{ .d = 1, .w = 1 }),
         parser.instSch("lahf", "10011111", .{}),
         parser.instSch("sahf", "10011110", .{}),
         parser.instSch("pushf", "10011100", .{}),

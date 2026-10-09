@@ -161,28 +161,28 @@ test "out" {
 test "xlat and lea" {
     try testRoundTripHelper(&.{
         "xlat",
-        //         "lea ax, [bx + di + 1420]",
-        //         "lea bx, [bp - 50]",
-        //         "lea sp, [bp - 1003]",
-        //         "lea di, [bx + si - 7]",
+        "lea ax, [bx + di + 1420]",
+        "lea bx, [bp - 50]",
+        "lea sp, [bp - 1003]",
+        "lea di, [bx + si - 7]",
     });
 }
 
 test "lds" {
     try testRoundTripHelper(&.{
-        //         "lds ax, [bx + di + 1420]",
-        //         "lds bx, [bp - 50]",
-        //         "lds sp, [bp - 1003]",
-        //         "lds di, [bx + si - 7]",
+        "lds ax, [bx + di + 1420]",
+        "lds bx, [bp - 50]",
+        "lds sp, [bp - 1003]",
+        "lds di, [bx + si - 7]",
     });
 }
 
 test "les" {
     try testRoundTripHelper(&.{
-        //         "les ax, [bx + di + 1420]",
-        //         "les bx, [bp - 50]",
-        //         "les sp, [bp - 1003]",
-        //         "les di, [bx + si - 7]",
+        "les ax, [bx + di + 1420]",
+        "les bx, [bp - 50]",
+        "les sp, [bp - 1003]",
+        "les di, [bx + si - 7]",
     });
 }
 
