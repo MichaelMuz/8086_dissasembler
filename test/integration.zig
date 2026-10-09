@@ -262,7 +262,7 @@ test "sub completionist" {
         "sub dx, [bx + si]",
         "sub [bp + di + 5000], ah",
         "sub [bx], al",
-        //         "sub sp, 392",
+        "sub sp, 392",
         "sub si, 5",
         "sub ax, 1000",
         "sub ah, 30",
