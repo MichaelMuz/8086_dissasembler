@@ -140,9 +140,9 @@ test "xchg general registers" {
 
 test "in" {
     try testRoundTripHelper(&.{
-        //         "in al, 200",
-        //         "in al, dx",
-        //         "in ax, dx",
+        "in al, 200",
+        // "in al, dx",
+        // "in ax, dx",
     });
 }
 

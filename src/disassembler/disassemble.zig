@@ -47,9 +47,20 @@ fn getDisp(disp_hi: ?u8, disp_lo: ?u8) i16 {
     }
 }
 
-fn getDataOperand(hasData: bool, data: u16, word: bool) ?operands.Operand {
-    if (hasData) {
-        return operands.Operand{ .immediate_operand = .{ .value = data, .word = word } };
+fn getDataOperand(data_8: ?u8, data: ?u8, data_if_w_eq_1: ?u8, word: bool, data_if_sw_eq_01: ?u8, sign_extend: bool) ?operands.Operand {
+    if (data_8) |byte| {
+        if (data != null) unreachable;
+        return operands.Operand{ .immediate_operand = .{ .value = byte, .word = word } };
+    } else if (data) |low_byte| {
+        var high_byte: ?u8 = null;
+        if (data_if_w_eq_1) |dw| {
+            if (!word or data_if_sw_eq_01 != null) unreachable;
+            high_byte = dw;
+        } else if (data_if_sw_eq_01) |ds| {
+            if (!sign_extend or data_if_w_eq_1 != null) unreachable;
+            high_byte = ds;
+        }
+        return operands.Operand{ .immediate_operand = .{ .value = std.mem.readInt(u16, &[_]u8{ high_byte orelse 0, low_byte }, .big), .word = word } };
     } else {
         return null;
     }
@@ -104,11 +115,17 @@ pub fn disassemble(schema: *const lexer.schema.InstructionSchema, extracted: *co
         return instructions.DisasmInstr{ .jump_instruction = .{ .mnemonic = schema.name, .disp = signed, .label = null } };
     }
 
-    const hasData: bool = extracted.get(.data) != null;
-    const data: u16 = std.mem.readInt(u16, &[_]u8{ extracted.get(.data_if_w_eq_1) orelse 0, extracted.get(.data) orelse 0 }, .big);
     const word: bool = if (extracted.get(.w)) |w| w == 1 else false; // no idea what to do with instructions that don't have a w. Prob unary but idk yet
+    const sign_extend: bool = if (extracted.get(.s)) |s| s == 1 else false;
 
-    const data_operand = getDataOperand(hasData, data, word);
+    const data_operand = getDataOperand(
+        extracted.get(.data_8),
+        extracted.get(.data),
+        extracted.get(.data_if_w_eq_1),
+        word,
+        extracted.get(.data_if_sw_eq_01),
+        sign_extend,
+    );
 
     const reg: ?u3 = if (extracted.get(.reg)) |r| @intCast(r) else null;
     const sr: ?u2 = if (extracted.get(.sr)) |sr| @intCast(sr) else null;
